@@ -35,7 +35,7 @@ Start with a company or region, inspect the four evidence views, open the underl
 - **Scenario Lab (supporting worksheet)** — records bounded user assumptions for power, demand, CAPEX and regulation without presenting them as observed evidence or an uncalibrated forecast.
 - **Retrospective price test (method check)** — MA5/MA10 crossover outcomes using the next observed session and a ten-session exit, with pending windows and no-look-ahead rules; it does not test the whole buildout thesis.
 - **Data Health** — `#health` exposes market-snapshot freshness, source status, price coverage, and the separately dated event review.
-- **Coverage exceptions** — the Events view reports the configured feed/candidate scope, accepted and excluded counts, excluded reasons, and when the PJM feed could not be checked.
+- **Coverage exceptions** — the Events view reports the configured feed/candidate scope, accepted and excluded counts, excluded reasons, and independent discovery and article-verification status for each active publisher.
 - **Fail-closed ingestion** — empty/invalid provider responses are degraded, not successful; last-known-good history is retained.
 - **Bilingual research UX** — core Research Lab workflows support English and Traditional Chinese.
 - **Optional accounts** — Supabase signup/signin/recovery/preferences are implemented in the React project but do not block the public research demo.
@@ -43,7 +43,7 @@ Start with a company or region, inspect the four evidence views, open the underl
 
 Detailed design notes: [provenance](docs/data-provenance.md) · [signal methods](docs/signal-methods.md) · [snapshot changes](docs/snapshot-changes.md) · [demo hardening](docs/demo-hardening.md) · [scoring](docs/scoring-methodology.md) · [storage](docs/persistent-storage.md) · [scenario analysis](docs/scenario-analysis.md) · [backtesting](docs/backtesting.md) · [CI](docs/pr-ci.md).
 
-Daily event discovery checks Loudoun County News and Oracle corporate news, with independent discovery/verification health, bounded requests and retained history. PJM, ERCOT and Oracle investor news are paused; previously verified events remain visible. No API keys are needed for the active public routes. See [event discovery and live runner checks](docs/event-discovery.md).
+Daily event discovery checks Loudoun County News, Oracle corporate news and Texas Governor news, with independent discovery/verification health, bounded requests and retained history. Texas Governor passed GitHub runner listing and article verification; it retains its publisher label rather than implying an ERCOT statement. Oracle OCI Blog and FERC remain opt-in diagnostics after runner checks returned 403. PJM, ERCOT and Oracle investor news are paused; previously verified events remain visible. No API keys are needed for the active public routes. See [event discovery and live runner checks](docs/event-discovery.md).
 
 ## Current evidence boundaries
 

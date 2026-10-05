@@ -24,7 +24,7 @@ test('event admission rejects generic and mismatched links', () => {
 });
 
 test('curated candidates carry specific primary-source URLs and publication dates', () => {
-  assert.equal(candidates.length, 2);
+  assert.equal(candidates.length, 3);
   for (const item of candidates) assert.equal(validCandidate(item, new Date('2026-09-23T00:00:00Z')), true);
 });
 
@@ -106,13 +106,15 @@ test('default discovery never fetches paused sources or Oracle investor candidat
     ]),
     getText: async url => {
       calls.push(url);
-      assert.ok(!/ercot\.com|insidelines\.pjm\.com|investor\.oracle\.com/.test(url));
+      assert.ok(!/ercot\.com|insidelines\.pjm\.com|investor\.oracle\.com|blogs\.oracle\.com|ferc\.gov/.test(url));
       if (url.includes('RSSFeed.aspx')) return '<rss><channel></channel></rss>';
+      if (url.endsWith('/news/rss')) return '<rss><channel></channel></rss>';
+      if (url === PROVIDERS['Texas Governor'].endpoints[0].url) return '<a href="/news/post/governor-honors-officers">Governor Honors Police Officers</a>';
       return '<a href="/news/announcement/health/">Oracle Health Advances Patient Care</a>';
     },
   });
-  assert.deepEqual(Object.keys(result.coverage.sources), ['Loudoun', 'Oracle']);
-  assert.equal(calls.length, 2);
+  assert.deepEqual(Object.keys(result.coverage.sources), ['Loudoun', 'Oracle', 'Texas Governor']);
+  assert.equal(calls.length, 3);
   assert.equal(result.coverage.excludedCount, 0);
   assert.equal(result.status, 'ok');
 });
@@ -190,4 +192,19 @@ test('candidate caps disclose incomplete verification instead of reporting healt
   assert.equal(result.status, 'partial');
   assert.equal(result.observations.length, 12);
   assert.equal(result.coverage.sources.PJM.omittedCandidateCount, 1);
+});
+
+test('Texas policy announcements retain the Governor publisher rather than becoming ERCOT-authored events', async () => {
+  const url = 'https://gov.texas.gov/news/post/governor-data-center-policy';
+  const result = await ingestEvents({}, {
+    providerNames: ['Texas Governor'], now: new Date('2026-10-05T00:00:00Z'), readFile: async () => '[]',
+    getText: async target => target.endsWith('/news/rss')
+      ? `<rss><channel><item><title>Governor Directs Data Center Permit Review</title><link>${url}</link><pubDate>Mon, 21 Sep 2026 12:00:00 GMT</pubDate></item></channel></rss>`
+      : '<h1>Governor Directs Data Center Permit Review</h1><p class="meta">September 21, 2026 | Austin, Texas</p><p>ERCOT will review grid impacts.</p>',
+  });
+  assert.equal(result.status, 'ok');
+  assert.equal(result.observations[0].value.source, 'Texas Governor');
+  assert.equal(result.observations[0].value.category, 'PERMIT');
+  assert.equal(result.observations[0].region, 'Texas');
+  assert.equal(result.observations[0].observedAt, '2026-09-21T00:00:00.000Z');
 });

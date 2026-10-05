@@ -19,7 +19,7 @@ const PROVIDERS = {
   },
   'Texas Governor': {
     region: 'Texas', hosts: ['gov.texas.gov'], paths: [/^\/news\/post\/[a-z0-9.-]+\/?$/i],
-    endpoints: [{ url: 'https://gov.texas.gov/news', format: 'html' }],
+    endpoints: [{ url: 'https://gov.texas.gov/news/rss', format: 'rss' }, { url: 'https://gov.texas.gov/news', format: 'html' }],
   },
   FERC: {
     region: 'All regions', hosts: ['www.ferc.gov', 'ferc.gov'], paths: [/^\/news-events\/news\/(?!news-releases-headlines\/?$|decisions-notices\/?$)[a-z0-9-]+\/?$/i],
@@ -27,8 +27,8 @@ const PROVIDERS = {
   },
 };
 // Retain legacy provider parsers for historical records; only these sources are fetched.
-const ACTIVE_PROVIDERS = ['Loudoun', 'Oracle'];
-// Probe these separately before adding them to the daily source set.
+const ACTIVE_PROVIDERS = ['Loudoun', 'Oracle', 'Texas Governor'];
+// Proposed publishers remain probe-only unless runner access is verified.
 const ALTERNATIVE_PROVIDERS = ['Oracle OCI Blog', 'Texas Governor', 'FERC'];
 
 function plain(value) {

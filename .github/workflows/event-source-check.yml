@@ -2,6 +2,11 @@ name: Check official event source access
 
 on:
   workflow_dispatch:
+    inputs:
+      alternatives:
+        description: Include inactive alternatives and representative article probes
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,6 +22,8 @@ jobs:
           node-version: 22
       - name: Probe official discovery listings and candidate articles
         run: node scripts/check-event-sources.js event-source-report.json
+        env:
+          PROBE_EVENT_ALTERNATIVES: ${{ inputs.alternatives && 'true' || 'false' }}
       - name: Retain provider access evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

@@ -35,7 +35,7 @@ Gridline 是雙語、聚焦特定問題的研究流程：**資料中心建設是
 - **情境假設（輔助工作表）**：記錄供電、需求、CAPEX、法規的使用者假設，不將假設當成觀察證據或未校準預測。
 - **回溯價格測試（方法檢查）**：MA5/MA10 交叉後以下一筆交易日及十筆交易日後收盤價評估，揭露待完成結果與禁止前視偏誤規則；它不是對整體建設論點的回測。
 - **資料健康**：`#health` 顯示市場快照新鮮度、來源狀態、價格涵蓋及獨立日期的事件審查。
-- **涵蓋例外**：事件頁列出設定來源／候選紀錄的範圍、通過與排除筆數、排除原因，以及 PJM 動態來源未能檢查的情況。
+- **涵蓋例外**：事件頁列出設定來源／候選紀錄的範圍、通過與排除筆數、排除原因，以及各使用中發布者獨立的探索與文章驗證狀態。
 - **Fail-closed ingestion**：空白／無效 provider 回應標為 degraded，不視為成功；保留 last-known-good 歷史。
 - **雙語研究 UX**：Research Lab 的主要流程支援 English / 繁中。
 - **選用帳戶**：Supabase 註冊、登入、密碼恢復與偏好設定已完成 React 專案端實作，但不會阻擋公開研究 demo。
@@ -147,7 +147,7 @@ GET  /api/backtest/runs
 
 ## 市場價格擷取
 
-每日事件探索會檢查 Loudoun County News 與 Oracle 企業新聞，各自揭露探索／文章驗證狀態、存取錯誤與候選筆數上限。PJM、ERCOT 及 Oracle 投資人新聞已暫停抓取；先前已驗證的事件歷史仍保留。使用中的公開來源不需 API key，且不宣稱完整涵蓋。詳見[事件探索與 GitHub runner 檢查](docs/event-discovery.md)。
+每日事件探索會檢查 Loudoun County News、Oracle 企業新聞與 Texas Governor 新聞，各自揭露探索／文章驗證狀態、存取錯誤與候選筆數上限。Texas Governor 已通過 GitHub runner 的列表與文章驗證，保留發布者名稱，不將其標示為 ERCOT 聲明。Oracle OCI Blog 與 FERC 在 runner 檢查回傳 403 後，僅保留為需主動啟用的診斷來源，不每日抓取。PJM、ERCOT 及 Oracle 投資人新聞仍暫停抓取；先前已驗證的事件歷史仍保留。使用中的公開來源不需 API key，且不宣稱完整涵蓋。詳見[事件探索與 GitHub runner 檢查](docs/event-discovery.md)。
 
 公開 demo 先使用 Stooq。如果某個 ticker 的歷史為空、過舊、筆數不足或不可用，會改用 Yahoo Finance chart endpoint。`prices` 要標為健康時，每個設定的 ticker 都至少要有 60 筆可用日收盤資料，且包含最新應有的 NYSE 交易日。紐約時間下午 4:15 起要求當日收盤；在此之前、週末或休市日則要求前一交易日。未完成及未來交易日的資料會排除，快照準備度 gate 也使用相同檢查。
 

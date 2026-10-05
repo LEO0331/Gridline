@@ -12,13 +12,16 @@ const probeArticles = [
 ];
 
 async function main() {
+  const includeAlternatives = process.argv.includes('--alternatives') || process.env.PROBE_EVENT_ALTERNATIVES === 'true';
+  const providerNames = includeAlternatives ? [...new Set([...ACTIVE_PROVIDERS, ...ALTERNATIVE_PROVIDERS])] : ACTIVE_PROVIDERS;
   const result = await ingestEvents({}, {
-    providerNames: [...new Set([...ACTIVE_PROVIDERS, ...ALTERNATIVE_PROVIDERS])],
-    readFile: async file => JSON.stringify([...JSON.parse(await fs.readFile(file, 'utf8')), ...probeArticles]),
+    providerNames,
+    ...(includeAlternatives ? { readFile: async file => JSON.stringify([...JSON.parse(await fs.readFile(file, 'utf8')), ...probeArticles]) } : {}),
   });
-  const report = { checkedAt: new Date().toISOString(), dailyProviders: ACTIVE_PROVIDERS, probeOnlyProviders: ALTERNATIVE_PROVIDERS.filter(name => !ACTIVE_PROVIDERS.includes(name)), status: result.status, coverage: result.coverage, verifiedArticles: result.observations.map(item => ({ source: item.value.source, url: item.sourceUrl, publishedAt: item.observedAt, title: item.value.title })) };
+  const report = { checkedAt: new Date().toISOString(), dailyProviders: ACTIVE_PROVIDERS, probeOnlyProviders: providerNames.filter(name => !ACTIVE_PROVIDERS.includes(name)), status: result.status, coverage: result.coverage, verifiedArticles: result.observations.map(item => ({ source: item.value.source, url: item.sourceUrl, publishedAt: item.observedAt, title: item.value.title })) };
   const json = `${JSON.stringify(report, null, 2)}\n`;
-  if (process.argv[2]) await fs.writeFile(process.argv[2], json);
+  const output = process.argv.slice(2).find(argument => !argument.startsWith('--'));
+  if (output) await fs.writeFile(output, json);
   console.log(json);
   if (result.status === 'degraded') process.exitCode = 1;
 }

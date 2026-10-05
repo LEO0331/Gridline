@@ -2,6 +2,14 @@
 
 This log records changes to the **active candidate list**, separate from the historical event observations and source-check history. Removing a candidate stops future checks of that URL; it does not erase past snapshots.
 
+## October 5, 2026 — admit Texas Governor after runner verification
+
+The [GitHub Actions access report](https://github.com/LEO0331/Gridline/actions/runs/37271811936) passed Texas Governor listing discovery and verified the representative article “Governor Abbott Directs TCEQ To Halt Data Center Permits,” published September 21, 2026. Texas Governor joins Loudoun County News and Oracle corporate news in daily discovery under its own publisher name. The representative diagnostic article is access evidence, not a manually injected snapshot event; normal daily discovery and article admission rules still apply.
+
+The same report verified three Loudoun and one Oracle corporate article. Oracle OCI Blog RSS/listing/article checks and FERC listing/article checks returned 403. Both connectors remain opt-in diagnostics and receive no daily requests. Oracle OCI Blog had returned 200 locally, demonstrating why local availability alone does not satisfy runner admission. FERC regulatory material and Texas government policy material retain their actual publisher names rather than being relabeled as PJM or ERCOT announcements.
+
+Original PJM, ERCOT and Oracle investor-news endpoints remain paused. Their previously verified events retain original verification dates. This decision changes event discovery only; grid observations, company disclosures and the optional Data.FERC.gov API adapter are separate.
+
 ## October 5, 2026 — pause unavailable discovery sources, retain history
 
 At the user's request, new discovery requests to PJM, ERCOT and Oracle investor news are paused following DNS/access failures. Loudoun County News and Oracle's corporate newsroom remain active. Previously verified records remain in Current/Archive according to publication date, with their own last-verification dates. Paused endpoints are excluded from future provider health reports and are not retried or counted as current failures. This change affects event discovery only; EIA PJM demand and SEC company disclosures remain separate data sources.
