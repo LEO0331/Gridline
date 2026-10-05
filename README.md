@@ -193,7 +193,7 @@ npm run verify:demo
 
 ## Static daily snapshot and Pages deployment
 
-`Refresh daily dashboard snapshot` runs daily at **22:17 UTC** and supports manual dispatch. It checks the NYSE calendar before fetching market prices; SEC, EIA and event sources can refresh on non-trading days. It retries sources, preserves last-known-good data for degraded providers, generates a schemaVersion 4 full snapshot and compact Overview projection, then runs `npm run demo:check`.
+`Refresh daily dashboard snapshot` runs daily at **22:17 UTC** and supports manual dispatch. Market prices refresh on NYSE trading days and also on non-trading days when the previous snapshot lacks sufficient history through the latest expected close. Complete price coverage skips redundant weekend/holiday requests; SEC, EIA and event sources can refresh every day. The workflow retries sources, preserves last-known-good data for degraded providers, generates a schemaVersion 4 full snapshot and compact Overview projection, then runs `npm run demo:check`.
 
 Both snapshot files must agree exactly and pass the demo-critical gate before they are committed to `main`. The refresh workflow then explicitly dispatches `Deploy to GitHub Pages`, which performs a Node 22 lockfile install, production build, Pages deployment and Lighthouse CI. This explicit dispatch is necessary because a push made by a workflow using the repository `GITHUB_TOKEN` does not itself start another push-triggered workflow.
 

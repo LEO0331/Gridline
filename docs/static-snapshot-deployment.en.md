@@ -6,7 +6,7 @@ Gridline separates **data refresh** from **site deployment**.
 
 1. `Refresh daily dashboard snapshot` is scheduled at `22:17 UTC` daily, or manually via `workflow_dispatch`. GitHub's scheduler may start late; `generatedAt` is the source of truth.
 2. `npm run snapshot` refreshes configured providers sequentially. Each source gets up to three attempts: immediately, after 1 second, and after 2 seconds.
-3. Price history is validated per ticker. Stooq is the primary demo provider and Yahoo Finance chart data is the fallback. Empty, stale, undersized, or incomplete price coverage is treated as degradation, not success.
+3. Price history is validated per ticker. Stooq is the primary demo provider and Yahoo Finance chart data is the fallback. Empty, stale, undersized, or incomplete price coverage is treated as degradation, not success. Weekend and holiday runs skip price requests only when every tracked ticker already has at least 60 valid sourced closes through the latest expected NYSE session; otherwise they perform a catch-up refresh. The strict expected-close gate remains in force.
 4. Successful sources replace their previous static observations. A degraded source retains its last-known-good observations, so an upstream empty response cannot erase history.
 5. The generator writes a **schemaVersion 4** `public/data/dashboard-snapshot.json` containing source health, outcomes, observations, versioned scores, `companyHistory`, `backtestCoverage`, and a compact `demoReadiness` summary.
 6. `npm run demo:check` validates demo-critical invariants before anything is committed. If a blocker is present, the refresh workflow fails and the existing public snapshot remains unchanged.

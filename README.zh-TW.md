@@ -193,7 +193,7 @@ npm run verify:demo
 
 ## 靜態每日 Snapshot 與 Pages 部署
 
-`Refresh daily dashboard snapshot` 每日於 **22:17 UTC** 執行，也支援手動 dispatch。市場價格只在紐約證交所交易日抓取；SEC、EIA 及事件來源可在非交易日更新。工作流程會重試各來源、對降級來源保留上次成功資料、產生 schemaVersion 4 完整版快照與總覽精簡版，然後執行 `npm run demo:check`。
+`Refresh daily dashboard snapshot` 每日於 **22:17 UTC** 執行，也支援手動 dispatch。市場價格在紐約證交所交易日抓取；若前次快照缺少最新應有收盤日或歷史筆數不足，非交易日也會補抓。涵蓋完整時跳過週末／休市日的重複價格請求；SEC、EIA 及事件來源可每日更新。工作流程會重試各來源、對降級來源保留上次成功資料、產生 schemaVersion 4 完整版快照與總覽精簡版，然後執行 `npm run demo:check`。
 
 兩份快照須完全一致並通過示範關鍵 gate，才會一併提交到 `main`。接著更新工作流程會明確 dispatch `Deploy to GitHub Pages`，再執行 Node 22 lockfile install、production build、Pages deploy 與 Lighthouse CI。這個明確 dispatch 是必要的，因為使用 repository `GITHUB_TOKEN` 產生的 push 不會再觸發另一個以 `push` 為條件的 workflow。
 

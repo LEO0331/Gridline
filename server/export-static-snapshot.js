@@ -6,8 +6,8 @@ const { mergeCompanyHistory } = require('./company-history');
 const { mergeSnapshotObservations, mergeSnapshotHealth } = require('./snapshot-merge');
 const { buildSnapshotChanges } = require('./snapshot-changes');
 const { buildRuntimeSnapshot } = require('./runtime-snapshot');
-const { evaluateDemoReadiness } = require('./demo-readiness');
-const { easternParts, isNyseTradingDay } = require('./us-market-calendar');
+const { evaluateDemoReadiness, priceRows, MIN_PRICE_ROWS } = require('./demo-readiness');
+const { easternParts, isNyseTradingDay, latestExpectedPriceSession } = require('./us-market-calendar');
 const {
   reconstructionSummary,
 } = require('./historical-reconstruction');
@@ -29,11 +29,23 @@ async function refreshWithRetry(service, source, attempts = 3) {
   }
   return { ...result, attempts };
 }
+function shouldRefreshPrices(previous, tickers, now = new Date()) {
+  if (isNyseTradingDay(easternParts(now))) return true;
+  const expectedSession = latestExpectedPriceSession(now);
+  // A delayed weekday run must still be able to recover on a weekend or holiday.
+  return tickers.some(ticker => {
+    const rows = priceRows(previous, ticker).filter(row => row.observedAt.slice(0, 10) <= expectedSession);
+    return rows.length < MIN_PRICE_ROWS || rows.at(-1)?.observedAt.slice(0, 10) !== expectedSession;
+  });
+}
 async function main() {
   const service = createService(config); const previous = await readPrevious(); const outcomes = [];
-  const marketSession = isNyseTradingDay(easternParts());
+  const now = new Date();
+  const trackedTickers = config.tickers || companies.map(company => company.ticker);
+  const marketSession = isNyseTradingDay(easternParts(now));
+  const refreshPrices = shouldRefreshPrices(previous, trackedTickers, now);
   for (const source of config.scheduleSources) {
-    if (source === 'prices' && !marketSession) continue;
+    if (source === 'prices' && !refreshPrices) continue;
     outcomes.push(await refreshWithRetry(service, source));
   }
   const fresh = await service.observations();
@@ -71,7 +83,6 @@ async function main() {
     backtestCoverage,
     note: 'Static dashboard snapshot. Successful sources replace their prior static data; degraded sources retain last-known-good observations and last-success metadata. Market signals use cited daily closes and the published MA5/MA10 formula. Fundamental, exposure, emotion, confidence, and expectations-gap scores are unavailable pending sourced methodology. No historical scores are reconstructed. Snapshot changes compare only material customer-facing fields against the immediately preceding committed snapshot. Not investment advice.',
   };
-  const trackedTickers = config.tickers || companies.map(company => company.ticker);
   snapshot.snapshotChanges = buildSnapshotChanges(previous, snapshot, { tickers: trackedTickers });
   const readiness = evaluateDemoReadiness(snapshot, { tickers: trackedTickers, now: generatedAt });
   snapshot.demoReadiness = {
@@ -111,4 +122,4 @@ async function main() {
   }, null, 2));
 }
 if (require.main === module) main().catch(error => { console.error(error); process.exit(1); });
-module.exports = { refreshWithRetry };
+module.exports = { refreshWithRetry, shouldRefreshPrices };

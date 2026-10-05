@@ -6,7 +6,7 @@ Gridline 將**資料更新**與**網站部署**分開處理。
 
 1. `Refresh daily dashboard snapshot` 排程於每日 `22:17 UTC` 啟動，也可用 `workflow_dispatch` 手動執行。GitHub 排程可能延遲，請以快照內的 `generatedAt` 為準。
 2. `npm run snapshot` 依序更新已設定的來源。每個來源最多嘗試三次：立即、1 秒後與 2 秒後。
-3. 股價歷史會逐一檢查每個 ticker。Stooq 是示範用主要來源，Yahoo Finance chart 資料作為備援。空資料、過舊、筆數不足或 ticker 涵蓋不完整都視為 `degraded`，不會當成成功。
+3. 股價歷史會逐一檢查每個 ticker。Stooq 是示範用主要來源，Yahoo Finance chart 資料作為備援。空資料、過舊、筆數不足或 ticker 涵蓋不完整都視為 `degraded`，不會當成成功。週末及休市日只有在每個追蹤 ticker 都已有至少 60 筆有效且有來源的收盤價，並包含最新應有 NYSE 交易日時，才跳過價格請求；否則會補抓。最新應有收盤日的準備度 gate 不會放寬。
 4. 成功來源會取代舊的靜態觀察值；降級來源則保留上次成功資料，避免上游回傳空結果時把歷史資料洗掉。
 5. 產生器寫入 **schemaVersion 4** 的 `public/data/dashboard-snapshot.json`，內容包含來源健康狀態、更新結果、觀察值、版本化分數、`companyHistory`、`backtestCoverage`，以及精簡的 `demoReadiness` 摘要。
 6. 在提交檔案前，workflow 會執行 `npm run demo:check` 驗證示範關鍵條件。若存在 blocker，更新 workflow 會失敗，現有公開快照維持不變。
