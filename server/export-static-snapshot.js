@@ -36,7 +36,7 @@ async function main() {
   }
   const fresh = await service.observations();
   const currentHealth = await service.health();
-  const successful = new Set(outcomes.filter(item => item.status === 'ok').map(item => item.source));
+  const successful = new Set(outcomes.filter(item => item.status === 'ok' || item.status === 'partial').map(item => item.source));
   const observations = mergeSnapshotObservations(previous.observations || [], fresh, outcomes);
   const health = mergeSnapshotHealth(previous.sourceHealth || {}, currentHealth, observations);
   const generatedAt = new Date().toISOString();

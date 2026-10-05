@@ -24,4 +24,15 @@ function isNyseTradingDay(part) {
   return !holidays || !holidays.includes(`${part.month}-${part.day}`);
 }
 
-module.exports = { easternParts, isNyseTradingDay, NYSE_HOLIDAYS };
+function latestExpectedPriceSession(now = new Date()) {
+  const part = easternParts(now);
+  const day = new Date(`${part.year}-${part.month}-${part.day}T17:00:00Z`);
+  // Match the scheduler's conservative publication buffer, also on early-close days.
+  if (Number(part.hour) < 16 || (Number(part.hour) === 16 && Number(part.minute) < 15)) {
+    day.setUTCDate(day.getUTCDate() - 1);
+  }
+  while (!isNyseTradingDay(easternParts(day))) day.setUTCDate(day.getUTCDate() - 1);
+  return day.toISOString().slice(0, 10);
+}
+
+module.exports = { easternParts, isNyseTradingDay, latestExpectedPriceSession, NYSE_HOLIDAYS };

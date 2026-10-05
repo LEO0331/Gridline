@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { evaluateDemoReadiness } = require('./demo-readiness');
+const { latestExpectedPriceSession } = require('./us-market-calendar');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -21,11 +22,12 @@ function priceRows(ticker, end = new Date(), count = 70) {
 
 function readySnapshot() {
   const generatedAt = new Date();
+  const lastClose = new Date(`${latestExpectedPriceSession(generatedAt)}T00:00:00Z`);
   const tickers = ['NBIS', 'CRWV', 'ORCL', 'AVGO'];
   return {
     schemaVersion: 4,
     generatedAt: generatedAt.toISOString(),
-    observations: tickers.flatMap(ticker => priceRows(ticker, generatedAt)),
+    observations: tickers.flatMap(ticker => priceRows(ticker, lastClose)),
     companyHistory: [{ ticker: 'NBIS', observedAt: generatedAt.toISOString(), origin: 'recorded' }],
     backtestCoverage: { recorded: 1, reconstructed: 0 },
     methodologies: { companyScore: 'gridline-price-signal-v2.0.0' },
@@ -99,4 +101,26 @@ test('verified price history is sufficient without reconstructed score history',
   const result = evaluateDemoReadiness(snapshot);
   assert.equal(result.ready, true);
   assert.ok(!result.checks.some(item => item.id === 'reconstructed-history'));
+});
+
+test('readiness blocks a missing Friday close on Sunday ET and reports the expected session', () => {
+  const snapshot = readySnapshot();
+  snapshot.generatedAt = '2026-10-05T01:01:12Z';
+  snapshot.observations = priceRows('NBIS', new Date('2026-10-01T00:00:00Z'));
+  const result = evaluateDemoReadiness(snapshot, { tickers: ['NBIS'] });
+  assert.equal(result.ready, false);
+  assert.equal(result.priceCoverage.NBIS.expectedSession, '2026-10-02');
+  snapshot.observations = priceRows('NBIS', new Date('2026-10-02T00:00:00Z'));
+  assert.equal(evaluateDemoReadiness(snapshot, { tickers: ['NBIS'] }).ready, true);
+});
+
+test('readiness requires today only after the publication cutoff and rejects future rows as coverage', () => {
+  const snapshot = readySnapshot();
+  snapshot.generatedAt = '2026-10-05T20:14:59Z';
+  snapshot.observations = priceRows('NBIS', new Date('2026-10-02T00:00:00Z'));
+  assert.equal(evaluateDemoReadiness(snapshot, { tickers: ['NBIS'] }).ready, true);
+  snapshot.generatedAt = '2026-10-05T20:15:00Z';
+  assert.equal(evaluateDemoReadiness(snapshot, { tickers: ['NBIS'] }).ready, false);
+  snapshot.observations.push(...priceRows('NBIS', new Date('2026-10-06T00:00:00Z'), 1));
+  assert.equal(evaluateDemoReadiness(snapshot, { tickers: ['NBIS'] }).ready, false);
 });

@@ -90,3 +90,31 @@ test('observation queries apply bounded pagination', async () => {
   store.close();
   await fs.rm(directory, { recursive: true, force: true });
 });
+
+test('event exclusions report partial health while retaining accepted records', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'gridline-event-exclusions-'));
+  const original = adapters.events;
+  const service = createService({ dataDir: directory, cacheMinutes: 1 });
+  try {
+    for (const acceptedCount of [1, 0]) {
+      adapters.events = async () => ({
+        payload: {}, observations: acceptedCount ? [{ source: 'events', type: 'infrastructureEvent', observedAt: '2026-10-02T00:00:00Z', value: { title: 'Verified record' } }] : [],
+        coverage: { feedStatus: 'checked', candidateCount: acceptedCount + 1, acceptedCount, excludedCount: 1, excluded: [{ reason: 'record inaccessible: timeout' }] },
+        message: `${acceptedCount} verified records; 1 rejected`,
+      });
+      assert.equal((await service.ingest('events', true)).status, 'partial');
+      const health = (await service.health()).events;
+      assert.equal(health.status, 'partial');
+      assert.equal(health.recordCount, acceptedCount);
+      assert.equal(health.coverage.excludedCount, 1);
+      assert.ok(health.lastSuccessAt);
+    }
+    assert.equal((await service.observations({ source: 'events' })).length, 1);
+    adapters.events = async () => ({ payload: {}, observations: [], coverage: { feedStatus: 'checked', candidateCount: 0, acceptedCount: 0, excludedCount: 0 }, message: 'No matching events' });
+    assert.equal((await service.ingest('events', true)).status, 'ok');
+  } finally {
+    adapters.events = original;
+    service.store.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});

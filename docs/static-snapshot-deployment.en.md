@@ -4,7 +4,7 @@
 
 Gridline separates **data refresh** from **site deployment**.
 
-1. `Refresh daily dashboard snapshot` starts at `22:00 UTC`, Monday–Friday, or manually via `workflow_dispatch`. GitHub's scheduler may start a few minutes late; `generatedAt` is the source of truth.
+1. `Refresh daily dashboard snapshot` is scheduled at `22:17 UTC` daily, or manually via `workflow_dispatch`. GitHub's scheduler may start late; `generatedAt` is the source of truth.
 2. `npm run snapshot` refreshes configured providers sequentially. Each source gets up to three attempts: immediately, after 1 second, and after 2 seconds.
 3. Price history is validated per ticker. Stooq is the primary demo provider and Yahoo Finance chart data is the fallback. Empty, stale, undersized, or incomplete price coverage is treated as degradation, not success.
 4. Successful sources replace their previous static observations. A degraded source retains its last-known-good observations, so an upstream empty response cannot erase history.
@@ -38,7 +38,7 @@ The public snapshot must satisfy these critical checks before the daily workflow
 
 - snapshot schema is v4 or newer;
 - `generatedAt`, `companyHistory`, `backtestCoverage`, and company-score methodology metadata are present;
-- NBIS, CRWV, ORCL and AVGO each have at least 60 usable daily price rows and the latest row is no more than 10 calendar days stale;
+- NBIS, CRWV, ORCL and AVGO each have at least 60 usable daily closes through the latest expected NYSE session (today at or after 4:15 PM New York time; otherwise the previous trading session, skipping weekends and holidays);
 - no non-event provider may be labelled `ok` while reporting zero records;
 - no historical reconstruction is required or exported.
 

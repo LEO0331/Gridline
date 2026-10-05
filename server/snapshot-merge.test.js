@@ -77,3 +77,19 @@ test('failed event refresh does not present a previous candidate check as the cu
   assert.equal(health.events.coverage, null);
   assert.equal(health.events.lastSuccessAt, '2026-09-28T22:00:00Z');
 });
+
+test('partial event refresh publishes accepted records and current coverage while preserving the archive', () => {
+  const previous = [{ id: 'event-old', source: 'events', observedAt: '2026-09-17T00:00:00Z' }];
+  const fresh = [{ id: 'event-new', source: 'events', observedAt: '2026-10-02T00:00:00Z' }];
+  const observations = mergeSnapshotObservations(previous, fresh, [{ source: 'events', status: 'partial', recordCount: 1 }]);
+  const health = mergeSnapshotHealth(
+    { events: { status: 'ok', recordCount: 6, lastSuccessAt: '2026-10-01T22:17:00Z' } },
+    { events: { status: 'partial', recordCount: 1, lastSuccessAt: '2026-10-02T22:17:00Z', coverage: { feedStatus: 'checked', acceptedCount: 1, excludedCount: 2 } } },
+    observations,
+  );
+  assert.deepEqual(observations.map(row => row.id), ['event-old', 'event-new']);
+  assert.equal(health.events.status, 'partial');
+  assert.equal(health.events.recordCount, 1);
+  assert.equal(health.events.coverage.excludedCount, 2);
+  assert.equal(health.events.lastSuccessAt, '2026-10-02T22:17:00Z');
+});

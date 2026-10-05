@@ -61,3 +61,41 @@ test('price loader fails closed when both providers have no usable history', asy
     getJson: async () => ({ chart: { result: null, error: null } }),
   }), /No usable price history for NBIS/);
 });
+
+test('history requires the expected completed session even when only one session is missing', () => {
+  assert.throws(() => validateHistory([{ date: '2026-10-01', close: 10 }], 'NBIS', {
+    now: new Date('2026-10-05T01:01:12Z'), minRows: 1,
+  }), /expected.*2026-10-02/);
+  assert.equal(validateHistory([{ date: '2026-10-02', close: 10 }], 'NBIS', {
+    now: new Date('2026-10-05T20:14:59Z'), minRows: 1,
+  }).length, 1);
+});
+
+test('history excludes unfinished and future session rows', () => {
+  const rows = validateHistory([
+    { date: '2026-10-02', close: 10 }, { date: '2026-10-05', close: 11 }, { date: '2026-10-06', close: 12 },
+  ], 'NBIS', { now: new Date('2026-10-05T19:00:00Z'), minRows: 1 });
+  assert.deepEqual(rows.map(row => row.date), ['2026-10-02']);
+});
+
+test('price loader falls back when primary history is missing the latest completed session', async () => {
+  const fixture = parseYahooHistory(yahooFixture(70, '2026-10-01'));
+  const result = await fetchTickerHistory({
+    ticker: 'NBIS', priceBaseUrl: 'https://stooq.example/', priceFallbackBaseUrl: 'https://query.example/chart',
+    now: new Date('2026-10-05T01:01:12Z'),
+    getText: async () => `Date,Close\n${fixture.map(row => `${row.date},${row.close}`).join('\n')}`,
+    getJson: async () => yahooFixture(70, '2026-10-02'),
+  });
+  assert.equal(result.provider, 'Yahoo Finance');
+  assert.equal(result.rows.at(-1).date, '2026-10-02');
+});
+
+test('price loader fails closed when both providers omit the expected session', async () => {
+  const fixture = parseYahooHistory(yahooFixture(70, '2026-10-01'));
+  await assert.rejects(() => fetchTickerHistory({
+    ticker: 'NBIS', priceBaseUrl: 'https://stooq.example/', priceFallbackBaseUrl: 'https://query.example/chart',
+    now: new Date('2026-10-05T01:01:12Z'),
+    getText: async () => `Date,Close\n${fixture.map(row => `${row.date},${row.close}`).join('\n')}`,
+    getJson: async () => yahooFixture(70, '2026-10-01'),
+  }), /No usable price history.*expected completed NYSE session 2026-10-02/);
+});

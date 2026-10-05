@@ -147,7 +147,7 @@ See [docs/api-ingestion.md](docs/api-ingestion.md).
 
 ## Market-price ingestion
 
-The public demo attempts Stooq first. If a ticker's history is empty, stale, undersized or unusable, it falls back to the Yahoo Finance chart endpoint. A healthy `prices` refresh requires every configured ticker to have at least 60 usable recent daily observations.
+The public demo attempts Stooq first. If a ticker's history is empty, stale, undersized or unusable, it falls back to the Yahoo Finance chart endpoint. A healthy `prices` refresh requires every configured ticker to have at least 60 usable daily closes through the latest expected NYSE trading session. Today's close is required from 4:15 PM New York time; before that cutoff, and on weekends or holidays, the previous trading session is expected. Unfinished and future session rows are excluded. The snapshot acceptance gate applies the same session check.
 
 An HTTP `200` with zero usable rows is **degraded**, not `ok`. Degraded refreshes do not erase existing history. Provider identity and origin URL are preserved in provenance. Free demo feeds should be replaced by an approved/licensed market-data provider for commercial finance use.
 

@@ -1,3 +1,4 @@
+const { latestExpectedPriceSession } = require('./us-market-calendar');
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_MIN_ROWS = 60;
 const DEFAULT_MAX_STALENESS_DAYS = 10;
@@ -36,13 +37,19 @@ function validateHistory(rows, ticker, {
   minRows = DEFAULT_MIN_ROWS,
   maxStalenessDays = DEFAULT_MAX_STALENESS_DAYS,
 } = {}) {
-  const sorted = [...(rows || [])].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const reference = now instanceof Date ? now.getTime() : Date.parse(now);
+  if (!Number.isFinite(reference)) throw new Error(`${ticker} price history has an invalid reference date.`);
+  const expectedSession = latestExpectedPriceSession(new Date(reference));
+  const sorted = (rows || []).filter(row => row.date <= expectedSession)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
   if (sorted.length < minRows) throw new Error(`${ticker} returned ${sorted.length} usable daily rows; at least ${minRows} are required.`);
   const latest = Date.parse(`${sorted[sorted.length - 1].date}T23:59:59.999Z`);
-  const reference = now instanceof Date ? now.getTime() : Date.parse(now);
   if (!Number.isFinite(latest) || !Number.isFinite(reference)) throw new Error(`${ticker} price history has an invalid latest date.`);
   const stalenessDays = Math.max(0, (reference - latest) / DAY_MS);
   if (stalenessDays > maxStalenessDays) throw new Error(`${ticker} latest market row is ${Math.floor(stalenessDays)} days stale.`);
+  if (sorted[sorted.length - 1].date !== expectedSession) {
+    throw new Error(`${ticker} latest market row is ${sorted[sorted.length - 1].date}; expected completed NYSE session ${expectedSession}.`);
+  }
   return sorted;
 }
 

@@ -1,3 +1,4 @@
+const { latestExpectedPriceSession } = require('./us-market-calendar');
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_TICKERS = ['NBIS', 'CRWV', 'ORCL', 'AVGO'];
 const MIN_PRICE_ROWS = 60;
@@ -45,9 +46,10 @@ function evaluateDemoReadiness(snapshot, {
   checks.push(check('no-unsourced-company-scores', 'blocker', unsupportedScores.length === 0, 'The public snapshot contains no legacy curated company scores.', { count: unsupportedScores.length }));
 
   const reference = validDate(now) ? Date.parse(now) : Date.now();
+  const expectedSession = latestExpectedPriceSession(new Date(reference));
   const coverage = {};
   for (const ticker of tickers) {
-    const rows = priceRows(snapshot, ticker);
+    const rows = priceRows(snapshot, ticker).filter(row => row.observedAt.slice(0, 10) <= expectedSession);
     const latest = rows[rows.length - 1] || null;
     const earliest = rows[0] || null;
     const stalenessDays = latest ? Math.max(0, (reference - Date.parse(latest.observedAt)) / DAY_MS) : null;
@@ -55,14 +57,15 @@ function evaluateDemoReadiness(snapshot, {
       count: rows.length,
       earliest: earliest?.observedAt || null,
       latest: latest?.observedAt || null,
+      expectedSession,
       provider: latest?.provenance?.provider || latest?.providerName || null,
       stalenessDays: stalenessDays === null ? null : Math.round(stalenessDays * 10) / 10,
     };
     checks.push(check(
       `prices-${ticker}`,
       'blocker',
-      rows.length >= minPriceRows && stalenessDays !== null && stalenessDays <= maxPriceStalenessDays,
-      `${ticker} has at least ${minPriceRows} usable, recent daily price observations.`,
+      rows.length >= minPriceRows && stalenessDays !== null && stalenessDays <= maxPriceStalenessDays && latest.observedAt.slice(0, 10) === expectedSession,
+      `${ticker} has at least ${minPriceRows} usable daily closes through the expected NYSE session ${expectedSession}.`,
       coverage[ticker],
     ));
   }

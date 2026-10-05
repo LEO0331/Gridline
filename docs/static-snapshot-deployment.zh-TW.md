@@ -4,7 +4,7 @@
 
 Gridline 將**資料更新**與**網站部署**分開處理。
 
-1. `Refresh daily dashboard snapshot` 於每週一至週五 `22:00 UTC` 啟動，也可用 `workflow_dispatch` 手動執行。GitHub 排程可能晚幾分鐘啟動，請以快照內的 `generatedAt` 為準。
+1. `Refresh daily dashboard snapshot` 排程於每日 `22:17 UTC` 啟動，也可用 `workflow_dispatch` 手動執行。GitHub 排程可能延遲，請以快照內的 `generatedAt` 為準。
 2. `npm run snapshot` 依序更新已設定的來源。每個來源最多嘗試三次：立即、1 秒後與 2 秒後。
 3. 股價歷史會逐一檢查每個 ticker。Stooq 是示範用主要來源，Yahoo Finance chart 資料作為備援。空資料、過舊、筆數不足或 ticker 涵蓋不完整都視為 `degraded`，不會當成成功。
 4. 成功來源會取代舊的靜態觀察值；降級來源則保留上次成功資料，避免上游回傳空結果時把歷史資料洗掉。
@@ -34,7 +34,7 @@ Action 每次都會寫入新的 `generatedAt` 以及各來源的執行結果與�
 
 - 快照 schema 為 v4 或更新版本；
 - `generatedAt`、`companyHistory`、`backtestCoverage` 與公司分數方法論版本存在；
-- NBIS、CRWV、ORCL、AVGO 各自至少有 60 筆可用日價格，且最新資料距離目前不超過 10 個日曆日；
+- NBIS、CRWV、ORCL、AVGO 各自至少有 60 筆可用日收盤資料，且包含最新應有的 NYSE 交易日（紐約時間下午 4:15 起要求當日收盤，其餘時間要求前一交易日，跳過週末及休市日）；
 - 除事件來源可合法回傳零筆外，其餘來源不得在 `recordCount = 0` 時標示為 `ok`；
 - 不再要求或匯出歷史重建資料。
 

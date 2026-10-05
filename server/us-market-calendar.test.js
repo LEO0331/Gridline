@@ -1,6 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { easternParts, isNyseTradingDay } = require('./us-market-calendar');
+const { easternParts, isNyseTradingDay, latestExpectedPriceSession } = require('./us-market-calendar');
+
+test('expected closing session respects the 4:15 PM ET publication cutoff and daylight saving', () => {
+  for (const [now, expected] of [
+    ['2026-10-05T20:14:59Z', '2026-10-02'],
+    ['2026-10-05T20:15:00Z', '2026-10-05'],
+    ['2026-11-02T21:14:59Z', '2026-10-30'],
+    ['2026-11-02T21:15:00Z', '2026-11-02'],
+    ['2026-10-05T01:01:12Z', '2026-10-02'],
+    ['2026-09-07T22:17:00Z', '2026-09-04'],
+    ['2026-07-06T19:00:00Z', '2026-07-02'],
+  ]) assert.equal(latestExpectedPriceSession(new Date(now)), expected, now);
+});
 
 test('NYSE calendar uses New York dates across daylight saving time', () => {
   assert.equal(isNyseTradingDay(easternParts(new Date('2026-09-29T02:00:00Z'))), true); // Monday ET

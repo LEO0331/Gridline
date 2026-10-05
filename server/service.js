@@ -15,7 +15,7 @@ function createService(config) {
         throw new Error(`${source} returned zero usable observations; last-known-good data retained.`);
       }
       await store.saveObservations(source, observations);
-      const status = source === 'events' && result.coverage?.feedStatus === 'unavailable' ? 'partial' : 'ok';
+      const status = source === 'events' && (result.coverage?.feedStatus === 'unavailable' || result.coverage?.excludedCount > 0) ? 'partial' : 'ok';
       await store.recordHealth(source, { status, lastSuccessAt: new Date().toISOString(), cacheMinutes: config.cacheMinutes, recordCount: observations.length, message: result.message, ...(source === 'events' ? { coverage: result.coverage || null } : {}) });
       return { source, status, recordCount: observations.length, message: result.message };
     } catch (error) {
