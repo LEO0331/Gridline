@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import DataHealth from './DataHealth';
 
@@ -104,4 +104,19 @@ test('data health exposes provider discovery gaps separately from accepted artic
   expect(await screen.findByRole('article', { name: 'Oracle' })).toHaveTextContent('Article verificationAccepted');
   expect(screen.getByText(/some discovery sources unavailable/)).toBeInTheDocument();
   expect(screen.getByText('Investor listing unavailable')).toBeInTheDocument();
+});
+
+test('data health keeps an unavailable provider warning readable and technical errors collapsed', async () => {
+  const withGap = { ...fixture, sourceHealth: { ...fixture.sourceHealth, events: {
+    status: 'partial', coverage: { feedStatus: 'partial', acceptedCount: 0, excludedCount: 0, sources: {
+      Oracle: { discoveryStatus: 'unavailable', verificationStatus: 'degraded', discoveryErrors: [{ message: '403 Forbidden' }] },
+    } },
+  } } };
+  global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(withGap) }));
+  render(<DataHealth language="en" onBack={() => {}} />);
+  expect(await screen.findByText('Oracle news temporarily unavailable.')).toBeVisible();
+  expect(screen.getByText('PRICE DATA AVAILABLE · SOURCE GAPS')).toBeVisible();
+  expect(screen.getByText('403 Forbidden')).not.toBeVisible();
+  fireEvent.click(screen.getByText('Technical details (1)'));
+  expect(screen.getByText('403 Forbidden')).toBeVisible();
 });

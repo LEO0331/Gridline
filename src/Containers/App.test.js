@@ -162,6 +162,16 @@ test('Events page reports official discovery coverage without claiming every fee
   } } } };
   render(<App snapshot={withCoverage} />);
   expect(screen.getByRole('article', { name: 'Oracle' })).toHaveTextContent('DiscoveryPartial');
-  expect(screen.getByText('Event source coverage is partial')).toBeInTheDocument();
+  expect(screen.getByText('Partial source coverage')).toBeInTheDocument();
   expect(screen.queryByText(/PJM feed and curated candidates checked/)).not.toBeInTheDocument();
+});
+
+test('overview keeps partial coverage visible without showing provider errors', () => {
+  window.history.pushState({}, '', '#overview');
+  const withGap = { ...snapshot, freshness: 'partial', sourceHealth: { events: {
+    status: 'partial', coverage: { sources: { Oracle: { discoveryStatus: 'unavailable', discoveryErrors: [{ message: '403 Forbidden' }] } } },
+  } } };
+  render(<App snapshot={withGap} />);
+  expect(screen.getByText(/Partial source coverage/)).toBeVisible();
+  expect(screen.queryByText(/403 Forbidden/)).not.toBeInTheDocument();
 });

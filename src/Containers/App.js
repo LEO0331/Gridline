@@ -86,7 +86,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
 
   const eventStatus = !eventHealth ? t('Event feed not checked', '事件來源尚未檢查')
     : eventCheckStale ? t('Event check is stale', '事件檢查已過期')
-      : eventHealth.status === 'partial' ? t('Event source coverage is partial', '事件來源涵蓋不完整')
+      : eventHealth.status === 'partial' ? t('Partial source coverage', '部分來源涵蓋')
         : eventHealth.status === 'ok' ? t('Configured event sources checked', '已檢查設定的事件來源')
           : t('Event source check needed', '事件來源需檢查');
   return <main className="shell" lang={language}>
@@ -105,7 +105,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
       />
 
     {route.view === 'Overview' && <>
-      <section className="hero"><div><p className="eyebrow">{t('DATA-CENTER BUILDOUT RESEARCH', '資料中心建設研究')}</p><h1>{t('Follow the buildout,', '追蹤資料中心建設，')}<br/><em>{t('from grid to market.', '從電網到市場。')}</em></h1><p className="copy">{t('Compare dated grid demand, project decisions, company disclosures and market prices. Inspect each original source and the gaps between them.', '並列具日期的電網需求、專案決策、公司揭露與市場價格，檢視原始來源及證據缺口。')}</p></div><div className="asof"><span>{t('MARKET SNAPSHOT · LOCAL TIME', '市場快照 · 本地時間')}</span><b>{snapshotDisplayLabel}</b><small>{snapshotMeta.totalSources ? t(`${snapshotMeta.healthySources}/${snapshotMeta.totalSources} sources refreshed · ${snapshotMeta.freshness === 'fresh' ? 'current' : snapshotMeta.freshness === 'partial' ? 'partial' : 'outdated'}`, `${snapshotMeta.healthySources}/${snapshotMeta.totalSources} 個來源已更新 · ${snapshotMeta.freshness === 'fresh' ? '最新快照' : snapshotMeta.freshness === 'partial' ? '部分更新' : '待更新'}`) : t('Provider status unavailable', '來源狀態未提供')}</small></div></section>
+      <section className="hero"><div><p className="eyebrow">{t('DATA-CENTER BUILDOUT RESEARCH', '資料中心建設研究')}</p><h1>{t('Follow the buildout,', '追蹤資料中心建設，')}<br/><em>{t('from grid to market.', '從電網到市場。')}</em></h1><p className="copy">{t('Compare dated grid demand, project decisions, company disclosures and market prices. Inspect each original source and the gaps between them.', '並列具日期的電網需求、專案決策、公司揭露與市場價格，檢視原始來源及證據缺口。')}</p></div><div className="asof"><span>{t('MARKET SNAPSHOT · LOCAL TIME', '市場快照 · 本地時間')}</span><b>{snapshotDisplayLabel}</b><small>{snapshotMeta.totalSources ? t(`${snapshotMeta.healthySources}/${snapshotMeta.totalSources} sources refreshed · ${snapshotMeta.freshness === 'fresh' ? 'current' : snapshotMeta.freshness === 'partial' ? 'Partial source coverage' : 'outdated'}`, `${snapshotMeta.healthySources}/${snapshotMeta.totalSources} 個來源已更新 · ${snapshotMeta.freshness === 'fresh' ? '最新快照' : snapshotMeta.freshness === 'partial' ? '部分來源涵蓋' : '待更新'}`) : t('Provider status unavailable', '來源狀態未提供')}</small></div></section>
       {snapshotState === 'ready' && hasObservations && <>
       <ResearchBrief snapshot={snapshot} ticker={ticker} region={briefRegion} regions={[ALL, ...REGIONS.map(item => item.name)]} language={language} onTickerChange={setTicker} onRegionChange={setBriefRegion} />
       <section className="lens-picker" aria-label={t('Select signal lens', '選擇訊號視角')}>

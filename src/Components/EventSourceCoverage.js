@@ -15,6 +15,7 @@ export default function EventSourceCoverage({ coverage, language = 'en' }) {
     <p>{t('Discovery checks configured official listings. Verification checks candidate articles; retained records can have older verification dates. This does not cover every announcement.', '新事件探索檢查設定的官方列表；驗證則檢查候選文章。保留紀錄可能有較早的驗證日期，並非涵蓋所有公告。')}</p>
     <div className="event-provider-grid">{sources.map(([source, item]) => <article key={source} aria-label={source}>
       <h4>{source}</h4>
+      {item.discoveryStatus === 'unavailable' && <p className="event-provider-warning">{t(`${source} news temporarily unavailable.`, `${source} 新聞暫時無法取得。`)}</p>}
       <dl>
         <div><dt>{t('Discovery', '新事件探索')}</dt><dd className={item.discoveryStatus}>{discoveryLabels[item.discoveryStatus] || t('Not recorded', '尚無紀錄')}</dd></div>
         <div><dt>{t('Article verification', '文章驗證')}</dt><dd className={item.verificationStatus}>{verificationLabels[item.verificationStatus] || t('Not recorded', '尚無紀錄')}</dd></div>
@@ -24,7 +25,7 @@ export default function EventSourceCoverage({ coverage, language = 'en' }) {
       </dl>
       {item.truncated && <p className="event-provider-warning">{t('Candidate limit reached; more announcements may be available.', '已達候選筆數上限；可能仍有其他公告。')}</p>}
       {secureUrl(item.endpoint) && <a href={item.endpoint} target="_blank" rel="noopener noreferrer">{t('Official listing ↗', '官方列表 ↗')}</a>}
-      {item.discoveryErrors?.length > 0 && <details><summary>{t(`Discovery issues (${item.discoveryErrors.length})`, `探索問題（${item.discoveryErrors.length}）`)}</summary><ul>{item.discoveryErrors.map((error, index) => <li key={index}>{error.message}{secureUrl(error.url) && <a href={error.url} target="_blank" rel="noopener noreferrer"> · {t('Attempted source ↗', '嘗試來源 ↗')}</a>}</li>)}</ul></details>}
+      {item.discoveryErrors?.length > 0 && <details><summary>{t(`Technical details (${item.discoveryErrors.length})`, `技術詳情（${item.discoveryErrors.length}）`)}</summary><ul>{item.discoveryErrors.map((error, index) => <li key={index}>{error.message}{secureUrl(error.url) && <a href={error.url} target="_blank" rel="noopener noreferrer"> · {t('Attempted source ↗', '嘗試來源 ↗')}</a>}</li>)}</ul></details>}
     </article>)}</div>
   </section>;
 }

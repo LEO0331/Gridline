@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import EventSourceCoverage from './EventSourceCoverage';
 
@@ -39,4 +39,27 @@ test('renders Traditional Chinese health labels and discovery limitations', () =
 test('older snapshots without source coverage remain supported', () => {
   const { container } = render(<EventSourceCoverage coverage={{ feedStatus: 'checked' }} />);
   expect(container).toBeEmptyDOMElement();
+});
+
+test('unavailable news uses plain language while preserving collapsed technical evidence', () => {
+  render(<EventSourceCoverage coverage={{ sources: { Oracle: {
+    discoveryStatus: 'unavailable', verificationStatus: 'degraded', lastSuccessAt: '2026-10-04T01:00:00Z',
+    discoveryErrors: [{ message: '403 Forbidden', url: 'https://www.oracle.com/news/' }],
+  } } }} />);
+  expect(screen.getByText('Oracle news temporarily unavailable.')).toBeVisible();
+  expect(screen.getByText('2026-10-04 01:00 UTC')).toBeVisible();
+  const error = screen.getByText('403 Forbidden');
+  expect(error).not.toBeVisible();
+  fireEvent.click(screen.getByText('Technical details (1)'));
+  expect(error).toBeVisible();
+});
+
+test('unavailable news and technical disclosure are translated', () => {
+  render(<EventSourceCoverage coverage={{ sources: { Oracle: {
+    discoveryStatus: 'unavailable', verificationStatus: 'degraded', discoveryErrors: [{ message: '403 Forbidden' }],
+  } } }} language="zh-TW" />);
+  expect(screen.getByText('Oracle 新聞暫時無法取得。')).toBeVisible();
+  expect(screen.getByText('403 Forbidden')).not.toBeVisible();
+  fireEvent.click(screen.getByText('技術詳情（1）'));
+  expect(screen.getByText('403 Forbidden')).toBeVisible();
 });

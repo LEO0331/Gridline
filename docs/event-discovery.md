@@ -42,6 +42,8 @@ The aggregate source is `partial` if any provider is limited, even when other pr
 
 Events and Data Health display the same bilingual provider report. Neither implies coverage of every announcement or every U.S. infrastructure event.
 
+The main dashboard uses a compact “Partial source coverage” indicator. Unavailable providers have a plain-language notice such as “Oracle news temporarily unavailable” in the detailed provider report, alongside check and last-success dates. Raw request errors remain inside a collapsed “Technical details” section. This changes presentation only; stored coverage, failures and previously verified events remain intact.
+
 ## Live verification
 
 Run a read-only probe without changing snapshot or database files:
