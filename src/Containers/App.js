@@ -5,6 +5,7 @@ import SignalExplainer from '../Components/SignalExplainer';
 import PriceChart from '../Components/PriceChart';
 import SnapshotChanges from '../Components/SnapshotChanges';
 import SnapshotLoadState from '../Components/SnapshotLoadState';
+import EventSourceCoverage from '../Components/EventSourceCoverage';
 import ResearchBrief from '../Components/ResearchBrief';
 import companyList from '../data/companyExposure.json';
 import { summarizeSnapshot } from '../snapshotMeta';
@@ -85,7 +86,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
 
   const eventStatus = !eventHealth ? t('Event feed not checked', '事件來源尚未檢查')
     : eventCheckStale ? t('Event check is stale', '事件檢查已過期')
-      : eventHealth.status === 'partial' ? t('Curated records checked', '人工候選紀錄已檢查')
+      : eventHealth.status === 'partial' ? t('Event source coverage is partial', '事件來源涵蓋不完整')
         : eventHealth.status === 'ok' ? t('Configured event sources checked', '已檢查設定的事件來源')
           : t('Event source check needed', '事件來源需檢查');
   return <main className="shell" lang={language}>
@@ -158,7 +159,8 @@ function EventsView({ events, health, region, filter, navigate, zh }) {
     <p className="copy">{t('Older records remain visible with their own last-verification dates.', '較早的紀錄仍可查看；每筆均標示最近一次驗證日期。')}</p>
     {health?.coverage && <section className="event-coverage" aria-label={t('Event source coverage', '事件來源涵蓋範圍')}>
       <b>{t('SOURCE COVERAGE', '來源涵蓋範圍')}</b>
-      <p>{health.coverage.feedStatus === 'unavailable' ? t('PJM feed unavailable; curated candidates were checked.', 'PJM 動態來源無法取得；已檢查人工候選紀錄。') : t('PJM feed and curated candidates checked.', '已檢查 PJM 動態來源與人工候選紀錄。')} {t(`${health.coverage.candidateCount} candidates · ${health.coverage.acceptedCount} accepted · ${health.coverage.excludedCount} excluded${health.coverage.duplicateCount ? ` · ${health.coverage.duplicateCount} duplicate` : ''}. This is the configured source scope, not all U.S. infrastructure events.`, `候選 ${health.coverage.candidateCount} 筆 · 通過 ${health.coverage.acceptedCount} 筆 · 排除 ${health.coverage.excludedCount} 筆${health.coverage.duplicateCount ? ` · 去重 ${health.coverage.duplicateCount} 筆` : ''}。此為設定來源的涵蓋範圍，並非全美所有基礎設施事件。`)}</p>
+      <p>{health.coverage.sources ? t('Official discovery and curated candidate checks are reported below.', '下方列出官方新事件探索與人工候選紀錄的檢查狀態。') : health.coverage.feedStatus === 'unavailable' ? t('PJM feed unavailable; curated candidates were checked.', 'PJM 動態來源無法取得；已檢查人工候選紀錄。') : t('PJM feed and curated candidates checked.', '已檢查 PJM 動態來源與人工候選紀錄。')} {t(`${health.coverage.candidateCount} candidates · ${health.coverage.acceptedCount} accepted · ${health.coverage.excludedCount} excluded${health.coverage.duplicateCount ? ` · ${health.coverage.duplicateCount} duplicate` : ''}. This is the configured source scope, not all U.S. infrastructure events.`, `候選 ${health.coverage.candidateCount} 筆 · 通過 ${health.coverage.acceptedCount} 筆 · 排除 ${health.coverage.excludedCount} 筆${health.coverage.duplicateCount ? ` · 去重 ${health.coverage.duplicateCount} 筆` : ''}。此為設定來源的涵蓋範圍，並非全美所有基礎設施事件。`)}</p>
+      <EventSourceCoverage coverage={health.coverage} language={zh ? 'zh-TW' : 'en'} />
       {health.coverage.excludedCount > 0 && <details><summary>{t(`Review excluded candidates (${health.coverage.excludedCount})`, `查看排除的候選紀錄（${health.coverage.excludedCount}）`)}</summary><ul>{(health.coverage.excluded || []).map((item, index) => <li key={`${item.title}-${index}`}><strong>{item.title || t('Untitled candidate', '未命名候選紀錄')}</strong> · {zh ? exclusionReasonZh(item.reason) : item.reason}{item.url && <a href={item.url} target="_blank" rel="noopener noreferrer"> · {t('Unverified link ↗', '未驗證連結 ↗')}</a>}</li>)}</ul>{health.coverage.excludedOmittedCount > 0 && <p>{t(`${health.coverage.excludedOmittedCount} additional excluded candidates are not listed here.`, `另有 ${health.coverage.excludedOmittedCount} 筆排除的候選紀錄未列於此。`)}</p>}</details>}
     </section>}
     {zh && <p className="copy">中文標題供快速閱讀；原始標題及連結保留供核對。</p>}

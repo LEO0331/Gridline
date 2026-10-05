@@ -1,6 +1,7 @@
 const { createStore } = require('./store');
 const adapters = require('./sources');
 const { normalizeObservations } = require('./provenance');
+const { mergeSnapshotHealth } = require('./snapshot-merge');
 
 function createService(config) {
   const store = createStore(config.dataDir);
@@ -15,9 +16,11 @@ function createService(config) {
         throw new Error(`${source} returned zero usable observations; last-known-good data retained.`);
       }
       await store.saveObservations(source, observations);
-      const status = source === 'events' && (result.coverage?.feedStatus === 'unavailable' || result.coverage?.excludedCount > 0) ? 'partial' : 'ok';
-      await store.recordHealth(source, { status, lastSuccessAt: new Date().toISOString(), cacheMinutes: config.cacheMinutes, recordCount: observations.length, message: result.message, ...(source === 'events' ? { coverage: result.coverage || null } : {}) });
-      return { source, status, recordCount: observations.length, message: result.message };
+      const status = source === 'events' ? result.status || ((result.coverage?.feedStatus === 'unavailable' || result.coverage?.excludedCount > 0) ? 'partial' : 'ok') : 'ok';
+      let health = { status, ...(status !== 'degraded' ? { lastSuccessAt: new Date().toISOString() } : {}), cacheMinutes: config.cacheMinutes, recordCount: observations.length, message: result.message, ...(source === 'events' ? { coverage: result.coverage || null } : {}) };
+      if (source === 'events') health = mergeSnapshotHealth(await store.health(), { events: health }, await store.observations({ source: 'events' })).events;
+      await store.recordHealth(source, health);
+      return { source, status, recordCount: observations.length, message: result.message, ...(source === 'events' ? { coverage: health.coverage } : {}) };
     } catch (error) {
       await store.recordHealth(source, { status: 'degraded', cacheMinutes: config.cacheMinutes, message: error.message });
       return { source, status: 'degraded', message: error.message };

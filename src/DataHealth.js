@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildDataHealth } from './dataHealthModel';
 import { loadDashboardSnapshot } from './snapshotMeta';
 import { infrastructureEvents } from './eventModel';
+import EventSourceCoverage from './Components/EventSourceCoverage';
 import './DataHealth.css';
 
 const emptySnapshot = { observations: [], sourceHealth: {}, outcomes: [] };
@@ -19,8 +20,8 @@ const sourceLabel = (source, language) => {
 const sourceDetail = (item, language) => {
   const zh = language === 'zh-TW';
   if (item.source === 'events' && item.coverage) return zh
-    ? `本次通過 ${item.coverage.acceptedCount} 筆、排除 ${item.coverage.excludedCount} 筆；${item.coverage.feedStatus === 'unavailable' ? 'PJM 動態來源無法取得。' : '僅涵蓋設定來源。'}`
-    : `${item.coverage.acceptedCount} accepted, ${item.coverage.excludedCount} excluded; ${item.coverage.feedStatus === 'unavailable' ? 'PJM feed unavailable.' : 'configured sources only.'}`;
+    ? `本次通過 ${item.coverage.acceptedCount} 筆、排除 ${item.coverage.excludedCount} 筆；${item.coverage.feedStatus === 'unavailable' ? '新事件探索無法取得。' : item.coverage.feedStatus === 'partial' ? '部分新事件探索來源無法取得。' : '僅涵蓋設定來源。'}`
+    : `${item.coverage.acceptedCount} accepted, ${item.coverage.excludedCount} excluded; ${item.coverage.feedStatus === 'unavailable' ? 'discovery unavailable.' : item.coverage.feedStatus === 'partial' ? 'some discovery sources unavailable.' : 'configured sources only.'}`;
   if (item.status === 'ok') return zh ? `已確認 ${item.recordCount} 筆資料。` : `${item.recordCount} records checked.`;
   if (item.status === 'partial') return zh ? '僅涵蓋已列明的部分來源。' : 'Check covers the stated source scope only.';
   if (item.status === 'degraded') return zh ? '最近更新未完成；請留意最近成功日期。' : 'Latest refresh incomplete; check the last successful date.';
@@ -143,10 +144,11 @@ export default function DataHealth({ onBack, language = 'en', onLanguageChange =
       </section>
 
       <section className="health-grid lower">
+        {snapshot.sourceHealth?.events?.coverage?.sources && <article className="health-panel"><EventSourceCoverage coverage={snapshot.sourceHealth.events.coverage} language={language} /></article>}
         <article className="health-panel health-boundary"><h2>{copy.noteTitle}</h2><p>{copy.note}</p>{health.blockers.length > 0 && <code>{health.blockers.join(' · ')}</code>}</article>
       </section>
     </>}
   </main>;
 }
 
-function Metric({ label, value }) { return <div><span>{label}</span><strong>{value}</strong></div>; }
+function Metric({ label, value }) { return <div role="group" aria-label={label}><span>{label}</span><strong>{value}</strong></div>; }

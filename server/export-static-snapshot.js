@@ -22,7 +22,9 @@ async function refreshWithRetry(service, source, attempts = 3) {
   let result;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     result = await service.ingest(source, true);
-    if (result.status === 'ok') return { ...result, attempts: attempt };
+    // Event providers already retry transient errors within their own budgets.
+    // Do not repeat denied requests just because another provider is partial.
+    if (result.status === 'ok' || (source === 'events' && result.coverage)) return { ...result, attempts: attempt };
     if (attempt < attempts) await delay(1000 * (2 ** (attempt - 1)));
   }
   return { ...result, attempts };
@@ -104,8 +106,9 @@ async function main() {
       total: snapshot.snapshotChanges.summary.total,
       summary: snapshot.snapshotChanges.summary,
     },
-    sources: outcomes.map(item => ({ source: item.source, status: item.status, attempts: item.attempts, recordCount: item.recordCount ?? null, message: item.message })),
+    sources: outcomes.map(item => ({ source: item.source, status: item.status, attempts: item.attempts, recordCount: item.recordCount ?? null, message: item.message, ...(item.coverage ? { coverage: item.coverage } : {}) })),
     marketSession,
   }, null, 2));
 }
-main().catch(error => { console.error(error); process.exit(1); });
+if (require.main === module) main().catch(error => { console.error(error); process.exit(1); });
+module.exports = { refreshWithRetry };

@@ -118,3 +118,24 @@ test('event exclusions report partial health while retaining accepted records', 
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+
+test('complete event discovery degradation preserves diagnostics and prior provider success', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'gridline-event-denial-'));
+  const original = adapters.events;
+  const service = createService({ dataDir: directory, cacheMinutes: 1 });
+  try {
+    await service.store.recordHealth('events', { status: 'ok', lastSuccessAt: '2026-10-01T00:00:00Z', coverage: { sources: { ERCOT: { lastSuccessAt: '2026-10-01T00:00:00Z' } } } });
+    adapters.events = async () => ({ status: 'degraded', payload: {}, observations: [], message: 'All providers unavailable', coverage: { sources: { ERCOT: { discoveryStatus: 'unavailable', verificationStatus: 'degraded', acceptedCount: 0 } } } });
+    const result = await service.ingest('events', true);
+    assert.equal(result.status, 'degraded');
+    const health = (await service.health()).events;
+    assert.equal(health.coverage.sources.ERCOT.lastSuccessAt, '2026-10-01T00:00:00Z');
+    assert.equal(health.coverage.sources.ERCOT.discoveryStatus, 'unavailable');
+    assert.equal(health.lastSuccessAt, '2026-10-01T00:00:00Z');
+    assert.equal(health.recordCount, 0);
+  } finally {
+    adapters.events = original;
+    service.store.close();
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});

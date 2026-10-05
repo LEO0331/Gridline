@@ -151,5 +151,17 @@ test('Events page exposes configured source scope and excluded candidates', () =
   render(<App snapshot={withCoverage} language="zh-TW" />);
   expect(screen.getByText(/候選 2 筆 · 通過 1 筆 · 排除 1 筆/)).toBeInTheDocument();
   fireEvent.click(screen.getByText('查看排除的候選紀錄（1）'));
-  expect(screen.getByText('Candidate title').closest('li')).toHaveTextContent('頁面標題不相符');
+  expect(screen.getByRole('listitem')).toHaveTextContent('Candidate title · 頁面標題不相符');
+});
+
+test('Events page reports official discovery coverage without claiming every feed succeeded', () => {
+  window.history.pushState({}, '', '#events');
+  const withCoverage = { ...snapshot, sourceHealth: { events: { status: 'partial', coverage: {
+    scope: 'official-discovery-and-curated-candidates', feedStatus: 'partial', candidateCount: 1, acceptedCount: 1, excludedCount: 0,
+    sources: { Oracle: { discoveryStatus: 'partial', verificationStatus: 'ok', candidateCount: 1, acceptedCount: 1, excludedCount: 0 } },
+  } } } };
+  render(<App snapshot={withCoverage} />);
+  expect(screen.getByRole('article', { name: 'Oracle' })).toHaveTextContent('DiscoveryPartial');
+  expect(screen.getByText('Event source coverage is partial')).toBeInTheDocument();
+  expect(screen.queryByText(/PJM feed and curated candidates checked/)).not.toBeInTheDocument();
 });

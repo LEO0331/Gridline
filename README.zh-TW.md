@@ -147,6 +147,8 @@ GET  /api/backtest/runs
 
 ## 市場價格擷取
 
+每日事件探索會檢查 Loudoun County News 與 Oracle 企業新聞，各自揭露探索／文章驗證狀態、存取錯誤與候選筆數上限。PJM、ERCOT 及 Oracle 投資人新聞已暫停抓取；先前已驗證的事件歷史仍保留。使用中的公開來源不需 API key，且不宣稱完整涵蓋。詳見[事件探索與 GitHub runner 檢查](docs/event-discovery.md)。
+
 公開 demo 先使用 Stooq。如果某個 ticker 的歷史為空、過舊、筆數不足或不可用，會改用 Yahoo Finance chart endpoint。`prices` 要標為健康時，每個設定的 ticker 都至少要有 60 筆可用日收盤資料，且包含最新應有的 NYSE 交易日。紐約時間下午 4:15 起要求當日收盤；在此之前、週末或休市日則要求前一交易日。未完成及未來交易日的資料會排除，快照準備度 gate 也使用相同檢查。
 
 HTTP `200` 但 0 筆可用資料會標成 **degraded**，不會標 `ok`。降級更新不會刪掉既有歷史；實際使用的 provider 與 origin URL 會保存到 provenance。若用於商業金融情境，應改成公司核准／授權的市場資料 provider。

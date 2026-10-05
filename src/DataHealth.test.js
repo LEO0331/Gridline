@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import DataHealth from './DataHealth';
 
@@ -54,7 +54,7 @@ test('data health exposes load errors as alerts while keeping refresh available'
 
 test('data health renders demo readiness and source/price coverage in English', async () => {
   render(<DataHealth language="en" onBack={() => {}} />);
-  await waitFor(() => expect(screen.getByText('PRICE DATA AVAILABLE')).toBeInTheDocument());
+  expect(await screen.findByText('PRICE DATA AVAILABLE')).toBeInTheDocument();
   expect(screen.getByText('MARKET PRICE COVERAGE')).toBeInTheDocument();
   expect(screen.getByText('Retained event records')).toBeInTheDocument();
   expect(screen.getAllByText('Fixture provider')).toHaveLength(4);
@@ -65,7 +65,7 @@ test('data health renders demo readiness and source/price coverage in English', 
 
 test('data health renders Traditional Chinese labels', async () => {
   render(<DataHealth language="zh-TW" onBack={() => {}} />);
-  await waitFor(() => expect(screen.getByText('價格資料可用')).toBeInTheDocument());
+  expect(await screen.findByText('價格資料可用')).toBeInTheDocument();
   expect(screen.getByText('市場價格涵蓋')).toBeInTheDocument();
   expect(screen.getByText('保留的事件紀錄')).toBeInTheDocument();
   expect(screen.getByText('市場價格')).toBeInTheDocument();
@@ -89,6 +89,19 @@ test('retained event count treats source revisions as one record', async () => {
   ];
   global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ...fixture, observations: [...fixture.observations, ...observations] }) }));
   render(<DataHealth language="en" onBack={() => {}} />);
-  await waitFor(() => expect(screen.getByText('Retained event records')).toBeInTheDocument());
-  expect(screen.getByText('Retained event records').parentElement).toHaveTextContent('1');
+  const retainedRecords = await screen.findByRole('group', { name: 'Retained event records' });
+  expect(within(retainedRecords).getByText('1')).toBeInTheDocument();
+});
+
+test('data health exposes provider discovery gaps separately from accepted articles', async () => {
+  const withSources = { ...fixture, sourceHealth: { ...fixture.sourceHealth, events: {
+    status: 'partial', coverage: { feedStatus: 'partial', acceptedCount: 1, excludedCount: 0, sources: {
+      Oracle: { discoveryStatus: 'partial', verificationStatus: 'ok', candidateCount: 1, acceptedCount: 1, excludedCount: 0, discoveryErrors: [{ message: 'Investor listing unavailable' }] },
+    } },
+  } } };
+  global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(withSources) }));
+  render(<DataHealth language="en" onBack={() => {}} />);
+  expect(await screen.findByRole('article', { name: 'Oracle' })).toHaveTextContent('Article verificationAccepted');
+  expect(screen.getByText(/some discovery sources unavailable/)).toBeInTheDocument();
+  expect(screen.getByText('Investor listing unavailable')).toBeInTheDocument();
 });

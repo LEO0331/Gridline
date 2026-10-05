@@ -40,17 +40,25 @@ async function boundedText(response, maxBytes = MAX_RESPONSE_BYTES) {
   }
   return output + decoder.decode();
 }
-async function request(url, headers = {}) {
+async function request(url, headers = {}, options = {}) {
   let current = String(url);
+  const signal = AbortSignal.timeout(options.timeoutMs || REQUEST_TIMEOUT_MS);
   for (let redirects = 0; redirects <= 3; redirects += 1) {
     await assertPublicHttps(current);
-    const response = await fetch(current, { headers, redirect: 'manual', signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    const response = await fetch(current, { headers, redirect: 'manual', signal });
     if (response.status >= 300 && response.status < 400 && response.headers.get('location')) {
       if (redirects === 3) throw new Error('Upstream data source redirected too many times.');
       current = new URL(response.headers.get('location'), current).toString();
       continue;
     }
-    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      const error = new Error(`${response.status} ${response.statusText}`);
+      error.status = response.status;
+      const retryAfter = response.headers.get('retry-after');
+      error.retryAfterMs = retryAfter ? (/^\d+$/.test(retryAfter) ? Number(retryAfter) * 1000 : Math.max(0, Date.parse(retryAfter) - Date.now())) : 0;
+      await response.body?.cancel();
+      throw error;
+    }
     return response;
   }
   throw new Error('Upstream request failed.');
@@ -59,8 +67,8 @@ async function getJson(url, headers = {}) {
   const response = await request(url, { Accept: 'application/json', ...headers });
   return JSON.parse(await boundedText(response));
 }
-async function getText(url, headers = {}) {
-  return boundedText(await request(url, headers));
+async function getText(url, headers = {}, options = {}) {
+  return boundedText(await request(url, headers, options), options.maxBytes || MAX_RESPONSE_BYTES);
 }
 module.exports = { getJson, getText, parseCsv, assertHttps, assertPublicHttps, privateAddress, boundedText, MAX_RESPONSE_BYTES, REQUEST_TIMEOUT_MS };
 const dns = require('dns/promises');

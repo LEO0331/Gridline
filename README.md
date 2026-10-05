@@ -43,6 +43,8 @@ Start with a company or region, inspect the four evidence views, open the underl
 
 Detailed design notes: [provenance](docs/data-provenance.md) · [signal methods](docs/signal-methods.md) · [snapshot changes](docs/snapshot-changes.md) · [demo hardening](docs/demo-hardening.md) · [scoring](docs/scoring-methodology.md) · [storage](docs/persistent-storage.md) · [scenario analysis](docs/scenario-analysis.md) · [backtesting](docs/backtesting.md) · [CI](docs/pr-ci.md).
 
+Daily event discovery checks Loudoun County News and Oracle corporate news, with independent discovery/verification health, bounded requests and retained history. PJM, ERCOT and Oracle investor news are paused; previously verified events remain visible. No API keys are needed for the active public routes. See [event discovery and live runner checks](docs/event-discovery.md).
+
 ## Current evidence boundaries
 
 - The documented relationship register currently contains one [Oracle Abilene–ERCOT record](docs/relationship-evidence.md). It does not establish links for the other tracked companies. EIA demand in the public snapshot covers PJM, so the Oracle–ERCOT link does **not** create an ERCOT demand measurement.

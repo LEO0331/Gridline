@@ -31,9 +31,14 @@ function mergeSnapshotHealth(previous = {}, current = {}, observations = []) {
     delete priorWithoutDegradedMarkers.qualityReviewedAt;
     const retainedCount = (observations || []).filter(item => item.source === source).length;
     const degraded = next.status === 'degraded';
+    const eventSources = next.coverage?.sources && Object.fromEntries(Object.entries(next.coverage.sources).map(([name, state]) => {
+      const lastSuccessAt = state.lastSuccessAt || prior.coverage?.sources?.[name]?.lastSuccessAt;
+      return [name, { ...state, ...(lastSuccessAt ? { lastSuccessAt } : {}) }];
+    }));
     merged[source] = {
       ...priorWithoutDegradedMarkers,
       ...next,
+      ...(eventSources ? { coverage: { ...next.coverage, sources: eventSources } } : {}),
       ...(source === 'events' && degraded && !next.coverage ? { coverage: null } : {}),
       ...(degraded && !next.lastSuccessAt && prior.lastSuccessAt ? { lastSuccessAt: prior.lastSuccessAt } : {}),
       ...(degraded ? { retainedRecordCount: retainedCount } : {}),

@@ -93,3 +93,12 @@ test('partial event refresh publishes accepted records and current coverage whil
   assert.equal(health.events.coverage.excludedCount, 2);
   assert.equal(health.events.lastSuccessAt, '2026-10-02T22:17:00Z');
 });
+
+test('provider failure keeps its last successful check without copying old coverage counts', () => {
+  const health = mergeSnapshotHealth(
+    { events: { coverage: { sources: { ERCOT: { lastSuccessAt: '2026-10-01T00:00:00Z', acceptedCount: 3 } } } } },
+    { events: { status: 'partial', coverage: { sources: { ERCOT: { discoveryStatus: 'unavailable', verificationStatus: 'degraded', acceptedCount: 0 } } } } },
+  );
+  assert.equal(health.events.coverage.sources.ERCOT.lastSuccessAt, '2026-10-01T00:00:00Z');
+  assert.equal(health.events.coverage.sources.ERCOT.acceptedCount, 0);
+});
