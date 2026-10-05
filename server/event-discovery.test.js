@@ -36,3 +36,27 @@ test('publication evidence ignores update metadata and navigation dates', () => 
   assert.equal(articlePublicationDate('<meta content="2026-10-02T12:00:00Z" property="article:published_time">'), '2026-10-02T12:00:00.000Z');
   assert.equal(articlePublicationDate('<nav>Oct 5, 2026</nav><h1>Article</h1><p>No date</p>'), null);
 });
+
+test('alternative publishers keep their own identity and reject unrelated domains and index URLs', () => {
+  assert.equal(validArticleUrl('Oracle OCI Blog', 'https://blogs.oracle.com/cloud-infrastructure/oracle-alloy-reserved-regions'), true);
+  assert.equal(validArticleUrl('Oracle OCI Blog', 'https://blogs.oracle.com/cloud-infrastructure/category/regions'), false);
+  assert.equal(validArticleUrl('Oracle OCI Blog', 'https://blogs.oracle.com/cloud-infrastructure/feed'), false);
+  assert.equal(validArticleUrl('Texas Governor', 'https://gov.texas.gov/news/post/data-center-policy'), true);
+  assert.equal(validArticleUrl('Texas Governor', 'https://www.ercot.com/news/release/related'), false);
+  assert.equal(validArticleUrl('FERC', 'https://www.ferc.gov/news-events/news/large-load-integration'), true);
+  assert.equal(validArticleUrl('FERC', 'https://www.ferc.gov/news-events/news/news-releases-headlines'), false);
+});
+
+test('OCI feed selects region announcements without classifying technical region tutorials as events', () => {
+  const xml = '<rss><channel><item><title>Announcing Oracle Alloy Reserved Regions</title><link>https://blogs.oracle.com/cloud-infrastructure/oracle-alloy-reserved-regions</link><pubDate>Mon, 31 Aug 2026 12:00:00 GMT</pubDate></item><item><title>Best Practices for Resilient Architectures Across Regions</title><link>https://blogs.oracle.com/cloud-infrastructure/technical-guide</link></item></channel></rss>';
+  const items = parseRss(xml, 'Oracle OCI Blog');
+  assert.equal(items.length, 1);
+  assert.equal(items[0].source, 'Oracle OCI Blog');
+  assert.equal(items[0].category, 'CAPEX');
+});
+
+test('alternative listing admission uses publisher date fields rather than dates in body text', () => {
+  assert.equal(articlePublicationDate('<meta name="publish_date" content="August 31, 2026"><h1>OCI launch</h1>'), '2026-08-31T00:00:00.000Z');
+  assert.equal(articlePublicationDate('<h1>Governor policy</h1><p class="meta">September 21, 2026 | Austin, Texas</p><p>On September 14 he announced another policy.</p>', 'Texas Governor'), '2026-09-21T00:00:00.000Z');
+  assert.equal(articlePublicationDate('<h1>Governor policy</h1><p>On September 14, 2026 he announced another policy.</p>', 'Texas Governor'), null);
+});

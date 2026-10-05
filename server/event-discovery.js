@@ -12,9 +12,24 @@ const PROVIDERS = {
     region: 'All regions', hosts: ['www.oracle.com'], paths: [/^\/news\/announcement\/.+\/$/],
     endpoints: [{ url: 'https://www.oracle.com/news/', format: 'html' }],
   },
+  'Oracle OCI Blog': {
+    region: 'All regions', hosts: ['blogs.oracle.com'], paths: [/^\/cloud-infrastructure\/(?!category(?:\/|$)|tag(?:\/|$)|author(?:\/|$)|feed\/?$|rss\/?$|wp-json(?:\/|$)|page(?:\/|$))[a-z0-9-]+\/?$/i],
+    maxResponseBytes: 4 * 1024 * 1024,
+    endpoints: [{ url: 'https://blogs.oracle.com/cloud-infrastructure/feed', format: 'rss' }, { url: 'https://blogs.oracle.com/cloud-infrastructure/', format: 'html' }],
+  },
+  'Texas Governor': {
+    region: 'Texas', hosts: ['gov.texas.gov'], paths: [/^\/news\/post\/[a-z0-9.-]+\/?$/i],
+    endpoints: [{ url: 'https://gov.texas.gov/news', format: 'html' }],
+  },
+  FERC: {
+    region: 'All regions', hosts: ['www.ferc.gov', 'ferc.gov'], paths: [/^\/news-events\/news\/(?!news-releases-headlines\/?$|decisions-notices\/?$)[a-z0-9-]+\/?$/i],
+    endpoints: [{ url: 'https://www.ferc.gov/news-events/news/news-releases-headlines', format: 'html' }],
+  },
 };
 // Retain legacy provider parsers for historical records; only these sources are fetched.
 const ACTIVE_PROVIDERS = ['Loudoun', 'Oracle'];
+// Probe these separately before adding them to the daily source set.
+const ALTERNATIVE_PROVIDERS = ['Oracle OCI Blog', 'Texas Governor', 'FERC'];
 
 function plain(value) {
   return String(value || '').replace(/^<!\[CDATA\[|\]\]>$/g, '')
@@ -26,11 +41,12 @@ function plain(value) {
     .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function categoryFor(title) {
+function categoryFor(title, source) {
   if (/data cent(?:er|re)|substation/i.test(title) && /permit|application|zon(?:ing|e)|den(?:y|ies|ied)|approv|pause/i.test(title)) return 'PERMIT';
   if (/interconnection|transmission|large (?:load|electricity user)|data cent(?:er|re)|grid reliability/i.test(title)) return 'GRID';
   if (/load forecast|electricity demand|generation|capacity auction|resource adequacy|power capacity|energy costs/i.test(title)) return 'POWER';
   if (/capital expenditure|capex|cloud region|cloud infrastructure.*(?:expand|invest)|(?:expand|invest).*cloud infrastructure/i.test(title)) return 'CAPEX';
+  if (source === 'Oracle OCI Blog' && /\b(?:announc\w*|launch\w*|open\w*|expand\w*|expansion|availability)\b/i.test(title) && /\bregions?\b/i.test(title)) return 'CAPEX';
   return null;
 }
 
@@ -78,10 +94,10 @@ function visibleDate(html) {
   return isoPublication(match?.[0]);
 }
 
-function articlePublicationDate(html) {
+function articlePublicationDate(html, source) {
   for (const [tag] of String(html).matchAll(/<meta\b[^>]*>/gi)) {
     const key = attribute(tag, 'property') || attribute(tag, 'name') || attribute(tag, 'itemprop');
-    if (/^(article:published_time|datePublished|pubdate|publication_date)$/i.test(key)) return isoPublication(attribute(tag, 'content'));
+    if (/^(article:published_time|datePublished|pubdate|publication_date|publish_date)$/i.test(key)) return isoPublication(attribute(tag, 'content'));
   }
   for (const [, json] of String(html).matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
@@ -98,6 +114,10 @@ function articlePublicationDate(html) {
     || String(html).match(/<h1\b[^>]*>[\s\S]{0,6000}/i)?.[0];
   const labeled = plain(html).match(/(?:Posted on|Published|Publication Date)\s*:?\s*((?:[A-Za-z]+\.?\s+\d{1,2},?\s+20\d{2})|(?:\d{1,2}\/\d{1,2}\/20\d{2}))/i);
   if (labeled) return isoPublication(labeled[1]);
+  if (source === 'Texas Governor') {
+    const metadata = content?.match(/<p\b[^>]*class=["'][^"']*\bmeta\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/i);
+    return visibleDate(metadata?.[1] || '');
+  }
   const dateline = plain(content || '').match(/[—–]\s*((?:[A-Za-z]+\.?\s+\d{1,2},?\s+20\d{2}))/);
   return isoPublication(dateline?.[1]);
 }
@@ -109,7 +129,7 @@ function parseRss(xml, source = 'PJM') {
     const title = value(item, 'title');
     let url = value(item, 'link');
     try { url = canonicalUrl(url, PROVIDERS[source].endpoints[0].url); } catch { /* Admission records invalid links. */ }
-    return { source, title, category: categoryFor(title), publishedAt: isoPublication(value(item, 'pubDate')), url, region: PROVIDERS[source].region };
+    return { source, title, category: categoryFor(title, source), publishedAt: isoPublication(value(item, 'pubDate')), url, region: PROVIDERS[source].region };
   }).filter(item => item.category);
 }
 
@@ -122,7 +142,7 @@ function parseListing(html, source, base) {
     if (!validArticleUrl(source, url)) continue;
     articleLinks += 1;
     const title = plain(match[2]);
-    const category = categoryFor(title);
+    const category = categoryFor(title, source);
     if (!category || title.length < 12) continue;
     const prefix = String(html).slice(0, match.index);
     const start = Math.max(prefix.lastIndexOf('<li'), prefix.lastIndexOf('<tr'), prefix.lastIndexOf('<article'));
@@ -133,4 +153,4 @@ function parseListing(html, source, base) {
   return candidates;
 }
 
-module.exports = { PROVIDERS, ACTIVE_PROVIDERS, plain, categoryFor, validArticleUrl, canonicalUrl, articlePublicationDate, parseRss, parseListing };
+module.exports = { PROVIDERS, ACTIVE_PROVIDERS, ALTERNATIVE_PROVIDERS, plain, categoryFor, validArticleUrl, canonicalUrl, articlePublicationDate, parseRss, parseListing };

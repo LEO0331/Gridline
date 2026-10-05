@@ -36,7 +36,7 @@ function pageSupportsEvidence(html, evidenceText) {
   return normalize(html).includes(normalize(evidenceText));
 }
 
-function sourceReader(read, headers, deadline, sleep) {
+function sourceReader(read, headers, deadline, sleep, maxBytes = 2 * 1024 * 1024) {
   const cache = new Map();
   return async url => {
     if (cache.has(url)) return cache.get(url);
@@ -44,7 +44,7 @@ function sourceReader(read, headers, deadline, sleep) {
       const remaining = deadline - Date.now();
       if (remaining <= 0) throw new Error('Provider request budget exhausted');
       try {
-        const html = await read(url, headers, { timeoutMs: Math.min(10000, remaining), maxBytes: 2 * 1024 * 1024 });
+        const html = await read(url, headers, { timeoutMs: Math.min(10000, remaining), maxBytes });
         cache.set(url, html);
         return html;
       } catch (error) {
@@ -62,7 +62,7 @@ function sourceReader(read, headers, deadline, sleep) {
 
 async function checkProvider(source, curated, now, read, headers, dependencies) {
   const provider = PROVIDERS[source];
-  const fetchPage = sourceReader(read, headers, Date.now() + (dependencies.budgetMs || SOURCE_BUDGET_MS), dependencies.sleep || wait);
+  const fetchPage = sourceReader(read, headers, Date.now() + (dependencies.budgetMs || SOURCE_BUDGET_MS), dependencies.sleep || wait, provider.maxResponseBytes);
   const discoveryErrors = [];
   let discovered = [];
   let checkedEndpoints = 0;
@@ -94,7 +94,7 @@ async function checkProvider(source, curated, now, read, headers, dependencies) 
       const html = await fetchPage(item.url);
       if (!pageMatchesTitle(html, item.title)) throw new Error('record title mismatch');
       if (!pageSupportsEvidence(html, item.evidenceText)) throw new Error('supporting text missing');
-      const publishedAt = articlePublicationDate(html);
+      const publishedAt = articlePublicationDate(html, source);
       if (item.dateText) {
         if (!pageSupportsEvidence(html, item.dateText)) throw new Error('publication date missing');
       } else {
