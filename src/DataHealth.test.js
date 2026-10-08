@@ -14,6 +14,7 @@ const priceRows = ticker => Array.from({ length: 70 }, (_, index) => ({
 }));
 
 const fixture = {
+  trackedTickers: ['NBIS', 'CRWV', 'ORCL', 'AVGO'],
   schemaVersion: 4,
   generatedAt: new Date().toISOString(),
   freshness: 'partial',

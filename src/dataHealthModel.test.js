@@ -1,4 +1,5 @@
 import { buildDataHealth } from './dataHealthModel';
+import { companies } from './companyRegistry';
 
 const makePrices = (ticker, count = 70) => Array.from({ length: count }, (_, index) => ({
   source: 'prices',
@@ -15,7 +16,7 @@ const readySnapshot = () => ({
   freshness: 'partial',
   methodologies: { companyScore: 'gridline-price-signal-v2.0.0' },
   backtestCoverage: { start: null, end: null, recorded: 0, reconstructed: 0, reconstructionQuality: 'recorded-only' },
-  observations: ['NBIS','CRWV','ORCL','AVGO'].flatMap(ticker => makePrices(ticker)),
+  observations: companies.flatMap(({ ticker }) => makePrices(ticker)),
   sourceHealth: {
     prices: { status: 'ok', recordCount: 280, lastSuccessAt: '2026-09-16T00:00:00.000Z' },
     eia: { status: 'ok', recordCount: 24 },
@@ -47,6 +48,12 @@ test('data health makes missing price coverage visible as attention', () => {
   expect(result.state).toBe('attention');
   expect(result.blockers).toContain('prices');
   expect(result.priceCoverage.find(item => item.ticker === 'AVGO').count).toBe(0);
+});
+
+test('invalid enabled universes remain visible as attention', () => {
+  for (const trackedTickers of [[], {}, ['UNKNOWN'], ['NBIS', 'NBIS']]) {
+    expect(buildDataHealth({ ...readySnapshot(), trackedTickers }).blockers).toContain('trackedUniverse');
+  }
 });
 
 test('old schema without declared coverage is explicitly not demo-ready', () => {

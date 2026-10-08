@@ -119,6 +119,59 @@ test('event exclusions report partial health while retaining accepted records', 
   }
 });
 
+test('failed subset retry keeps aggregate partial health and successful recovery counts the full universe', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'gridline-retry-health-'));
+  const original = adapters.prices;
+  const service = createService({ dataDir: directory, cacheMinutes: 60, tickers: ['NBIS', 'AVGO'] });
+  const row = ticker => ({ source: 'prices', type: 'close', ticker, value: 100, observedAt: '2026-10-07T00:00:00Z', sourceUrl: 'https://example.com/prices' });
+  try {
+    adapters.prices = async () => ({ payload: [], observations: [row('NBIS')], tickerOutcomes: [{ ticker: 'NBIS', status: 'ok', recordCount: 1 }, { ticker: 'AVGO', status: 'degraded', recordCount: 0 }] });
+    await service.ingest('prices', true);
+    adapters.prices = async () => { throw new Error('retry timeout'); };
+    assert.equal((await service.ingest('prices', true, { tickers: ['AVGO'] })).status, 'partial');
+    let health = (await service.health()).prices;
+    assert.equal(health.status, 'partial');
+    assert.equal(health.recordCount, 1);
+    assert.match(health.message, /1\/2/);
+    assert.match(health.message, /retry timeout/);
+    adapters.prices = async () => ({ payload: [], observations: [row('AVGO')], tickerOutcomes: [{ ticker: 'AVGO', status: 'ok', recordCount: 1 }], message: '1/1 successful' });
+    const result = await service.ingest('prices', true, { tickers: ['AVGO'] });
+    health = (await service.health()).prices;
+    assert.equal(result.status, 'ok');
+    assert.equal(health.recordCount, 2);
+    assert.match(health.message, /2\/2/);
+    assert.match(result.message, /2\/2/);
+  } finally { adapters.prices = original; service.store.close(); await fs.rm(directory, { recursive: true, force: true }); }
+});
+
+test('expanded universe bypasses old cache, partial failure retains dates, and recovery caches every ticker', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'gridline-expanded-'));
+  const original = adapters.prices;
+  const service = createService({ dataDir: directory, cacheMinutes: 60, tickers: ['NBIS', 'AVGO'] });
+  const prior = new Date().toISOString();
+  let calls = 0;
+  try {
+    await service.store.recordHealth('prices', { status: 'ok', lastSuccessAt: prior, cacheMinutes: 60, tickers: { NBIS: { status: 'ok', lastSuccessAt: prior } } });
+    adapters.prices = async config => {
+      calls += 1;
+      return { payload: [], observations: config.tickers.filter(ticker => calls !== 1 || ticker === 'NBIS').map(ticker => ({ source: 'prices', type: 'close', ticker, value: 100, observedAt: '2026-10-07T00:00:00Z', sourceUrl: 'https://example.com/prices' })), tickerOutcomes: config.tickers.map(ticker => ({ ticker, status: calls === 1 && ticker === 'AVGO' ? 'degraded' : 'ok' })) };
+    };
+    assert.equal((await service.ingest('prices')).status, 'partial');
+    let health = (await service.health()).prices;
+    assert.equal(health.lastSuccessAt, prior);
+    assert.equal(health.tickers.AVGO.lastSuccessAt, undefined);
+    assert.equal((await service.ingest('prices', true, { tickers: ['AVGO'] })).status, 'ok');
+    health = (await service.health()).prices;
+    const lastSuccess = health.tickers.NBIS.lastSuccessAt;
+    assert.ok(health.tickers.AVGO.lastSuccessAt);
+    assert.equal((await service.ingest('prices')).status, 'cached');
+    adapters.prices = async () => ({ payload: [], observations: [], tickerOutcomes: ['NBIS', 'AVGO'].map(ticker => ({ ticker, status: 'degraded' })), status: 'degraded' });
+    assert.equal((await service.ingest('prices', true)).status, 'degraded');
+    assert.equal((await service.health()).prices.tickers.NBIS.lastSuccessAt, lastSuccess);
+    assert.equal((await service.observations({ source: 'prices' })).length, 2);
+  } finally { adapters.prices = original; service.store.close(); await fs.rm(directory, { recursive: true, force: true }); }
+});
+
 test('complete event discovery degradation preserves diagnostics and prior provider success', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'gridline-event-denial-'));
   const original = adapters.events;

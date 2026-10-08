@@ -1,9 +1,17 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { evaluateDemoReadiness } = require('./demo-readiness');
+const { evaluateDemoReadiness, DEFAULT_TICKERS } = require('./demo-readiness');
 const { latestExpectedPriceSession } = require('./us-market-calendar');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+test('invalid declared universes cannot bypass price readiness or crash the evaluator', () => {
+  for (const trackedTickers of [[], {}, 'NBIS', ['UNKNOWN'], ['NBIS', 'NBIS']]) {
+    const result = evaluateDemoReadiness({ ...readySnapshot(), trackedTickers });
+    assert.equal(result.ready, false);
+    assert.ok(result.checks.some(item => item.id === 'tracked-universe' && !item.ok));
+  }
+});
 
 function priceRows(ticker, end = new Date(), count = 70) {
   return Array.from({ length: count }, (_, index) => {
@@ -23,7 +31,7 @@ function priceRows(ticker, end = new Date(), count = 70) {
 function readySnapshot() {
   const generatedAt = new Date();
   const lastClose = new Date(`${latestExpectedPriceSession(generatedAt)}T00:00:00Z`);
-  const tickers = ['NBIS', 'CRWV', 'ORCL', 'AVGO'];
+  const tickers = DEFAULT_TICKERS;
   return {
     schemaVersion: 4,
     generatedAt: generatedAt.toISOString(),

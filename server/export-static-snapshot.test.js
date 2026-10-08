@@ -1,6 +1,39 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { refreshWithRetry, shouldRefreshPrices } = require('./export-static-snapshot');
+const { refreshWithRetry, shouldRefreshPrices, publishSnapshots } = require('./export-static-snapshot');
+const fs = require('fs/promises');
+const path = require('path');
+const os = require('os');
+
+test('blocked publication leaves both public artifacts untouched; ready publication keeps coverage metadata', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'gridline-publication-'));
+  const fullPath = path.join(directory, 'full.json');
+  const runtimePath = path.join(directory, 'runtime.json');
+  try {
+    await fs.writeFile(fullPath, 'previous-full');
+    await fs.writeFile(runtimePath, 'previous-runtime');
+    const snapshot = { schemaVersion: 4, trackedTickers: ['NBIS', 'AVGO'], generatedAt: '2026-10-07T22:00:00Z', observations: [] };
+    await assert.rejects(publishSnapshots(snapshot, { ready: false, blockerCount: 1 }, { fullPath, runtimePath }), /Public snapshot retained/);
+    assert.equal(await fs.readFile(fullPath, 'utf8'), 'previous-full');
+    assert.equal(await fs.readFile(runtimePath, 'utf8'), 'previous-runtime');
+    await publishSnapshots(snapshot, { ready: true }, { fullPath, runtimePath });
+    assert.deepEqual(JSON.parse(await fs.readFile(fullPath, 'utf8')).trackedTickers, snapshot.trackedTickers);
+    assert.deepEqual(JSON.parse(await fs.readFile(runtimePath, 'utf8')).trackedTickers, snapshot.trackedTickers);
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
+test('price retry requests only failed tickers and aggregates successful outcomes', async () => {
+  const requests = [];
+  const result = await refreshWithRetry({ ingest: async (source, force, options) => {
+    requests.push(options?.tickers);
+    return requests.length === 1
+      ? { source, status: 'partial', tickerOutcomes: [{ ticker: 'NBIS', status: 'ok', recordCount: 60 }, { ticker: 'AVGO', status: 'degraded' }] }
+      : { source, status: 'ok', tickerOutcomes: [{ ticker: 'AVGO', status: 'ok', recordCount: 60 }] };
+  } }, 'prices', 2);
+  assert.deepEqual(requests, [undefined, ['AVGO']]);
+  assert.equal(result.status, 'ok');
+  assert.deepEqual(result.tickerOutcomes.map(row => row.ticker), ['NBIS', 'AVGO']);
+});
 
 function priceSnapshot(tickers, latestDay, count = 60) {
   const observations = tickers.flatMap(ticker => Array.from({ length: count }, (_, index) => {

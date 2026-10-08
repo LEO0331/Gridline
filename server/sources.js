@@ -67,26 +67,38 @@ async function ingestSec(config) {
   if (!config.secUserAgent) throw new Error('SEC_USER_AGENT is required for SEC requests.');
   const headers = { 'User-Agent': config.secUserAgent, 'Accept-Encoding': 'gzip, deflate' };
   const directory = await getJson(SEC_TICKERS, headers); const matches = Object.values(directory).filter(item => config.tickers.includes(item.ticker));
-  const payload = []; const observations = [];
+  const payload = []; const observations = []; const tickerOutcomes = [];
+  for (const ticker of config.tickers.filter(ticker => !matches.some(company => company.ticker === ticker))) {
+    tickerOutcomes.push({ ticker, status: 'degraded', recordCount: 0, message: 'No matching SEC issuer.' });
+  }
   for (const company of matches) {
-    const [submissions, facts] = await Promise.all([getJson(SEC_SUBMISSIONS(company.cik_str, headers), headers), getJson(SEC_FACTS(company.cik_str), headers)]);
-    payload.push({ ticker: company.ticker, submissions, facts });
-    const filings = submissions.filings?.recent || {}; const allForms = (filings.form || []).map((form, index) => ({ form, filed: filings.filingDate?.[index], accession: filings.accessionNumber?.[index], primaryDocument: filings.primaryDocument?.[index] }));
-    const documents = new Map(allForms.filter(item => item.accession && item.primaryDocument).map(item => [item.accession, item.primaryDocument]));
-    const forms = allForms.filter(item => SEC_FORMS.has(item.form) || item.form === '8-K').slice(0, 12);
-    observations.push(observation('sec', 'filings', forms, { ticker: company.ticker, sourceUrl: SEC_SUBMISSIONS(company.cik_str) }));
-    for (const [label, tags] of Object.entries(FACT_TAGS)) {
-      const unit = label === 'dilutedEps' ? 'USD/shares' : 'USD';
-      const fact = latestFact(facts, tags, unit);
-      if (!fact) continue;
-      observations.push(factObservation(company.cik_str, company.ticker, label, fact, documents));
-      if (label === 'revenue' || label === 'dilutedEps') {
-        const prior = priorYearQuarter(facts, tags, unit, fact);
-        if (prior) observations.push(factObservation(company.cik_str, company.ticker, `${label}Prior`, prior, documents));
+    const firstObservation = observations.length;
+    try {
+      const [submissions, facts] = await Promise.all([getJson(SEC_SUBMISSIONS(company.cik_str, headers), headers), getJson(SEC_FACTS(company.cik_str), headers)]);
+      payload.push({ ticker: company.ticker, submissions, facts });
+      const filings = submissions.filings?.recent || {}; const allForms = (filings.form || []).map((form, index) => ({ form, filed: filings.filingDate?.[index], accession: filings.accessionNumber?.[index], primaryDocument: filings.primaryDocument?.[index] }));
+      const documents = new Map(allForms.filter(item => item.accession && item.primaryDocument).map(item => [item.accession, item.primaryDocument]));
+      const forms = allForms.filter(item => SEC_FORMS.has(item.form) || item.form === '8-K').slice(0, 12);
+      observations.push(observation('sec', 'filings', forms, { ticker: company.ticker, sourceUrl: SEC_SUBMISSIONS(company.cik_str) }));
+      const missingFacts = [];
+      for (const [label, tags] of Object.entries(FACT_TAGS)) {
+        const unit = label === 'dilutedEps' ? 'USD/shares' : 'USD';
+        const fact = latestFact(facts, tags, unit);
+        if (!fact) { missingFacts.push(label); continue; }
+        observations.push(factObservation(company.cik_str, company.ticker, label, fact, documents));
+        if (label === 'revenue' || label === 'dilutedEps') {
+          const prior = priorYearQuarter(facts, tags, unit, fact);
+          if (prior) observations.push(factObservation(company.cik_str, company.ticker, `${label}Prior`, prior, documents));
+        }
       }
+      tickerOutcomes.push({ ticker: company.ticker, status: 'ok', recordCount: observations.length - firstObservation, missingFacts, message: missingFacts.length ? `Unavailable comparable USD facts: ${missingFacts.join(', ')}` : 'Issuer facts ingested.' });
+    } catch (error) {
+      observations.splice(firstObservation);
+      tickerOutcomes.push({ ticker: company.ticker, status: 'degraded', recordCount: 0, message: error.message });
     }
   }
-  return { payload, observations, message: `${matches.length} tracked issuers ingested` };
+  const succeeded = tickerOutcomes.filter(item => item.status === 'ok').length;
+  return { payload, observations, tickerOutcomes, status: succeeded === config.tickers.length ? 'ok' : succeeded ? 'partial' : 'degraded', message: `${succeeded}/${config.tickers.length} tracked issuers ingested; ${tickerOutcomes.filter(item => item.status === 'degraded').length} unavailable` };
 }
 async function ingestEia(config) {
   if (!config.eiaKey) throw new Error('EIA_API_KEY is not configured.');
@@ -123,37 +135,43 @@ async function ingestPrices(config) {
   const payload = [];
   const observations = [];
   const providerCounts = new Map();
+  const tickerOutcomes = [];
   const tickers = config.tickers || [];
   if (!tickers.length) throw new Error('No tracked tickers are configured for price ingestion.');
 
   for (const ticker of tickers) {
-    const history = await fetchTickerHistory({
-      ticker,
-      priceBaseUrl: config.priceBaseUrl,
-      priceFallbackBaseUrl: config.priceFallbackBaseUrl,
-      getText,
-      getJson,
-    });
-    const rows = history.rows.slice(-260);
-    payload.push({ ticker, provider: history.provider, providerUrl: history.providerUrl, rows });
-    providerCounts.set(history.provider, (providerCounts.get(history.provider) || 0) + 1);
-    rows.forEach(row => observations.push(observation('prices', 'close', row.close, {
-      ticker,
-      currency: 'USD',
-      observedAt: `${row.date}T00:00:00.000Z`,
-      providerName: history.provider,
-      sourceUrl: history.providerUrl,
-    })));
+    try {
+      const history = await fetchTickerHistory({
+        ticker,
+        priceBaseUrl: config.priceBaseUrl,
+        priceFallbackBaseUrl: config.priceFallbackBaseUrl,
+        getText,
+        getJson,
+      });
+      const rows = history.rows.slice(-260);
+      if (!rows.length) throw new Error('Provider returned no usable daily history.');
+      payload.push({ ticker, provider: history.provider, providerUrl: history.providerUrl, rows });
+      providerCounts.set(history.provider, (providerCounts.get(history.provider) || 0) + 1);
+      rows.forEach(row => observations.push(observation('prices', 'close', row.close, {
+        ticker,
+        currency: 'USD',
+        observedAt: `${row.date}T00:00:00.000Z`,
+        providerName: history.provider,
+        sourceUrl: history.providerUrl,
+      })));
+      tickerOutcomes.push({ ticker, status: 'ok', recordCount: rows.length, latestSession: rows.at(-1).date, provider: history.provider });
+    } catch (error) { tickerOutcomes.push({ ticker, status: 'degraded', recordCount: 0, message: error.message }); }
   }
 
   const coveredTickers = new Set(observations.map(item => item.ticker));
   const missing = tickers.filter(ticker => !coveredTickers.has(ticker));
-  if (missing.length) throw new Error(`Incomplete price coverage; missing usable history for ${missing.join(', ')}.`);
   const providers = [...providerCounts.entries()].map(([provider, count]) => `${provider}:${count}`).join(', ');
   return {
     payload,
     observations,
-    message: `${observations.length} daily price observations ingested across ${coveredTickers.size}/${tickers.length} tickers (${providers})`,
+    tickerOutcomes,
+    status: missing.length === 0 ? 'ok' : coveredTickers.size ? 'partial' : 'degraded',
+    message: `${observations.length} daily price observations ingested across ${coveredTickers.size}/${tickers.length} tickers (${providers})${missing.length ? `; unavailable: ${missing.join(', ')}` : ''}`,
   };
 }
 module.exports = { sec: ingestSec, eia: ingestEia, pjm: ingestPjm, ferc: ingestFerc, 'company-ir': ingestIr, prices: ingestPrices, events: ingestEvents };

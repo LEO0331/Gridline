@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from './App';
 
@@ -123,6 +123,49 @@ test('account language can initialize a browser with no local language preferenc
   fireEvent.click(screen.getByRole('button', { name: 'Apply account language' }));
 
   expect(onLanguageChange).toHaveBeenCalledWith('en');
+});
+
+test('loaded enabled subset synchronizes the research ticker', () => {
+  const { rerender } = render(<App snapshot={{}} snapshotState="loading" />);
+  rerender(<App snapshot={{ ...richSnapshot, trackedTickers: ['VRT', 'ETN'] }} />);
+  screen.getAllByRole('combobox', { name: 'Company' }).forEach(select => expect(select).toHaveValue('VRT'));
+  expect(screen.getByRole('button', { name: /Select VRT/ })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('button', { name: 'ORCL →' })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Business description source ↗' })).toHaveAttribute('href', 'https://www.vertiv.com/');
+});
+
+test('company browser defaults to all 20 and filtering preserves the selected research ticker', () => {
+  render(<App snapshot={richSnapshot} />);
+  const cards = screen.getByRole('region', { name: 'Tracked companies' });
+  expect(within(cards).getAllByRole('button')).toHaveLength(20);
+  fireEvent.click(screen.getByRole('button', { name: /Select ORCL/ }));
+  fireEvent.click(screen.getByRole('button', { name: /AI compute & transition/ }));
+  expect(within(cards).getAllByRole('button')).toHaveLength(6);
+  screen.getAllByRole('combobox', { name: 'Company' }).forEach(select => expect(select).toHaveValue('ORCL'));
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search companies' }), { target: { value: '  applied  ' } });
+  expect(within(cards).getAllByRole('button')).toHaveLength(1);
+  fireEvent.click(within(cards).getByRole('button', { name: /Select APLD/ }));
+  screen.getAllByRole('combobox', { name: 'Company' }).forEach(select => expect(select).toHaveValue('APLD'));
+  expect(screen.getAllByText('Short-term trend unavailable').length).toBeGreaterThan(0);
+  fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'xyz-no-company' } });
+  expect(screen.getByText('No companies match these filters.')).toBeVisible();
+  screen.getAllByRole('combobox', { name: 'Company' }).forEach(select => expect(select).toHaveValue('APLD'));
+  fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
+  expect(within(cards).getAllByRole('button')).toHaveLength(20);
+});
+
+test('company browser localizes category, empty state and counts and honors snapshot coverage', () => {
+  render(<App snapshot={{ ...richSnapshot, trackedTickers: ['NBIS', 'BE'] }} language="zh-TW" />);
+  const cards = screen.getByRole('region', { name: '追蹤公司' });
+  expect(within(cards).getAllByRole('button')).toHaveLength(2);
+  expect(screen.getByRole('button', { name: /全部 2/ })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: /發電與能源 1/ }));
+  expect(within(cards).getByRole('button', { name: /選擇 BE/ })).toBeVisible();
+  expect(within(cards).getByText('發電與能源')).toBeVisible();
+  fireEvent.change(screen.getByRole('searchbox', { name: '搜尋公司' }), { target: { value: 'NBIS' } });
+  expect(screen.getByText('沒有符合篩選條件的公司。')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: '重設篩選' }));
+  expect(within(cards).getAllByRole('button')).toHaveLength(2);
 });
 
 test('Chinese milestone shows a translated headline, translated region and original title', () => {

@@ -1,4 +1,5 @@
-const TRACKED_TICKERS = ['NBIS', 'CRWV', 'ORCL', 'AVGO'];
+import { companies, trackedCompanies } from './companyRegistry';
+const TRACKED_TICKERS = companies.map(company => company.ticker);
 const SOURCE_ORDER = ['prices', 'events', 'sec', 'eia'];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -12,7 +13,7 @@ export function buildDataHealth(snapshot = {}, now = new Date()) {
   const nowTime = now instanceof Date ? now.getTime() : Date.parse(now);
   const ageHours = generatedTime === null || !Number.isFinite(nowTime) ? null : Math.max(0, (nowTime - generatedTime) / 3600000);
 
-  const priceCoverage = TRACKED_TICKERS.map(ticker => {
+  const priceCoverage = trackedCompanies(snapshot).map(({ ticker }) => {
     const byDay = new Map(observations
       .filter(item => item.source === 'prices' && item.type === 'close' && item.ticker === ticker && validDate(item.observedAt) && Number.isFinite(Number(item.value)) && Number(item.value) > 0 && secureUrl(item.provenance?.originUrl || item.sourceUrl))
       .map(item => [item.observedAt.slice(0, 10), item]));
@@ -51,6 +52,7 @@ export function buildDataHealth(snapshot = {}, now = new Date()) {
   const reconstructed = Number(snapshot.backtestCoverage?.reconstructed || 0);
   const recorded = Number(snapshot.backtestCoverage?.recorded || 0);
   const blockers = [];
+  if (snapshot.trackedTickers !== undefined && (!Array.isArray(snapshot.trackedTickers) || !snapshot.trackedTickers.length || new Set(snapshot.trackedTickers).size !== snapshot.trackedTickers.length || snapshot.trackedTickers.some(ticker => !TRACKED_TICKERS.includes(ticker)))) blockers.push('trackedUniverse');
   if (Number(snapshot.schemaVersion) < 4) blockers.push('schema');
   if (!snapshot.backtestCoverage) blockers.push('backtestCoverage');
   if (!snapshot.methodologies?.companyScore) blockers.push('methodology');

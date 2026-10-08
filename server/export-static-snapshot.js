@@ -17,11 +17,31 @@ const companies = require('../src/data/companyExposure.json');
 const output = path.resolve(__dirname, '..', 'public', 'data', 'dashboard-snapshot.json');
 const runtimeOutput = path.resolve(__dirname, '..', 'public', 'data', 'dashboard-overview.json');
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+async function publishSnapshots(snapshot, readiness, { fullPath = output, runtimePath = runtimeOutput } = {}) {
+  if (!readiness.ready) throw new Error(`Public snapshot retained: ${readiness.blockerCount} readiness blockers.`);
+  const runtimeSnapshot = buildRuntimeSnapshot(snapshot);
+  const runtimeJson = `${JSON.stringify(runtimeSnapshot)}\n`;
+  await fs.mkdir(path.dirname(fullPath), { recursive: true });
+  await fs.mkdir(path.dirname(runtimePath), { recursive: true });
+  await Promise.all([
+    fs.writeFile(fullPath, `${JSON.stringify(snapshot, null, 2)}\n`),
+    fs.writeFile(runtimePath, runtimeJson),
+  ]);
+  return { runtimeSnapshot, runtimeJson };
+}
 async function readPrevious() { try { return JSON.parse(await fs.readFile(output, 'utf8')); } catch { return { observations: [], sourceHealth: {}, companyHistory: [], scores: [] }; } }
 async function refreshWithRetry(service, source, attempts = 3) {
   let result;
+  const tickerOutcomes = new Map();
+  let retryTickers;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    result = await service.ingest(source, true);
+    result = await service.ingest(source, true, retryTickers ? { tickers: retryTickers } : {});
+    if (result.tickerOutcomes) {
+      for (const item of result.tickerOutcomes) tickerOutcomes.set(item.ticker, item);
+      retryTickers = [...tickerOutcomes.values()].filter(item => item.status !== 'ok').map(item => item.ticker);
+      const successfulCount = [...tickerOutcomes.values()].filter(item => item.status === 'ok').length;
+      result = { ...result, tickerOutcomes: [...tickerOutcomes.values()], status: retryTickers.length === 0 ? 'ok' : successfulCount ? 'partial' : 'degraded', recordCount: [...tickerOutcomes.values()].reduce((sum, item) => sum + (item.recordCount || 0), 0) };
+    }
     // Event providers already retry transient errors within their own budgets.
     // Do not repeat denied requests just because another provider is partial.
     if (result.status === 'ok' || (source === 'events' && result.coverage)) return { ...result, attempts: attempt };
@@ -54,7 +74,7 @@ async function main() {
   const observations = mergeSnapshotObservations(previous.observations || [], fresh, outcomes);
   const health = mergeSnapshotHealth(previous.sourceHealth || {}, currentHealth, observations);
   const generatedAt = new Date().toISOString();
-  const scores = scoreCompanies(companies, observations, generatedAt);
+  const scores = scoreCompanies(companies.filter(company => trackedTickers.includes(company.ticker)), observations, generatedAt);
   const scoreSnapshots = scores.filter(score => score.marketSignal.available).map(score => ({
     ticker: score.ticker,
     asOf: score.asOf,
@@ -73,6 +93,7 @@ async function main() {
   const snapshot = {
     schemaVersion: 4,
     generatedAt,
+    trackedTickers,
     freshness: outcomes.every(item => item.status === 'ok') ? 'fresh' : successful.size ? 'partial' : 'stale',
     sourceHealth: health,
     outcomes,
@@ -92,13 +113,10 @@ async function main() {
     warningCount: readiness.warningCount,
     priceCoverage: readiness.priceCoverage,
   };
-  const runtimeSnapshot = buildRuntimeSnapshot(snapshot);
-  const runtimeJson = `${JSON.stringify(runtimeSnapshot)}\n`;
-  await fs.mkdir(path.dirname(output), { recursive: true });
-  await Promise.all([
-    fs.writeFile(output, `${JSON.stringify(snapshot, null, 2)}\n`),
-    fs.writeFile(runtimeOutput, runtimeJson),
-  ]);
+  if (!readiness.ready) {
+    console.error(JSON.stringify({ published: false, demoReadiness: snapshot.demoReadiness, blockers: readiness.checks.filter(item => item.severity === 'blocker' && !item.ok), outcomes }, null, 2));
+  }
+  const { runtimeSnapshot, runtimeJson } = await publishSnapshots(snapshot, readiness);
   console.log(JSON.stringify({
     freshness: snapshot.freshness,
     demoReadiness: snapshot.demoReadiness,
@@ -122,4 +140,4 @@ async function main() {
   }, null, 2));
 }
 if (require.main === module) main().catch(error => { console.error(error); process.exit(1); });
-module.exports = { refreshWithRetry, shouldRefreshPrices };
+module.exports = { refreshWithRetry, shouldRefreshPrices, publishSnapshots };

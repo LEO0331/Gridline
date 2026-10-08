@@ -197,7 +197,11 @@ npm run verify:demo
 
 Both snapshot files must agree exactly and pass the demo-critical gate before they are committed to `main`. The refresh workflow then explicitly dispatches `Deploy to GitHub Pages`, which performs a Node 22 lockfile install, production build, Pages deployment and Lighthouse CI. This explicit dispatch is necessary because a push made by a workflow using the repository `GITHUB_TOKEN` does not itself start another push-triggered workflow.
 
-The gate requires usable recent price history for all four tracked tickers. Historical v1 reconstructions are no longer published or required. Optional degraded providers remain visible as warnings.
+The gate requires at least 60 sourced daily closes through the expected US market session for every enabled ticker (20 by default). Historical v1 reconstructions are no longer published or required. Optional degraded providers remain visible as warnings. An incomplete refresh retains the last published snapshot.
+
+The shared company registry covers AI compute/transition (NBIS, CRWV, APLD, IREN, CIFR, CORZ), data-center operators (GDS, VNET, EQIX, DLR, IRM), infrastructure suppliers (AVGO, VRT, ETN, ANET, PWR), generation/energy (GEV, CEG, BE), and diversified cloud (ORCL). Category filters and ticker/name search narrow the company browser without changing the selected research company. Business descriptions link to official sources; categories are business roles, not investment rankings. `TICKERS` can select a supported subset for local ingestion, which is declared as `trackedTickers` in both snapshot artifacts.
+
+Before deploying the expanded account UI, apply [the additive watchlist migration](supabase/migrations/20261008_expand_watchlist.sql) to an existing Supabase database. Fresh installations use [user-preferences.sql](supabase/user-preferences.sql). The migration preserves saved preferences and row-level security. Individual price/issuer failures are disclosed and retain previous observations; successful tickers continue refreshing.
 
 Deployment runbook: [English](docs/static-snapshot-deployment.en.md) · [繁體中文](docs/static-snapshot-deployment.zh-TW.md).
 

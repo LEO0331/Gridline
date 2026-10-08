@@ -135,6 +135,7 @@ function buildRuntimeSnapshot(snapshot = {}) {
   const observations = snapshot.observations || [];
   return {
     schemaVersion: snapshot.schemaVersion || null,
+    ...(Array.isArray(snapshot.trackedTickers) ? { trackedTickers: snapshot.trackedTickers } : {}),
     runtimeProfile: RUNTIME_PROFILE,
     generatedAt: snapshot.generatedAt || null,
     freshness: snapshot.freshness || 'unknown',

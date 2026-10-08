@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const { DEFAULT_TICKERS, normalizeTickers } = require('./company-universe');
 
 for (const filename of ['.env.local', '.env']) {
   const file = path.resolve(__dirname, '..', filename);
@@ -21,7 +22,7 @@ module.exports = {
   apiWriteToken: process.env.API_WRITE_TOKEN || '',
   allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,https://leo0331.github.io').split(',').map(value => value.trim()).filter(Boolean),
   dataDir: process.env.DATA_DIR || path.join(root, 'data'),
-  tickers: (process.env.TICKERS || 'NBIS,CRWV,ORCL,AVGO').split(',').map(value => value.trim().toUpperCase()).filter(Boolean),
+  tickers: process.env.TICKERS === undefined ? DEFAULT_TICKERS : normalizeTickers(process.env.TICKERS),
   secUserAgent: process.env.SEC_USER_AGENT || '',
   eiaKey: process.env.EIA_API_KEY || '',
   pjmKey: process.env.PJM_API_KEY || '',

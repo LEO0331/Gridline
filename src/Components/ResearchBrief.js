@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import companyList from '../data/companyExposure.json';
+import { groupedCompanies, trackedCompanies } from '../companyRegistry';
 import { buildResearchBrief, briefRegionLabel } from '../researchBriefModel';
 import './ResearchBrief.css';
 
@@ -14,6 +14,8 @@ export default function ResearchBrief({ snapshot, ticker, region, regions, langu
   const zh = language === 'zh-TW';
   const t = (en, tw) => zh ? tw : en;
   const brief = useMemo(() => buildResearchBrief(snapshot, { ticker, region }), [snapshot, ticker, region]);
+  const companyGroups = groupedCompanies(trackedCompanies(snapshot));
+  const otherRelationshipTickers = brief.otherRelationshipTickers.filter(symbol => companyGroups.some(group => group.companies.some(company => company.ticker === symbol)));
   return <section className="research-brief" aria-label={t('Buildout evidence brief', '建設證據摘要')}>
     <div className="research-brief-head">
       <div><p className="eyebrow">{t('FOCUSED RESEARCH WORKFLOW', '聚焦研究流程')}</p>
@@ -21,7 +23,7 @@ export default function ResearchBrief({ snapshot, ticker, region, regions, langu
         <p>{t('Compare four independent evidence views. A dated record supports its stated fact, not a causal investment conclusion.', '並列四個獨立的證據面向。有日期的紀錄只支持其所述事實，不代表投資因果結論。')}</p>
       </div>
       <div className="research-brief-selectors">
-        <label>{t('Company', '公司')}<select value={ticker} onChange={event => onTickerChange(event.target.value)}>{companyList.map(company => <option key={company.ticker} value={company.ticker}>{company.ticker}</option>)}</select></label>
+        <label>{t('Company', '公司')}<select value={ticker} onChange={event => onTickerChange(event.target.value)}>{companyGroups.map(({ category, companies }) => <optgroup key={category.id} label={zh ? category.labelZh : category.label}>{companies.map(company => <option key={company.ticker} value={company.ticker}>{company.ticker} · {company.name}</option>)}</optgroup>)}</select></label>
         <label>{t('Region', '區域')}<select value={region} onChange={event => onRegionChange(event.target.value)}>{regions.map(item => <option key={item} value={item}>{briefRegionLabel(item, language)}</option>)}</select></label>
       </div>
     </div>
@@ -46,7 +48,7 @@ export default function ResearchBrief({ snapshot, ticker, region, regions, langu
         <small>{t('Published', '發布')} {item.publishedAt} · {t('Reviewed', '審查')} {item.reviewedAt}</small>
         <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{t('Official record ↗', '官方紀錄 ↗')}</a>
       </article>) : <p>{t('No documented company–facility–grid link is recorded for this selection.', '所選範圍尚無具來源的公司、設施與電網連結紀錄。')}</p>}
-        {brief.otherRelationshipTickers.length > 0 && <div className="relationship-other">{t('Documented link available for', '其他具來源連結的公司')}：{brief.otherRelationshipTickers.map(other => <button key={other} onClick={() => onTickerChange(other)}>{other} →</button>)}</div>}
+        {otherRelationshipTickers.length > 0 && <div className="relationship-other">{t('Documented link available for', '其他具來源連結的公司')}：{otherRelationshipTickers.map(other => <button key={other} onClick={() => onTickerChange(other)}>{other} →</button>)}</div>}
       </div>
     </div>
   </section>;

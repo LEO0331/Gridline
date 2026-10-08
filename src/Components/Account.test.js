@@ -195,3 +195,19 @@ test('Chinese account error uses customer-facing wording and offers retry', asyn
   expect(screen.getByRole('button', { name: '重試' })).toBeEnabled();
   expect(screen.queryByText(/資料表|權限政策|容量權重/)).not.toBeInTheDocument();
 });
+
+test('watchlist groups all 20 companies and saves newly added symbols', async () => {
+  supabase.auth.getSession.mockResolvedValue({ data: { session: { user: { id: 'u1', email: 'test@example.com' } } } });
+  render(<Account language="zh-TW" weight={100} onPreferences={() => {}} />);
+  fireEvent.click(await screen.findByRole('button', { name: '帳戶選項' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '儲存偏好設定' })).toBeEnabled());
+  expect(screen.getAllByRole('checkbox')).toHaveLength(20);
+  expect(screen.getByRole('region', { name: '發電與能源' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'BE' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'APLD' }));
+  fireEvent.click(screen.getByRole('button', { name: '儲存偏好設定' }));
+  await waitFor(() => expect(__query.upsert).toHaveBeenCalledWith(
+    { user_id: 'u1', language: 'zh-TW', weight: 100, watchlist: ['BE', 'APLD'] },
+    { onConflict: 'user_id' }
+  ));
+});

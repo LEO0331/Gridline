@@ -2,13 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { runPriceBacktest } from './backtestModel';
 import { researchLabCopy } from './researchLabI18n';
 import './BacktestLab.css';
+import { groupedCompanies, trackedCompanies } from './companyRegistry';
 
 const pct = value => value === null || value === undefined ? '—' : `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`;
 const dateOnly = value => value ? String(value).slice(0, 10) : '—';
 
 export default function BacktestLab({ onBack, language = 'en', onLanguageChange = () => {} }) {
   const [observations, setObservations] = useState([]);
+  const [snapshot, setSnapshot] = useState({});
   const [ticker, setTicker] = useState('NBIS');
+  useEffect(() => {
+    const enabled = trackedCompanies(snapshot);
+    if (enabled.length && !enabled.some(company => company.ticker === ticker)) setTicker(enabled[0].ticker);
+  }, [snapshot, ticker]);
   const copy = researchLabCopy(language);
   const b = copy.historical;
 
@@ -16,7 +22,7 @@ export default function BacktestLab({ onBack, language = 'en', onLanguageChange 
     let active = true;
     fetch(`${process.env.PUBLIC_URL}/data/dashboard-snapshot.json`, { cache: 'no-store' })
       .then(response => response.ok ? response.json() : Promise.reject())
-      .then(data => { if (active) setObservations(data.observations || []); })
+      .then(data => { if (active) { setObservations(data.observations || []); setSnapshot(data); } })
       .catch(() => { if (active) setObservations([]); });
     return () => { active = false; };
   }, []);
@@ -36,7 +42,7 @@ export default function BacktestLab({ onBack, language = 'en', onLanguageChange 
       <div><p>{b.kicker}</p><h1>{b.title}</h1><span>{b.intro}</span></div>
       <div className="backtest-selectors">
         <select aria-label={language === 'zh-TW' ? '公司代號' : 'Ticker'} value={ticker} onChange={event => setTicker(event.target.value)}>
-          {['NBIS', 'CRWV', 'ORCL', 'AVGO'].map(value => <option key={value}>{value}</option>)}
+          {groupedCompanies(trackedCompanies(snapshot)).map(({ category, companies }) => <optgroup key={category.id} label={language === 'zh-TW' ? category.labelZh : category.label}>{companies.map(company => <option key={company.ticker} value={company.ticker}>{company.ticker} · {company.name}</option>)}</optgroup>)}
         </select>
       </div>
     </section>

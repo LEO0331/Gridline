@@ -11,6 +11,7 @@ async function withJsonFixture(responses, run) {
     requests.push(url);
     const key = Object.keys(responses).find(part => url.includes(part));
     if (!key) throw new Error(`Unexpected request: ${url}`);
+    if (responses[key] instanceof Error) throw responses[key];
     return responses[key];
   };
   delete require.cache[sourcesPath];
@@ -19,6 +20,37 @@ async function withJsonFixture(responses, run) {
 }
 
 const entry = (val, end, filed, overrides = {}) => ({ val, end, filed, form: '10-Q', accn: '0001234567-26-000001', ...overrides });
+
+test('SEC isolates failed issuers, unmatched tickers and unavailable non-USD facts', async () => {
+  await withJsonFixture({ company_tickers: { 0: { ticker: 'GOOD', cik_str: 1 }, 1: { ticker: 'BAD', cik_str: 2 } }, CIK0000000001: { filings: { recent: {} }, facts: { 'ifrs-full': { Revenue: { units: { CNY: [entry(100, '2025-12-31', '2026-03-01', { form: '20-F', start: '2025-01-01' })] } } } } }, CIK0000000002: new Error('issuer unavailable') }, async ({ sec }) => {
+    const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['GOOD', 'BAD', 'MISSING'] });
+    assert.equal(result.status, 'partial');
+    assert.deepEqual(result.tickerOutcomes.filter(item => item.status === 'degraded').map(item => item.ticker).sort(), ['BAD', 'MISSING']);
+    assert.ok(result.tickerOutcomes.find(item => item.ticker === 'GOOD').missingFacts.includes('revenue'));
+    assert.equal(result.observations.some(item => item.type === 'revenue'), false);
+    assert.equal(result.observations[0].ticker, 'GOOD');
+    assert.equal(result.tickerOutcomes.find(item => item.ticker === 'GOOD').recordCount, 1);
+  });
+});
+
+test('price ingestion reports successful, partial and total ticker failures independently', async () => {
+  const history = require('./price-history');
+  const original = history.fetchTickerHistory;
+  const sourcesPath = require.resolve('./sources');
+  try {
+    for (const failed of [[], ['AVGO'], ['NBIS', 'AVGO']]) {
+      history.fetchTickerHistory = async ({ ticker }) => {
+        if (failed.includes(ticker)) throw new Error('provider timeout');
+        return { provider: 'fixture', providerUrl: 'https://example.com/prices', rows: [{ date: '2026-10-07', close: 100 }] };
+      };
+      delete require.cache[sourcesPath];
+      const result = await require('./sources').prices({ tickers: ['NBIS', 'AVGO'] });
+      assert.equal(result.status, failed.length === 0 ? 'ok' : failed.length === 2 ? 'degraded' : 'partial');
+      assert.equal(result.observations.length, 2 - failed.length);
+      assert.deepEqual(result.tickerOutcomes.filter(item => item.status === 'degraded').map(item => item.ticker), failed);
+    }
+  } finally { history.fetchTickerHistory = original; delete require.cache[sourcesPath]; }
+});
 
 test('SEC selects the latest fact period, retains its unit and links the exact filing', async () => {
   const facts = { facts: { 'us-gaap': {
@@ -37,6 +69,7 @@ test('SEC selects the latest fact period, retains its unit and links the exact f
   const submissions = { filings: { recent: { form: ['10-Q', '10-Q'], filingDate: ['2026-08-10', '2025-08-10'], accessionNumber: ['0001234567-26-000001', '0001234567-25-000001'], primaryDocument: ['report.htm', 'prior.htm'] } } };
   await withJsonFixture({ company_tickers: { 0: { ticker: 'TEST', cik_str: 1234567 } }, submissions: submissions, companyfacts: facts }, async ({ sec }) => {
     const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['TEST'] });
+    assert.equal(result.tickerOutcomes[0].recordCount, result.observations.length);
     const revenue = result.observations.find(item => item.type === 'revenue');
     assert.equal(revenue.value, 130);
     assert.equal(revenue.unit, 'USD');

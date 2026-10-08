@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { redirectUrl, supabase } from '../auth/client';
 import './Account.css';
-
-const WATCHLIST_SYMBOLS = ['NBIS', 'CRWV', 'ORCL', 'AVGO'];
+import { companies, groupedCompanies } from '../companyRegistry';
 
 function authMessage(error, mode, t) {
   const message = String(error?.message || '').toLowerCase();
@@ -289,7 +288,9 @@ export default function Account({ language, weight, onPreferences }) {
 
         <fieldset disabled={busy || preferenceState !== 'ready'}>
           <legend>{t('Watchlist', '追蹤清單')}</legend>
-          {WATCHLIST_SYMBOLS.map(symbol => <label key={symbol}>
+          {groupedCompanies(companies).map(({ category, companies: group }) => <section key={category.id} aria-label={zh ? category.labelZh : category.label}>
+          <h3>{zh ? category.labelZh : category.label}</h3>
+          {group.map(({ ticker: symbol }) => <label key={symbol}>
             <input
               type="checkbox"
               checked={watchlist.includes(symbol)}
@@ -298,7 +299,7 @@ export default function Account({ language, weight, onPreferences }) {
                 : watchlist.filter(item => item !== symbol))}
             />
             {symbol}
-          </label>)}
+          </label>)}</section>)}
         </fieldset>
 
         <div className="account-actions">

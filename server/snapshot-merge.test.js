@@ -4,6 +4,20 @@ const { mergeSnapshotObservations, mergeSnapshotHealth } = require('./snapshot-m
 
 const observation = (id, source, date, value) => ({ id, source, type: 'close', ticker: source === 'prices' ? 'NBIS' : undefined, observedAt: `${date}T00:00:00.000Z`, value });
 
+test('partial ticker refresh replaces healthy ticker while retaining failed ticker', () => {
+  const old = [observation('old-n', 'prices', '2026-09-14', 100), { ...observation('old-a', 'prices', '2026-09-14', 90), ticker: 'AVGO' }];
+  const fresh = [observation('new-n', 'prices', '2026-09-15', 101)];
+  const merged = mergeSnapshotObservations(old, fresh, [{ source: 'prices', status: 'partial', tickerOutcomes: [{ ticker: 'NBIS', status: 'ok' }, { ticker: 'AVGO', status: 'degraded' }] }]);
+  assert.deepEqual(merged.map(row => row.id).sort(), ['new-n', 'old-a']);
+});
+
+test('partial ticker health preserves failed ticker success date', () => {
+  const prior = '2026-09-14T22:00:00Z';
+  const health = mergeSnapshotHealth({ prices: { lastSuccessAt: prior, tickers: { AVGO: { status: 'ok', lastSuccessAt: prior } } } }, { prices: { status: 'partial', tickers: { AVGO: { status: 'degraded', message: 'timeout' }, NBIS: { status: 'ok', lastSuccessAt: '2026-09-15T22:00:00Z' } } } });
+  assert.equal(health.prices.tickers.AVGO.lastSuccessAt, prior);
+  assert.equal(health.prices.lastSuccessAt, prior);
+});
+
 test('degraded price refresh retains last-known-good static price history', () => {
   const previous = [
     observation('price-old', 'prices', '2026-09-14', 100),

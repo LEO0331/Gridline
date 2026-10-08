@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ScenarioLab from './ScenarioLab';
 import BacktestLab from './BacktestLab';
@@ -49,4 +49,20 @@ test('historical signal page uses customer-facing signal families in Traditional
   expect(screen.queryByText(/MA5|MA10/)).not.toBeInTheDocument();
   await waitFor(() => expect(global.fetch).toHaveBeenCalled());
   expect(screen.getByRole('button', { name: 'EN' })).toBeInTheDocument();
+});
+
+test('historical signal ticker synchronizes after a subset snapshot loads', async () => {
+  global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ trackedTickers: ['VRT', 'ETN'], observations: [] }) }));
+  render(<BacktestLab language="en" onBack={() => {}} />);
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Ticker' })).toHaveValue('VRT'));
+  expect(screen.queryByRole('option', { name: /NBIS/ })).not.toBeInTheDocument();
+});
+
+test('historical signals offers the expanded grouped universe and keeps missing history unavailable', () => {
+  render(<BacktestLab language="en" onBack={() => {}} />);
+  expect(screen.getAllByRole('option')).toHaveLength(20);
+  expect(screen.getByRole('group', { name: 'Generation & energy' })).toBeInTheDocument();
+  fireEvent.change(screen.getByRole('combobox', { name: 'Ticker' }), { target: { value: 'BE' } });
+  expect(screen.getByRole('combobox', { name: 'Ticker' })).toHaveValue('BE');
+  expect(screen.getByText(researchLabCopy('en').historical.unavailable)).toBeInTheDocument();
 });

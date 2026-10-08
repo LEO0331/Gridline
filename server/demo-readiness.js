@@ -1,6 +1,6 @@
 const { latestExpectedPriceSession } = require('./us-market-calendar');
 const DAY_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_TICKERS = ['NBIS', 'CRWV', 'ORCL', 'AVGO'];
+const { DEFAULT_TICKERS } = require('./company-universe');
 const MIN_PRICE_ROWS = 60;
 const MAX_PRICE_STALENESS_DAYS = 10;
 
@@ -27,12 +27,15 @@ function check(id, severity, ok, message, detail = null) {
 }
 
 function evaluateDemoReadiness(snapshot, {
-  tickers = DEFAULT_TICKERS,
+  tickers = snapshot?.trackedTickers || DEFAULT_TICKERS,
   now = snapshot?.generatedAt || new Date().toISOString(),
   minPriceRows = MIN_PRICE_ROWS,
   maxPriceStalenessDays = MAX_PRICE_STALENESS_DAYS,
 } = {}) {
   const checks = [];
+  const validUniverse = Array.isArray(tickers) && tickers.length > 0 && tickers.every(ticker => DEFAULT_TICKERS.includes(ticker)) && new Set(tickers).size === tickers.length;
+  checks.push(check('tracked-universe', 'blocker', validUniverse, 'Enabled tickers form a nonempty, unique supported universe.'));
+  if (!validUniverse) tickers = DEFAULT_TICKERS;
   const generatedAt = validDate(snapshot?.generatedAt) ? snapshot.generatedAt : null;
   checks.push(check('schema-v4', 'blocker', Number(snapshot?.schemaVersion) >= 4, 'Static snapshot uses schemaVersion 4 or newer.', { actual: snapshot?.schemaVersion ?? null }));
   checks.push(check('generated-at', 'blocker', Boolean(generatedAt), 'Snapshot has a valid generatedAt timestamp.', { actual: snapshot?.generatedAt ?? null }));
