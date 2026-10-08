@@ -7,6 +7,7 @@ import SnapshotChanges from '../Components/SnapshotChanges';
 import SnapshotLoadState from '../Components/SnapshotLoadState';
 import EventSourceCoverage from '../Components/EventSourceCoverage';
 import ResearchBrief from '../Components/ResearchBrief';
+import CompanyResearch from '../Components/CompanyResearch';
 import { companies, COMPANY_CATEGORIES, categoryLabel as companyCategoryLabel, groupedCompanies, trackedCompanies } from '../companyRegistry';
 import { summarizeSnapshot } from '../snapshotMeta';
 import { CURRENT_EVENT_DAYS, EVENT_TYPES, infrastructureEvents, eventTitle, REGION_ZH, CATEGORY_ZH } from '../eventModel';
@@ -118,6 +119,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
       <section className="hero"><div><p className="eyebrow">{t('DATA-CENTER BUILDOUT RESEARCH', '資料中心建設研究')}</p><h1>{t('Follow the buildout,', '追蹤資料中心建設，')}<br/><em>{t('from grid to market.', '從電網到市場。')}</em></h1><p className="copy">{t('Compare dated grid demand, project decisions, company disclosures and market prices. Inspect each original source and the gaps between them.', '並列具日期的電網需求、專案決策、公司揭露與市場價格，檢視原始來源及證據缺口。')}</p></div><div className="asof"><span>{t('MARKET SNAPSHOT · LOCAL TIME', '市場快照 · 本地時間')}</span><b>{snapshotDisplayLabel}</b><small>{snapshotMeta.totalSources ? t(`${snapshotMeta.healthySources}/${snapshotMeta.totalSources} sources refreshed · ${snapshotMeta.freshness === 'fresh' ? 'current' : snapshotMeta.freshness === 'partial' ? 'Partial source coverage' : 'outdated'}`, `${snapshotMeta.healthySources}/${snapshotMeta.totalSources} 個來源已更新 · ${snapshotMeta.freshness === 'fresh' ? '最新快照' : snapshotMeta.freshness === 'partial' ? '部分來源涵蓋' : '待更新'}`) : t('Provider status unavailable', '來源狀態未提供')}</small></div></section>
       {snapshotState === 'ready' && hasObservations && <>
       <ResearchBrief snapshot={snapshot} ticker={ticker} region={briefRegion} regions={[ALL, ...REGIONS.map(item => item.name)]} language={language} onTickerChange={setTicker} onRegionChange={setBriefRegion} />
+      <CompanyResearch snapshot={snapshot} ticker={ticker} language={language} />
       <section className="lens-picker" aria-label={t('Select signal lens', '選擇訊號視角')}>
         {SIGNAL_LENSES.map(option => <button key={option.id} onClick={() => setLensId(option.id)} className={lensId === option.id ? 'active-filter' : ''} aria-pressed={lensId === option.id}>{zh ? option.nameZh : option.name}</button>)}
       </section>

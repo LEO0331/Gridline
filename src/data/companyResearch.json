@@ -1,0 +1,510 @@
+[
+  {
+    "ticker": "NBIS",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track partner financing, capacity delivery and recognized revenue separately from planned capacity.",
+    "focusZh": "分別追蹤夥伴融資、容量交付與已認列收入，避免與規劃容量混淆。",
+    "risks": "Partner financing and operating standards remain execution requirements; planned capacity is not completed capacity.",
+    "risksZh": "夥伴融資與營運標準仍是執行條件；規劃容量不等於已完成容量。",
+    "officialHosts": [
+      "nebius.com"
+    ],
+    "listingUrl": "https://nebius.com/newsroom",
+    "sources": [
+      {
+        "source": "Nebius Newsroom",
+        "url": "https://nebius.com/newsroom/nebius-introduces-business-model-to-scale-ai-cloud-globally-through-infrastructure-partnerships",
+        "title": "Nebius introduces business model to scale AI cloud globally through infrastructure partnerships",
+        "titleZh": "Nebius 推出透過基礎設施夥伴擴展 AI 雲端的模式",
+        "publishedAt": "2026-07-15T00:00:00Z",
+        "evidenceText": "partners finance and own the infrastructure and hardware",
+        "summary": "Nebius described a partner-owned infrastructure model in which it supplies its AI cloud platform and brings capacity to customers.",
+        "summaryZh": "Nebius 公布夥伴持有基礎設施的模式，由 Nebius 提供 AI 雲端平台並向客戶供應容量。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "CRWV",
+    "reviewedAt": "2026-10-08",
+    "focus": "Compare backlog conversion, active capacity and financing costs against recognized revenue.",
+    "focusZh": "比較待履約合約轉為收入、已啟用容量及融資成本。",
+    "risks": "Backlog depends on delivery and service availability; contracted power differs from active power.",
+    "risksZh": "待履約合約取決於交付及服務可用性；已簽約電力與已啟用電力不同。",
+    "officialHosts": [
+      "investors.coreweave.com"
+    ],
+    "listingUrl": "https://investors.coreweave.com/news/default.aspx",
+    "sources": [
+      {
+        "source": "CoreWeave Investor Relations",
+        "url": "https://investors.coreweave.com/news/news-details/2026/CoreWeave-Reports-Strong-Second-Quarter-2026-Results/default.aspx",
+        "title": "CoreWeave Reports Strong Second Quarter 2026 Results",
+        "titleZh": "CoreWeave 公布 2026 年第二季業績",
+        "publishedAt": "2026-08-11T00:00:00Z",
+        "evidenceText": "Expanded active power by nearly 500 MWs to reach 1.5 GW",
+        "summary": "CoreWeave reported Q2 revenue and backlog alongside increased active and contracted power, with continued reported losses.",
+        "summaryZh": "CoreWeave 公布第二季收入及待履約合約，並增加已啟用與已簽約電力容量；申報結果仍有虧損。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "ORCL",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track cloud revenue, capital investment funding and remaining performance obligations separately.",
+    "focusZh": "分別追蹤雲端收入、資本投入融資及剩餘履約義務。",
+    "risks": "Contracted demand and management expectations are distinct from recognized revenue and operating cash flow.",
+    "risksZh": "合約需求與管理層預期不同於已認列收入及營運現金流。",
+    "officialHosts": [
+      "www.oracle.com"
+    ],
+    "listingUrl": "https://www.oracle.com/news/",
+    "sources": [
+      {
+        "source": "Oracle Newsroom",
+        "url": "https://www.oracle.com/news/announcement/q4fy26-earnings-release-2026-06-10/",
+        "title": "Oracle Announces Record Q4 and FY 2026 Results Driven by Cloud Infrastructure & Cloud Applications",
+        "titleZh": "Oracle 公布 2026 財年第四季及全年業績",
+        "publishedAt": "2026-06-10T00:00:00Z",
+        "evidenceText": "Free cash flow was negative",
+        "summary": "Oracle reported cloud infrastructure growth alongside capital investment and negative fiscal-year free cash flow.",
+        "summaryZh": "Oracle 公布雲端基礎設施成長，同時說明資本投入及全年負自由現金流。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "AVGO",
+    "reviewedAt": "2026-10-08",
+    "focus": "Separate AI semiconductor sales from other segments and distinguish reported results from quarterly guidance.",
+    "focusZh": "區分 AI 半導體收入與其他部門，並分開檢視實績及季度指引。",
+    "risks": "Guidance is an estimate; non-GAAP measures require reconciliation with GAAP results.",
+    "risksZh": "指引屬估計；非 GAAP 指標須與 GAAP 實績調節比較。",
+    "officialHosts": [
+      "investors.broadcom.com"
+    ],
+    "listingUrl": "https://investors.broadcom.com/financial-information/financial-news-releases",
+    "sources": [
+      {
+        "source": "Broadcom Investor Relations",
+        "url": "https://investors.broadcom.com/news-releases/news-release-details/broadcom-inc-announces-third-quarter-fiscal-year-2026-financial",
+        "title": "Broadcom Inc. Announces Third Quarter Fiscal Year 2026 Financial Results and Quarterly Dividend",
+        "titleZh": "Broadcom 公布 2026 財年第三季業績及季度股息",
+        "publishedAt": "2026-09-02T00:00:00Z",
+        "evidenceText": "Demand for our custom AI accelerators and networking continues to be very strong",
+        "summary": "Broadcom reported AI semiconductor demand and results within its broader semiconductor and infrastructure software businesses.",
+        "summaryZh": "Broadcom 公布 AI 半導體需求與業績，其業務同時涵蓋其他半導體及基礎設施軟體。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "APLD",
+    "reviewedAt": "2026-10-08",
+    "focus": "Monitor campus delivery and financing, distinguishing base-term commitments from optional renewals and utility power from critical IT load.",
+    "focusZh": "追蹤園區交付及融資，區分基本租期與選擇性續租，以及公用電力容量與關鍵 IT 負載。",
+    "risks": "Contracted revenue is spread across future lease years; the larger renewal-inclusive value depends on options being exercised. Construction and customer acceptance remain execution milestones.",
+    "risksZh": "合約收入分布於未來租期；包含續租的較大金額須以選擇權實際行使為前提。建設與客戶驗收仍是執行重點。",
+    "officialHosts": [
+      "ir.applieddigital.com"
+    ],
+    "listingUrl": "https://ir.applieddigital.com/news-events/press-releases",
+    "sources": [
+      {
+        "source": "Applied Digital Investor Relations",
+        "url": "https://ir.applieddigital.com/sec-filings/all-sec-filings/content/0001493152-26-027984/ex99-1.htm",
+        "title": "Applied Digital Signs 210 MW Lease at Delta Forge 2, Expanding Its AI Factory Franchise Model to a Fifth Campus",
+        "titleZh": "Applied Digital · 官方業務進展",
+        "publishedAt": "2026-06-08T00:00:00Z",
+        "evidenceText": "The agreement covers 210 MW of critical IT load under a 15-year take-or-pay structure",
+        "summary": "Applied Digital announced a 210 MW critical IT lease at Delta Forge 2 with an investment-grade U.S. hyperscaler. The 15-year base term represents approximately $5.2 billion of contracted revenue.",
+        "summaryZh": "Applied Digital 宣布 Delta Forge 2 與美國投資等級大型雲端業者簽訂 210 MW 關鍵 IT 負載租約，15 年基本租期約有 52 億美元合約收入。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "IREN",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track commissioning, testing and customer acceptance against contracted capacity; compare recognized AI revenue with operating ARR and GPU financing costs.",
+    "focusZh": "追蹤已簽約容量的啟用、測試及客戶驗收，並比較已認列 AI 收入、營運 ARR 與 GPU 融資成本。",
+    "risks": "ARR is a non-GAAP operating metric and recognized revenue may be materially lower. Mining conversions caused impairments; some customer deployments use 9% fixed-rate financing.",
+    "risksZh": "ARR 是非 GAAP 營運指標，實際認列收入可能明顯較低。挖礦設施轉型產生減損，部分客戶部署採用 9% 固定利率融資。",
+    "officialHosts": [
+      "irisenergy.gcs-web.com",
+      "iren.com"
+    ],
+    "listingUrl": "https://iren.com/investors/news",
+    "sources": [
+      {
+        "source": "IREN Investor Relations",
+        "url": "https://irisenergy.gcs-web.com/news-releases/news-release-details/iren-reports-fy26-results",
+        "title": "IREN Reports FY26 Results",
+        "titleZh": "IREN · 官方業務進展",
+        "publishedAt": "2026-08-27T00:00:00Z",
+        "evidenceText": "AI Cloud Services revenue increased ~8x to $128.8m in FY26",
+        "summary": "IREN reported FY26 AI cloud revenue of $128.8 million and $4 billion of contracted ARR for 2026 capacity versus $1 billion operating ARR. It delivered its first Horizon deployment to Microsoft in August.",
+        "summaryZh": "IREN 公布 FY26 AI 雲端收入 1.288 億美元，2026 容量已簽約 ARR 為 40 億美元，相較已營運 ARR 約 10 億美元；8 月向 Microsoft 交付首個 Horizon 部署。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "CIFR",
+    "reviewedAt": "2026-10-08",
+    "focus": "Monitor remaining Black Pearl halls, Barber Lake completion and Stingray construction; separate early-stage site options from operating rent-producing capacity.",
+    "focusZh": "追蹤 Black Pearl 剩餘機房、Barber Lake 完工及 Stingray 建設，區分早期場址選擇權與已營運收租容量。",
+    "risks": "Apollo is an option and studied load submission, not an energized facility. Q2 adjusted EBITDA remained negative and project expansion increased borrowing obligations.",
+    "risksZh": "Apollo 仍是場址選擇權與研究負載申請，並非已通電設施。第二季調整後 EBITDA 仍為負值，專案擴建增加借款負擔。",
+    "officialHosts": [
+      "investors.cipherdigital.com",
+      "investors.ciphermining.com"
+    ],
+    "listingUrl": "https://investors.cipherdigital.com/news-releases",
+    "sources": [
+      {
+        "source": "Cipher Digital Investor Relations",
+        "url": "https://investors.cipherdigital.com/news-releases/news-release-details/cipher-digital-provides-second-quarter-2026-business-update",
+        "title": "Cipher Digital Provides Second Quarter 2026 Business Update",
+        "titleZh": "Cipher Digital · 官方業務進展",
+        "publishedAt": "2026-08-04T00:00:00Z",
+        "evidenceText": "rent has commenced at the site",
+        "summary": "Cipher Digital reported initial Black Pearl delivery and rent commencement two months ahead of the original schedule. It also secured an option for the up-to-900 MW Apollo site and completed Stingray project financing.",
+        "summaryZh": "Cipher Digital 表示 Black Pearl 首批容量已於 8 月交付並開始收租，比原定時程提前兩個月；另取得最高 900 MW Apollo 場址選擇權並完成 Stingray 專案融資。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "CORZ",
+    "reviewedAt": "2026-10-08",
+    "focus": "Compare leased versus billing MW, colocation revenue ramp and construction spending while tracking AMD deployments and remaining mining-facility conversions.",
+    "focusZh": "比較已出租與計費 MW、託管收入成長及建設支出，並追蹤 AMD 部署與剩餘挖礦設施轉型。",
+    "risks": "Potential contracted revenue is not current revenue. Construction financing, sufficient electricity and long-lead equipment remain dependencies; mining operations still contribute some revenue.",
+    "risksZh": "潛在合約收入並非當期收入。建設融資、足夠電力及長交期設備仍是必要條件，挖礦業務也仍貢獻部分收入。",
+    "officialHosts": [
+      "investors.corescientific.com"
+    ],
+    "listingUrl": "https://investors.corescientific.com/news-events/press-releases",
+    "sources": [
+      {
+        "source": "Core Scientific Investor Relations",
+        "url": "https://investors.corescientific.com/news-events/press-releases/detail/139/core-scientific-announces-second-quarter-2026-results",
+        "title": "Core Scientific Announces Second Quarter 2026 Results",
+        "titleZh": "Core Scientific · 官方業務進展",
+        "publishedAt": "2026-07-28T00:00:00Z",
+        "evidenceText": "Increased total leased customer power capacity to approximately 1.1 GW",
+        "summary": "Core Scientific reported approximately 1.1 GW of leased customer power and 437 MW billing by mid-July. Its AMD partnership includes 15-year agreements for approximately 530 MW across five sites.",
+        "summaryZh": "Core Scientific 公布約 1.1 GW 已租客戶電力容量，7 月中旬已有 437 MW 開始計費；AMD 合作包含五個場址約 530 MW 的 15 年協議。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "GDS",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track committed area becoming utilized area, utility costs and funding for construction; use RMB reporting and separate DayOne investment gains from operating performance.",
+    "focusZh": "追蹤已簽約面積轉為實際使用面積、電力成本及建設資金；以人民幣報表為基礎，區分 DayOne 投資收益與營運表現。",
+    "risks": "Higher utility costs reduced margins. Net income included a DayOne dilution gain; USD figures are convenience translations. China regulation and investee outcomes remain material qualifiers.",
+    "risksZh": "較高電力成本壓低利潤率；淨利包含 DayOne 股權稀釋收益，美元金額僅為便利換算。中國監管及被投資公司結果仍是重要變數。",
+    "officialHosts": [
+      "investors.gds-services.com"
+    ],
+    "listingUrl": "https://investors.gds-services.com/iframe-news-releases/",
+    "sources": [
+      {
+        "source": "GDS Investor Relations",
+        "url": "https://investors.gds-services.com/news-releases/news-release-details/gds-holdings-limited-reports-second-quarter-2026-results",
+        "title": "GDS Holdings Limited Reports Second Quarter 2026 Results",
+        "titleZh": "GDS Holdings · 官方業務進展",
+        "publishedAt": "2026-08-13T00:00:00Z",
+        "evidenceText": "Utilization rate (area utilized divided by area in service) was 79.2%",
+        "summary": "GDS reported Q2 revenue of RMB3.088 billion and 79.2% utilization. It raised 2026 revenue guidance to RMB12.7–13.0 billion and capex guidance to approximately RMB10 billion as data-center development increases.",
+        "summaryZh": "GDS 公布第二季收入人民幣 30.88 億元、使用率 79.2%，並將 2026 收入指引提高至人民幣 127 至 130 億元，資本支出約 100 億元，以擴大資料中心建設。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "VNET",
+    "reviewedAt": "2026-10-08",
+    "focus": "Monitor delivered MW becoming customer utilization, wholesale revenue growth, depreciation and financing needs; retain RMB units and distinguish ADS from ordinary-share results.",
+    "focusZh": "追蹤交付 MW 轉為客戶實際使用、批發收入成長、折舊及融資需求；保留人民幣單位並區分 ADS 與普通股結果。",
+    "risks": "Expansion raised depreciation and reduced GAAP gross margin; the company still reported a net loss. Each ADS represents six ordinary shares; USD amounts are translated reporting figures.",
+    "risksZh": "擴建增加折舊並降低 GAAP 毛利率，公司仍呈現淨虧損。每份 ADS 代表六股普通股，美元金額是報表換算值。",
+    "officialHosts": [
+      "ir.21vianet.com",
+      "ir.vnet.com"
+    ],
+    "listingUrl": "https://ir.21vianet.com/news-events/press-releases",
+    "sources": [
+      {
+        "source": "VNET Investor Relations",
+        "url": "https://ir.21vianet.com/news-releases/news-release-details/vnet-reports-unaudited-second-quarter-2026-financial-results",
+        "title": "VNET Reports Unaudited Second Quarter 2026 Financial Results",
+        "titleZh": "VNET Group · 官方業務進展",
+        "publishedAt": "2026-08-18T00:00:00Z",
+        "evidenceText": "Wholesale capacity in service increased by 49.4% year-over-year to 1,007MW",
+        "summary": "VNET reported 1,007 MW of wholesale capacity in service and 744 MW utilized at June 30. Wholesale revenue grew 29.3% to RMB1.10 billion, and the company reported a 345 MW new cloud-provider order.",
+        "summaryZh": "VNET 公布 6 月底批發業務已投運容量 1,007 MW、已使用容量 744 MW；批發收入年增 29.3% 至人民幣 11 億元，另取得雲端業者 345 MW 新訂單。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "EQIX",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track recurring revenue and interconnection growth alongside capacity delivery and capital spending; compare AFFO consistently after identifying one-time xScale fees.",
+    "focusZh": "追蹤經常性收入與互連成長，以及容量交付與資本支出；辨識一次性 xScale 費用後一致比較 AFFO。",
+    "risks": "Quarterly revenue and AFFO included one-time xScale fees. AFFO is non-GAAP; higher construction spending and currency assumptions qualify management's outlook.",
+    "risksZh": "當季收入及 AFFO 包含一次性 xScale 費用。AFFO 為非 GAAP 指標，較高建設支出及匯率假設影響管理層展望。",
+    "officialHosts": [
+      "investor.equinix.com"
+    ],
+    "listingUrl": "https://investor.equinix.com/news-events/press-releases",
+    "sources": [
+      {
+        "source": "Equinix Investor Relations",
+        "url": "https://investor.equinix.com/news-events/press-releases/detail/1114/equinix-reports-second-quarter-results-raises-2026",
+        "title": "Equinix Reports Second-Quarter Results, Raises 2026 Guidance and Long-Term Outlook",
+        "titleZh": "Equinix · 官方業務進展",
+        "publishedAt": "2026-07-29T00:00:00Z",
+        "evidenceText": "Added a record 9,700 net interconnections in the quarter",
+        "summary": "Equinix reported 11% monthly recurring revenue growth and 9,700 net interconnection additions in Q2. Capacity expansion included 52 projects in 33 markets, while 2026 capital expenditure guidance reached $5–6 billion.",
+        "summaryZh": "Equinix 公布第二季月經常性收入成長 11%、淨增加 9,700 個互連連線；33 個市場共有 52 個擴建專案，2026 資本支出指引達 50 至 60 億美元。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "DLR",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track backlog conversion to rent and development funding; compare own-share bookings and core FFO excluding promote income, including small-capacity interconnection demand.",
+    "focusZh": "追蹤待交付合約轉為租金及開發資金；比較公司應佔訂約與排除績效分成收益的核心 FFO，也關注小容量互連需求。",
+    "risks": "Backlog is future annualized rent, not recognized revenue. Q2 Core FFO included development promote and insurance recovery; full-share and own-share values are not interchangeable.",
+    "risksZh": "待交付合約是未來年化租金，並非已認列收入。第二季核心 FFO 包含開發績效分成與保險回收，全部持股與公司應佔數值不可混用。",
+    "officialHosts": [
+      "investor.digitalrealty.com"
+    ],
+    "listingUrl": "https://investor.digitalrealty.com/news-releases",
+    "sources": [
+      {
+        "source": "Digital Realty Investor Relations",
+        "url": "https://investor.digitalrealty.com/news-releases/news-release-details/digital-realty-reports-second-quarter-2026-results",
+        "title": "Digital Realty Reports Second Quarter 2026 Results",
+        "titleZh": "Digital Realty · 官方業務進展",
+        "publishedAt": "2026-07-23T00:00:00Z",
+        "evidenceText": "Reported a record total backlog of $1.9 billion of annualized GAAP base rent",
+        "summary": "Digital Realty reported $1.9 billion of annualized base-rent backlog at full ownership share, or $1.4 billion at its own share. Q2 bookings included a $108 million contribution from small-capacity and interconnection customers.",
+        "summaryZh": "Digital Realty 公布按全部持股計算的年化基本租金待交付合約 19 億美元，公司應佔為 14 億美元；第二季小容量與互連客戶訂約貢獻 1.08 億美元。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "IRM",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track leasing conversion into operating capacity and revenue alongside capital funding and power costs.",
+    "focusZh": "追蹤簽租轉為營運容量與收入的進度，以及資本支出融資和電力成本。",
+    "risks": "Records storage, digital and asset lifecycle services remain material businesses; the release identifies capital funding and data-center power costs as risks.",
+    "risksZh": "文件儲存、數位與資產生命週期服務仍是重要業務；公告列出資本支出融資和資料中心電費風險。",
+    "officialHosts": [
+      "investors.ironmountain.com",
+      "www.ironmountain.com"
+    ],
+    "listingUrl": "https://investors.ironmountain.com/news/",
+    "sources": [
+      {
+        "source": "Iron Mountain Investor Relations",
+        "url": "https://investors.ironmountain.com/news/news-details/2026/Iron-Mountain-Reports-Second-Quarter-2026-Results/default.aspx",
+        "title": "Iron Mountain Reports Second Quarter 2026 Results",
+        "titleZh": "Iron Mountain · 官方業務進展",
+        "publishedAt": "2026-08-05T00:00:00Z",
+        "evidenceText": "Data center leasing of 110 megawatts year to date",
+        "summary": "Iron Mountain reported 110 MW of data-center leasing through July, including 13 MW in Q2 and 75 MW in July.",
+        "summaryZh": "Iron Mountain 公布截至七月累計資料中心簽租 110 MW，其中第二季 13 MW、七月 75 MW。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "VRT",
+    "reviewedAt": "2026-10-08",
+    "focus": "Monitor manufacturing ramp and delivery of modular power and data-center fit-out equipment.",
+    "focusZh": "追蹤產能爬坡，以及模組電力與資料中心建置設備的交付進度。",
+    "risks": "The announced regional capacity increase depends on facilities reaching full ramp; supply expansion is distinct from operating data-center ownership.",
+    "risksZh": "公告中的區域產能提升取決於工廠完成爬坡；供應設備擴產與直接持有營運資料中心不同。",
+    "officialHosts": [
+      "investors.vertiv.com",
+      "www.vertiv.com"
+    ],
+    "listingUrl": "https://investors.vertiv.com/news/",
+    "sources": [
+      {
+        "source": "Vertiv Investor Relations",
+        "url": "https://investors.vertiv.com/news/news-details/2026/Vertiv-Announces-Expansion-of-Manufacturing-Capacity-Spanning-Infrastructure-Solutions-Power-and-Rack-Systems-to-Meet-Rising-Demand/default.aspx",
+        "title": "Vertiv Announces Expansion of Manufacturing Capacity Spanning Infrastructure Solutions, Power, and Rack Systems, to Meet Rising Demand",
+        "titleZh": "Vertiv · 官方業務進展",
+        "publishedAt": "2026-03-24T00:00:00Z",
+        "evidenceText": "four new or expanding manufacturing facilities in the Americas",
+        "summary": "Vertiv announced four manufacturing additions or expansions for power, integrated cabinets and infrastructure solutions serving high-density data centers.",
+        "summaryZh": "Vertiv 宣布四處工廠新設或擴產，涵蓋高密度資料中心所需的電力、整合機櫃與基礎設施方案。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "ETN",
+    "reviewedAt": "2026-10-08",
+    "focus": "Monitor the 2027 production start and execution of switchgear capacity expansion.",
+    "focusZh": "追蹤 2027 年投產時程與開關設備產能擴充的執行進度。",
+    "risks": "The plant serves utility and industrial demand as well as data centers; announced production timing remains prospective.",
+    "risksZh": "工廠除資料中心外也服務公用事業與工業需求；公告投產日期仍屬預期。",
+    "officialHosts": [
+      "www.eaton.com"
+    ],
+    "listingUrl": "https://www.eaton.com/us/en-us/company/news-insights/news-releases/2026.html",
+    "sources": [
+      {
+        "source": "Eaton Newsroom",
+        "url": "https://www.eaton.com/us/en-us/company/news-insights/news-releases/2026/eaton-expands-operations-in-nebraska-with-new-manufacturing-facility.html",
+        "title": "Eaton expands operations in Nebraska with new manufacturing facility to meet increasing switchgear demand driven by AI data center boom",
+        "titleZh": "Eaton · 官方業務進展",
+        "publishedAt": "2026-04-08T00:00:00Z",
+        "evidenceText": "New 370,000-sq-ft facility in greater Omaha area expected to begin production in 2027",
+        "summary": "Eaton announced over $30 million of investment in Nebraska switchgear production, with the new facility expected to start production in first-half 2027.",
+        "summaryZh": "Eaton 宣布投入逾 3,000 萬美元擴充內布拉斯加州開關設備生產，新廠預計 2027 年上半年開始生產。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "ANET",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track product availability and adoption across scale-up and scale-out AI networking.",
+    "focusZh": "追蹤產品供貨與 AI scale-up、scale-out 網路的採用情況。",
+    "risks": "This is a product launch with prospective availability dates, not evidence of commissioned data-center capacity or booked revenue.",
+    "risksZh": "這是附預期供貨時程的產品發布，不能視為資料中心容量已啟用或收入已入帳。",
+    "officialHosts": [
+      "www.arista.com",
+      "investors.arista.com"
+    ],
+    "listingUrl": "https://www.arista.com/en/company/news/press-release/pr-2026?start=0",
+    "sources": [
+      {
+        "source": "Arista Networks Newsroom",
+        "url": "https://www.arista.com/en/company/news/press-release/24102-pr-20260609",
+        "title": "Arista Introduces Next-Generation 1.6Terabit Portfolio for AI Fabrics",
+        "titleZh": "Arista Networks · 官方業務進展",
+        "publishedAt": "2026-06-09T00:00:00Z",
+        "evidenceText": "a new portfolio of 1.6T networking platforms",
+        "summary": "Arista introduced 7060XE7 networking for rack-scale AI fabrics, with air-cooled 1.6T availability planned for Q4 2026 and other models for Q1 2027.",
+        "summaryZh": "Arista 推出用於機架級 AI 網路的 7060XE7 系列；氣冷 1.6T 型號預計 2026 年第四季供貨，其他型號預計 2027 年第一季。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "PWR",
+    "reviewedAt": "2026-10-08",
+    "focus": "Monitor acquired business integration, infrastructure backlog conversion and electrical construction delivery.",
+    "focusZh": "追蹤收購業務整合、基礎設施在手訂單轉化與電氣施工交付。",
+    "risks": "The company explicitly pursues diverse end markets; these acquisitions did not materially contribute in Q2, with Enerfab acquired in July.",
+    "risksZh": "公司明確布局多元終端市場；相關收購在第二季沒有重大貢獻，Enerfab 於七月收購。",
+    "officialHosts": [
+      "investors.quantaservices.com",
+      "www.quantaservices.com"
+    ],
+    "listingUrl": "https://investors.quantaservices.com/news-events/press-releases",
+    "sources": [
+      {
+        "source": "Quanta Services Investor Relations",
+        "url": "https://investors.quantaservices.com/news-events/press-releases/detail/402/quanta-services-reports-second-quarter-2026-results",
+        "title": "QUANTA SERVICES REPORTS SECOND QUARTER 2026 RESULTS",
+        "titleZh": "Quanta Services · 官方業務進展",
+        "publishedAt": "2026-07-30T00:00:00Z",
+        "evidenceText": "in the growing data center and mission-critical facility markets",
+        "summary": "Quanta reported acquisitions of Phalcon and Enerfab that expand electrical, fabrication and mechanical capabilities serving data-center and other infrastructure customers.",
+        "summaryZh": "Quanta 公布收購 Phalcon 與 Enerfab，擴充服務資料中心及其他基礎設施客戶的電氣、製造與機械工程能力。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "GEV",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track factory expansion and lead-time improvements for grid equipment supporting new electricity demand.",
+    "focusZh": "追蹤工廠擴產與支援新增電力需求的電網設備交期改善。",
+    "risks": "The announcement concerns grid equipment supply rather than a named data-center power contract; hiring and expansion milestones are prospective.",
+    "risksZh": "公告涉及電網設備供應，並非特定資料中心供電合約；招募及擴產里程碑仍屬預期。",
+    "officialHosts": [
+      "www.gevernova.com"
+    ],
+    "listingUrl": "https://www.gevernova.com/investors/updates",
+    "sources": [
+      {
+        "source": "GE Vernova Newsroom",
+        "url": "https://www.gevernova.com/news/press-releases/ge-vernova-expands-pennsylvania-manufacturing-facility-strengthen-us-grid-supply",
+        "title": "GE Vernova expands Pennsylvania manufacturing facility to strengthen U.S. grid supply chain",
+        "titleZh": "GE Vernova · 官方業務進展",
+        "publishedAt": "2026-07-30T00:00:00Z",
+        "evidenceText": "including data centers, to the grid more quickly and reliably",
+        "summary": "GE Vernova expanded its Charleroi factory as part of a $138 million investment to improve production of high-voltage breakers, switchgear and instrument transformers.",
+        "summaryZh": "GE Vernova 以 1.38 億美元投資計畫擴充 Charleroi 工廠，提高高壓斷路器、開關設備與儀用變壓器的生產能力。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "CEG",
+    "reviewedAt": "2026-10-08",
+    "focus": "Monitor Crane restart execution, regulatory milestones and long-term power agreement commencement.",
+    "focusZh": "追蹤 Crane 重啟執行、監管里程碑與長期供電協議開始履約的進度。",
+    "risks": "Crane remains a restart project; the release reports unfavorable nuclear outages and ongoing Calpine integration across the broader generation portfolio.",
+    "risksZh": "Crane 仍是重啟中的計畫；公告亦反映核電停機影響，以及整體發電組合持續整合 Calpine。",
+    "officialHosts": [
+      "www.constellationenergy.com",
+      "investors.constellationenergy.com"
+    ],
+    "listingUrl": "https://www.constellationenergy.com/news.html",
+    "sources": [
+      {
+        "source": "Constellation Energy Newsroom",
+        "url": "https://www.constellationenergy.com/news/2026/08/constellation-reports-second-quarter-2026-results.html",
+        "title": "Constellation Reports Second Quarter 2026 Results",
+        "titleZh": "Constellation Energy · 官方業務進展",
+        "publishedAt": "2026-08-06T00:00:00Z",
+        "evidenceText": "NRC approves Crane Clean Energy Center's fuel license",
+        "summary": "Constellation reported FERC approval for capacity interconnection rights transfer and NRC fuel-license approval at Crane, advancing an expected 2027 restart.",
+        "summaryZh": "Constellation 公布 Crane 容量互連權利移轉獲 FERC 核准、燃料執照獲 NRC 核准，推進預期 2027 年重啟。",
+        "region": "All regions"
+      }
+    ]
+  },
+  {
+    "ticker": "BE",
+    "reviewedAt": "2026-10-08",
+    "focus": "Track contracted capacity deployment and additional orders under the master agreement.",
+    "focusZh": "追蹤已簽約容量部署，以及主協議下新增訂單。",
+    "risks": "The 2.8 GW ceiling exceeds the initially contracted 1.2 GW; phased deployment and additional procurement remain distinct from completed capacity.",
+    "risksZh": "2.8 GW 是協議上限，高於初始已簽約 1.2 GW；分期部署與後續採購不能等同已完成容量。",
+    "officialHosts": [
+      "www.bloomenergy.com"
+    ],
+    "listingUrl": "https://www.bloomenergy.com/newsroom/",
+    "sources": [
+      {
+        "source": "Bloom Energy Newsroom",
+        "url": "https://www.bloomenergy.com/news/bloom-energy-and-oracle-expand-strategic-partnership-to-deploy-up-to-2-8-gw-to-accelerate-ai-infrastructure-build-out/",
+        "title": "Bloom Energy and Oracle Expand Strategic Partnership to Deploy up to 2.8 GW to Accelerate AI Infrastructure Build-Out",
+        "titleZh": "Bloom Energy · 官方業務進展",
+        "publishedAt": "2026-04-13T00:00:00Z",
+        "evidenceText": "an initial 1.2 GW of capacity has been contracted",
+        "summary": "Bloom announced an Oracle master agreement for up to 2.8 GW of fuel cells, with 1.2 GW contracted and deployment continuing into 2027.",
+        "summaryZh": "Bloom 公布 Oracle 燃料電池主協議，最高容量 2.8 GW，其中 1.2 GW 已簽約，部署持續至 2027 年。",
+        "region": "All regions"
+      }
+    ]
+  }
+]

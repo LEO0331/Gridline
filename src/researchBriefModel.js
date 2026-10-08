@@ -2,9 +2,11 @@ import relationships from './data/verifiedRelationships.json';
 import { infrastructureEvents, eventTitle, REGION_ZH } from './eventModel';
 import { formatUsd, marketSignals } from './marketSignals';
 import { signalLens } from './signalLenses';
+import { companyDevelopments } from './companyResearchModel';
+import companyProfiles from './data/companyResearch.json';
 
 const PJM_REGIONS = new Set(['All regions', 'Northern Virginia', 'Ohio', 'PJM region']);
-const RELATIONSHIP_HOSTS = { ORCL: new Set(['www.oracle.com']) };
+const RELATIONSHIP_HOSTS = Object.fromEntries(companyProfiles.map(profile => [profile.ticker, new Set(profile.officialHosts)]));
 const supportedUrl = (value, ticker) => {
   try { const url = new URL(value); return url.protocol === 'https:' && Boolean(RELATIONSHIP_HOSTS[ticker]?.has(url.hostname)); } catch { return false; }
 };
@@ -24,6 +26,8 @@ export function buildResearchBrief(snapshot = {}, { ticker, region = 'All region
   const grid = PJM_REGIONS.has(region) ? signalLens(snapshot, ticker, 'grid', now) : null;
   const events = infrastructureEvents(snapshot, now).filter(item => region === 'All regions' || item.region === region);
   const latestEvent = events[0] || null;
+  const developments = companyDevelopments(snapshot, ticker, now).filter(item => region === 'All regions' || item.region === region);
+  const latestCompanyEvent = developments[0] || null;
   const price = marketSignals(snapshot, ticker);
   const relationRecords = documentedRelationships(ticker, region);
   const otherRelationshipTickers = [...new Set(relationships.filter(item => item.ticker !== ticker &&
@@ -45,14 +49,14 @@ export function buildResearchBrief(snapshot = {}, { ticker, region = 'All region
         health: snapshot.sourceHealth?.eia?.status || null,
       },
       {
-        id: 'projects', available: Boolean(latestEvent),
-        title: latestEvent?.title || 'No verified project event for this selection',
-        titleZh: latestEvent ? eventTitle(latestEvent, 'zh-TW') : '所選範圍暫無已驗證的專案事件',
-        detail: latestEvent ? `${events.length} retained record${events.length === 1 ? '' : 's'} in this geography; no company attribution without a documented relationship.` : 'No event in this snapshot; review documented company–facility links below.',
-        detailZh: latestEvent ? `此地區保留 ${events.length} 筆紀錄；若無文件證明關係，不歸因於個別公司。` : '此快照沒有事件紀錄；下方可查看具來源的公司與設施連結。',
-        observedAt: dateOnly(latestEvent?.publishedAt), sourceUrl: latestEvent?.url || null,
-        lastVerifiedAt: dateOnly(latestEvent?.retrievedAt), scope: region === 'All regions' ? latestEvent?.region || 'All regions' : region,
-        health: snapshot.sourceHealth?.events?.status || null,
+        id: 'projects', available: Boolean(latestCompanyEvent || latestEvent),
+        title: latestCompanyEvent?.title || latestEvent?.title || 'No verified project event for this selection',
+        titleZh: latestCompanyEvent ? latestCompanyEvent.titleZh || latestCompanyEvent.title : latestEvent ? eventTitle(latestEvent, 'zh-TW') : '所選範圍暫無已驗證的專案事件',
+        detail: latestCompanyEvent ? `${ticker} official disclosure; announced plans and contracted capacity are distinct from delivered capacity.` : latestEvent ? `${events.length} retained record${events.length === 1 ? '' : 's'} in this geography; no company attribution without a documented relationship.` : 'No event in this snapshot; review documented company–facility links below.',
+        detailZh: latestCompanyEvent ? `${ticker} 官方揭露；公告規劃與已簽約容量不等同已交付容量。` : latestEvent ? `此地區保留 ${events.length} 筆紀錄；若無文件證明關係，不歸因於個別公司。` : '此快照沒有事件紀錄；下方可查看具來源的公司與設施連結。',
+        observedAt: dateOnly(latestCompanyEvent?.publishedAt || latestEvent?.publishedAt), sourceUrl: latestCompanyEvent?.url || latestEvent?.url || null,
+        lastVerifiedAt: dateOnly(latestCompanyEvent?.retrievedAt || latestEvent?.retrievedAt), scope: latestCompanyEvent ? ticker : region === 'All regions' ? latestEvent?.region || 'All regions' : region,
+        health: latestCompanyEvent ? snapshot.sourceHealth?.['company-research']?.tickers?.[ticker]?.status || null : snapshot.sourceHealth?.events?.status || null,
       },
       {
         id: 'company', available: Boolean(execution.available),
@@ -60,7 +64,7 @@ export function buildResearchBrief(snapshot = {}, { ticker, region = 'All region
         detail: 'Period-aware SEC fact; does not isolate data-center revenue.',
         detailZh: '具報告期間的 SEC 資料；無法單獨辨識資料中心營收。',
         observedAt: dateOnly(execution.observedAt), sourceUrl: execution.sourceUrl || null, scope: ticker,
-        health: snapshot.sourceHealth?.sec?.status || null,
+        health: snapshot.sourceHealth?.sec?.tickers?.[ticker]?.status || snapshot.sourceHealth?.sec?.status || null,
       },
       {
         id: 'market', available: Boolean(price),

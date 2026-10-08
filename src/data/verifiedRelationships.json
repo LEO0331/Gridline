@@ -12,5 +12,33 @@
     "reviewedAt": "2026-09-29",
     "sourceTitle": "Oracle Invests in More Than 1.7 GW of Carbon-Free Electricity to Support AI Growth and Strengthen the Texas Grid",
     "sourceUrl": "https://www.oracle.com/news/announcement/oracle-invests-in-more-than-1.7-gw-of-carbon-free-electricity-to-support-ai-growth-and-strengthen-the-texas-grid-2026-08-15/"
+  },
+  {
+    "id": "cifr-apollo-ercot-2026-08-04",
+    "ticker": "CIFR",
+    "facility": "Apollo development site",
+    "facilityZh": "Apollo 開發場址",
+    "region": "Texas",
+    "grid": "ERCOT",
+    "relationship": "Apollo is an optioned site up to 900 MW near San Antonio, explicitly submitted to ERCOT Batch Zero; this is a studied-load development relationship, not operating or energized capacity.",
+    "relationshipZh": "Apollo 是 San Antonio 附近最高 900 MW 的選擇權場址，明確申請 ERCOT Batch Zero 研究負載；屬開發階段連結，並非已營運或通電容量。",
+    "publishedAt": "2026-08-04",
+    "reviewedAt": "2026-10-08",
+    "sourceTitle": "Cipher Digital Provides Second Quarter 2026 Business Update",
+    "sourceUrl": "https://investors.cipherdigital.com/news-releases/news-release-details/cipher-digital-provides-second-quarter-2026-business-update"
+  },
+  {
+    "id": "ceg-crane-pjm-2024-09-20",
+    "ticker": "CEG",
+    "facility": "Crane Clean Energy Center",
+    "facilityZh": "Crane 潔淨能源中心",
+    "region": "PJM region",
+    "grid": "PJM",
+    "relationship": "Constellation announced a 20-year agreement to match Microsoft data-center electricity consumption in PJM with output from a planned Crane restart. This is a power supply relationship, not a named Microsoft facility or an operating restart.",
+    "relationshipZh": "Constellation 公布 20 年協議，以規劃重啟的 Crane 電廠發電匹配 Microsoft 在 PJM 的資料中心用電。此為供電關係，未指名 Microsoft 設施，也不代表電廠已重啟營運。",
+    "publishedAt": "2024-09-20",
+    "reviewedAt": "2026-10-08",
+    "sourceTitle": "Constellation to Launch Crane Clean Energy Center, Restoring Jobs and Carbon-Free Power to The Grid",
+    "sourceUrl": "https://www.constellationenergy.com/news/2024/Constellation-to-Launch-Crane-Clean-Energy-Center-Restoring-Jobs-and-Carbon-Free-Power-to-The-Grid.html"
   }
 ]

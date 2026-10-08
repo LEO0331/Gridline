@@ -8,6 +8,7 @@ const PROVIDERS = {
   'company-ir': { name: 'Company investor relations', url: null, dataClass: 'primary' },
   prices: { name: 'Stooq market data', url: 'https://stooq.com/', dataClass: 'market' },
   events: { name: 'Verified infrastructure event sources', url: null, dataClass: 'primary' },
+  'company-research': { name: 'Verified official company disclosures', url: null, dataClass: 'primary' },
 };
 
 function canonical(value) {

@@ -156,4 +156,4 @@ async function ingestEvents(config = {}, dependencies = {}) {
   };
 }
 
-module.exports = { ingestEvents, parsePjmFeed: xml => parseRss(xml, 'PJM'), validCandidate, pageMatchesTitle, pageSupportsEvidence, categoryFor, PJM_FEED };
+module.exports = { ingestEvents, parsePjmFeed: xml => parseRss(xml, 'PJM'), validCandidate, pageMatchesTitle, pageSupportsEvidence, sourceReader, categoryFor, PJM_FEED };

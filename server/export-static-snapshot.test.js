@@ -99,3 +99,14 @@ test('snapshot exporter still retries other degraded providers', async () => {
   assert.equal(result.status, 'ok');
   assert.equal(result.attempts, 2);
 });
+
+test('partial company research survives later zero-record retry failures', async () => {
+  let calls = 0;
+  const result = await refreshWithRetry({ ingest: async () => ++calls === 1
+    ? { source: 'company-research', status: 'partial', tickerOutcomes: [{ ticker: 'BE', status: 'partial', recordCount: 1 }] }
+    : { source: 'company-research', status: 'degraded', tickerOutcomes: [{ ticker: 'BE', status: 'degraded', recordCount: 0, message: 'timeout' }] }
+  }, 'company-research', 2);
+  assert.equal(result.status, 'partial');
+  assert.equal(result.tickerOutcomes[0].recordCount, 1);
+  assert.equal(result.tickerOutcomes[0].latestAttemptError, 'timeout');
+});

@@ -110,7 +110,7 @@ function compactSec(observations = []) {
       for (const key of [
         'id', 'source', 'type', 'value', 'observedAt', 'ticker', 'unit',
         'periodStart', 'periodEnd', 'filedAt', 'form', 'fiscalYear',
-        'fiscalPeriod', 'sourceUrl',
+        'fiscalPeriod', 'sourceUrl', 'periodKind', 'taxonomy', 'factTag',
       ]) {
         if (row[key] !== undefined) compact[key] = row[key];
       }
@@ -147,6 +147,8 @@ function buildRuntimeSnapshot(snapshot = {}) {
       ...compactEia(observations),
       ...compactSec(observations),
       ...compactEvents(observations),
+      ...observations.filter(row => row?.source === 'company-research' && row?.type === 'companyDevelopment')
+        .map(row => ({ id: row.id, source: row.source, type: row.type, ticker: row.ticker, value: row.value, observedAt: row.observedAt, retrievedAt: row.retrievedAt, sourceUrl: sourceUrl(row) })),
     ],
     snapshotChanges: snapshot.snapshotChanges || null,
     demoReadiness: snapshot.demoReadiness || null,

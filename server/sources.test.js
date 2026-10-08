@@ -21,15 +21,103 @@ async function withJsonFixture(responses, run) {
 
 const entry = (val, end, filed, overrides = {}) => ({ val, end, filed, form: '10-Q', accn: '0001234567-26-000001', ...overrides });
 
-test('SEC isolates failed issuers, unmatched tickers and unavailable non-USD facts', async () => {
+test('SEC isolates failed issuers and unmatched tickers while retaining native-currency facts', async () => {
   await withJsonFixture({ company_tickers: { 0: { ticker: 'GOOD', cik_str: 1 }, 1: { ticker: 'BAD', cik_str: 2 } }, CIK0000000001: { filings: { recent: {} }, facts: { 'ifrs-full': { Revenue: { units: { CNY: [entry(100, '2025-12-31', '2026-03-01', { form: '20-F', start: '2025-01-01' })] } } } } }, CIK0000000002: new Error('issuer unavailable') }, async ({ sec }) => {
     const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['GOOD', 'BAD', 'MISSING'] });
     assert.equal(result.status, 'partial');
     assert.deepEqual(result.tickerOutcomes.filter(item => item.status === 'degraded').map(item => item.ticker).sort(), ['BAD', 'MISSING']);
-    assert.ok(result.tickerOutcomes.find(item => item.ticker === 'GOOD').missingFacts.includes('revenue'));
-    assert.equal(result.observations.some(item => item.type === 'revenue'), false);
+    assert.ok(!result.tickerOutcomes.find(item => item.ticker === 'GOOD').missingFacts.includes('revenue'));
+    assert.equal(result.observations.find(item => item.type === 'revenue').unit, 'CNY');
     assert.equal(result.observations[0].ticker, 'GOOD');
-    assert.equal(result.tickerOutcomes.find(item => item.ticker === 'GOOD').recordCount, 1);
+    assert.equal(result.tickerOutcomes.find(item => item.ticker === 'GOOD').recordCount, 2);
+  });
+});
+
+test('SEC matches annual native-currency ADR facts', async () => {
+  const facts = { facts: { 'ifrs-full': { Revenue: { units: { CNY: [
+    entry(100, '2025-12-31', '2026-04-01', { start: '2025-01-01', form: '20-F' }),
+    entry(80, '2024-12-31', '2025-04-01', { start: '2024-01-01', form: '20-F' }),
+  ] } } } } };
+  await withJsonFixture({ company_tickers: { 0: { ticker: 'ADR', cik_str: 1 } }, submissions: { filings: { recent: {} } }, companyfacts: facts }, async ({ sec }) => {
+    const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['ADR'] });
+    assert.equal(result.observations.find(row => row.type === 'revenue').value, 100);
+    assert.equal(result.observations.find(row => row.type === 'revenue').periodKind, 'annual');
+    assert.equal(result.observations.find(row => row.type === 'revenuePrior').value, 80);
+    assert.equal(result.observations.find(row => row.type === 'revenuePrior').unit, 'CNY');
+    assert.equal(result.tickerOutcomes[0].factCoverage.revenue.comparison, 'annual');
+  });
+});
+
+test('SEC retains the latest half-year disclosure over an older annual report without a growth comparison', async () => {
+  const facts = { facts: { 'ifrs-full': { Revenue: { units: { CNY: [
+    entry(100, '2025-12-31', '2026-04-01', { start: '2025-01-01', form: '20-F' }),
+    entry(80, '2024-12-31', '2025-04-01', { start: '2024-01-01', form: '20-F' }),
+    entry(60, '2026-06-30', '2026-08-01', { start: '2026-01-01', form: '6-K' }),
+    entry(40, '2025-06-30', '2025-08-01', { start: '2025-01-01', form: '6-K' }),
+  ] } } } } };
+  await withJsonFixture({ company_tickers: { 0: { ticker: 'ADR', cik_str: 1 } }, submissions: { filings: { recent: {} } }, companyfacts: facts }, async ({ sec }) => {
+    const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['ADR'], asOf: '2026-10-08' });
+    const current = result.observations.find(row => row.type === 'revenue');
+    assert.equal(current.value, 60);
+    assert.equal(current.periodEnd, '2026-06-30');
+    assert.equal(current.periodKind, 'year-to-date');
+    assert.equal(result.observations.some(row => row.type === 'revenuePrior'), false);
+    assert.equal(result.tickerOutcomes[0].factCoverage.revenue.comparison, null);
+  });
+});
+
+test('SEC does not use future filings, currency changes or taxonomy changes as comparable annual facts', async () => {
+  const facts = { facts: { 'ifrs-full': { Revenue: { units: {
+    CNY: [entry(100, '2025-12-31', '2026-04-01', { start: '2025-01-01', form: '20-F' }), entry(999, '2026-12-31', '2027-04-01', { start: '2026-01-01', form: '20-F' })],
+    EUR: [entry(80, '2024-12-31', '2025-04-01', { start: '2024-01-01', form: '20-F' })],
+  } } }, 'us-gaap': { Revenues: { units: { CNY: [entry(80, '2024-12-31', '2025-04-01', { start: '2024-01-01', form: '20-F' })] } } } } };
+  await withJsonFixture({ company_tickers: { 0: { ticker: 'ADR', cik_str: 1 } }, submissions: { filings: { recent: {} } }, companyfacts: facts }, async ({ sec }) => {
+    const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['ADR'], asOf: '2026-10-08' });
+    assert.equal(result.observations.find(row => row.type === 'revenue').value, 100);
+    assert.equal(result.observations.some(row => row.type === 'revenuePrior'), false);
+  });
+});
+
+test('SEC retains native capex YTD, debt instant and per-share currency without converting or combining them', async () => {
+  const facts = { facts: { 'ifrs-full': {
+    PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities: { units: { CNY: [
+      entry(10, '2025-12-31', '2026-04-01', { start: '2025-01-01', form: '20-F' }),
+      entry(8, '2026-06-30', '2026-08-01', { start: '2026-01-01', form: '6-K' }),
+    ] } },
+    CurrentBorrowings: { units: { CNY: [entry(3, '2026-06-30', '2026-08-01', { form: '6-K' })] } },
+    NoncurrentBorrowings: { units: { CNY: [entry(30, '2026-06-30', '2026-08-01', { form: '6-K' })] } },
+    DilutedEarningsLossPerShare: { units: { 'CNY/shares': [entry(-2, '2025-12-31', '2026-04-01', { start: '2025-01-01', form: '20-F' })], shares: [entry(999, '2025-12-31', '2026-04-01', { form: '20-F' })] } },
+  } } };
+  await withJsonFixture({ company_tickers: { 0: { ticker: 'ADR', cik_str: 1 } }, submissions: { filings: { recent: {} } }, companyfacts: facts }, async ({ sec }) => {
+    const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['ADR'], asOf: '2026-10-08' });
+    assert.equal(result.observations.find(row => row.type === 'capex').value, 8);
+    assert.equal(result.observations.find(row => row.type === 'capex').periodKind, 'year-to-date');
+    assert.equal(result.observations.find(row => row.type === 'currentDebt').value, 3);
+    assert.equal(result.observations.find(row => row.type === 'longTermDebt').periodKind, 'instant');
+    assert.equal(result.observations.find(row => row.type === 'dilutedEps').unit, 'CNY/shares');
+    assert.equal(result.observations.find(row => row.type === 'dilutedEps').value, -2);
+    assert.deepEqual(result.tickerOutcomes[0].missingFacts, ['revenue']);
+  });
+});
+
+test('SEC chooses a newer native reporting quarter before older USD, and USD only for the same period', async () => {
+  const responses = { company_tickers: { 0: { ticker: 'ADR', cik_str: 1 } }, submissions: { filings: { recent: {} } }, companyfacts: { facts: { 'us-gaap': { Revenues: { units: {
+    USD: [entry(30, '2025-12-31', '2026-04-01', { start: '2025-01-01', form: '20-F' }), entry(28, '2024-12-31', '2025-04-01', { start: '2024-01-01', form: '20-F' })],
+    CNY: [entry(100, '2026-06-30', '2026-08-01', { start: '2026-04-01', form: '6-K' }), entry(180, '2026-06-30', '2026-08-01', { start: '2026-01-01', form: '6-K' }), entry(80, '2025-06-30', '2025-08-01', { start: '2025-04-01', form: '6-K' })],
+  } } } } } };
+  await withJsonFixture(responses, async ({ sec }) => {
+    const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['ADR'], asOf: '2026-10-08' });
+    const current = result.observations.find(row => row.type === 'revenue');
+    assert.equal(current.unit, 'CNY');
+    assert.equal(current.value, 100);
+    assert.equal(current.periodStart, '2026-04-01');
+    assert.equal(result.observations.find(row => row.type === 'revenuePrior').unit, 'CNY');
+  });
+  responses.companyfacts.facts['us-gaap'].Revenues.units.USD.push(entry(14, '2026-06-30', '2026-08-01', { start: '2026-04-01', form: '6-K' }));
+  await withJsonFixture(responses, async ({ sec }) => {
+    const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['ADR'], asOf: '2026-10-08' });
+    assert.equal(result.observations.find(row => row.type === 'revenue').unit, 'USD');
+    assert.equal(result.observations.some(row => row.type === 'revenuePrior'), false);
   });
 });
 
@@ -77,6 +165,7 @@ test('SEC selects the latest fact period, retains its unit and links the exact f
     assert.equal(revenue.periodEnd, '2026-06-30');
     assert.equal(revenue.filedAt, '2026-08-10');
     assert.equal(revenue.sourceUrl, 'https://www.sec.gov/Archives/edgar/data/1234567/000123456726000001/report.htm');
+    assert.equal(result.observations.find(item => item.type === 'filings').value[0].sourceUrl, revenue.sourceUrl);
     const eps = result.observations.find(item => item.type === 'dilutedEps');
     assert.equal(eps.value, 2.4);
     assert.equal(eps.unit, 'USD/shares');

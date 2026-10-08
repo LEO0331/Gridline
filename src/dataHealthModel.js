@@ -33,7 +33,7 @@ export function buildDataHealth(snapshot = {}, now = new Date()) {
     };
   });
 
-  const sources = SOURCE_ORDER.map(source => {
+  const sources = [...SOURCE_ORDER, ...(health['company-research'] ? ['company-research'] : [])].map(source => {
     const state = health[source] || {};
     const rows = observations.filter(item => item.source === source);
     const outcome = (snapshot.outcomes || []).find(item => item.source === source);

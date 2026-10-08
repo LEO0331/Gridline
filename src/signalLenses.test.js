@@ -59,7 +59,7 @@ test('execution lens names a recent exact-source EPS disclosure without inferrin
 });
 
 test('execution lens uses matched quarterly EPS periods for a direction, not an invented score', () => {
-  const current = { source: 'sec', type: 'dilutedEps', ticker: 'ORCL', value: 1.56, unit: 'USD/shares', periodStart: '2026-06-01', periodEnd: '2026-08-31', filedAt: '2026-09-11', form: '10-Q', sourceUrl: 'https://www.sec.gov/Archives/edgar/data/1341439/current.htm' };
+  const current = { source: 'sec', type: 'dilutedEps', ticker: 'ORCL', value: 1.56, unit: 'USD/shares', taxonomy: 'us-gaap', factTag: 'EarningsPerShareDiluted', periodStart: '2026-06-01', periodEnd: '2026-08-31', filedAt: '2026-09-11', form: '10-Q', sourceUrl: 'https://www.sec.gov/Archives/edgar/data/1341439/current.htm' };
   const prior = { ...current, type: 'dilutedEpsPrior', value: 1.12, periodStart: '2025-06-01', periodEnd: '2025-08-31', filedAt: '2025-09-11', sourceUrl: 'https://www.sec.gov/Archives/edgar/data/1341439/prior.htm' };
   const result = signalLens({ generatedAt: '2026-09-23T00:00:00Z', observations: [current, prior] }, 'ORCL', 'execution');
   expect(result.label).toContain('increased');
@@ -110,6 +110,35 @@ test('milestone keeps its source title and translates the evidence boundary', ()
   const result = signalLens(snapshot, 'ORCL', 'milestones', new Date('2026-09-23T00:00:00Z'));
   expect(result).toMatchObject({ available: true, label: 'PJM updates its load forecast', labelZh: '已驗證供電紀錄（PJM）', sourceUrl: url });
   expect(result.methodZh).toContain('不據此推估量化影響或歸因於個別公司');
+});
+
+test('annual ADR financials use the native unit and a genuinely comparable prior year', () => {
+  const current = { source: 'sec', type: 'revenue', ticker: 'GDS', value: 100, unit: 'CNY', periodStart: '2025-01-01', periodEnd: '2025-12-31', filedAt: '2026-04-01', form: '20-F', taxonomy: 'ifrs-full', factTag: 'Revenue', sourceUrl: 'https://www.sec.gov/Archives/current.htm' };
+  const prior = { ...current, type: 'revenuePrior', value: 80, periodStart: '2024-01-01', periodEnd: '2024-12-31', filedAt: '2025-04-01', sourceUrl: 'https://www.sec.gov/Archives/prior.htm' };
+  const snapshot = { generatedAt: '2026-10-08T00:00:00Z', observations: [current, prior] };
+  const result = signalLens(snapshot, 'GDS', 'execution');
+  expect(result.label).toBe('Revenue increased versus comparable prior year');
+  expect(result.labelZh).toBe('營收較前一年度增加');
+  expect(result.method).toContain('CNY');
+  expect(result.method).toContain('annual');
+  expect(result.additionalSourceUrl).toBe(prior.sourceUrl);
+  for (const change of [{ unit: 'USD' }, { taxonomy: 'us-gaap' }, { taxonomy: undefined }, { factTag: 'Revenues' }, { factTag: undefined }, { periodStart: '2024-04-01' }]) {
+    expect(signalLens({ ...snapshot, observations: [current, { ...prior, ...change }] }, 'GDS', 'execution').label).toBe('Revenue disclosed');
+  }
+  expect(signalLens({ ...snapshot, observations: [current, prior].map(row => ({ ...row, taxonomy: undefined, factTag: undefined })) }, 'GDS', 'execution').label).toBe('Revenue disclosed');
+});
+
+test('a comparable quarter outranks annual EPS while an interim YTD remains disclosure only', () => {
+  const current = { source: 'sec', type: 'revenue', ticker: 'IREN', value: 100, unit: 'USD', taxonomy: 'us-gaap', factTag: 'Revenues', periodStart: '2026-04-01', periodEnd: '2026-06-30', filedAt: '2026-08-01', sourceUrl: 'https://www.sec.gov/Archives/current.htm' };
+  const prior = { ...current, type: 'revenuePrior', value: 80, periodStart: '2025-04-01', periodEnd: '2025-06-30', filedAt: '2025-08-01' };
+  const eps = { ...current, type: 'dilutedEps', unit: 'USD/shares', factTag: 'EarningsPerShareDiluted', value: 1, periodStart: '2025-07-01' };
+  const epsPrior = { ...eps, type: 'dilutedEpsPrior', value: 0.5, periodStart: '2024-07-01', periodEnd: '2025-06-30', filedAt: '2025-08-01' };
+  const snapshot = { generatedAt: '2026-10-08T00:00:00Z', observations: [current, prior, eps, epsPrior] };
+  expect(signalLens(snapshot, 'IREN', 'execution').label).toBe('Revenue increased versus comparable prior-year quarter');
+  const ytd = { ...current, periodStart: '2026-01-01' };
+  const result = signalLens({ ...snapshot, observations: [ytd, { ...prior, periodStart: '2025-01-01' }] }, 'IREN', 'execution');
+  expect(result.label).toBe('Revenue disclosed');
+  expect(result.method).toContain('year-to-date');
 });
 
 test('reviewed Loudoun milestone has a Chinese title and region', () => {

@@ -26,7 +26,7 @@ test('store retains historical observations instead of replacing a source', asyn
 test('service reports supported adapters without configuration', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'gridline-source-list-'));
   const service = createService({ dataDir: directory, cacheMinutes: 1 });
-  assert.deepEqual(service.sources(), ['sec', 'eia', 'pjm', 'ferc', 'company-ir', 'prices', 'events']);
+  assert.deepEqual(service.sources(), ['sec', 'eia', 'pjm', 'ferc', 'company-ir', 'prices', 'events', 'company-research']);
   service.store.close();
   await fs.rm(directory, { recursive: true, force: true });
 });

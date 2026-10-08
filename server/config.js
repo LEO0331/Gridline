@@ -32,5 +32,5 @@ module.exports = {
   priceFallbackBaseUrl: process.env.PRICE_FALLBACK_BASE_URL || 'https://query1.finance.yahoo.com/v8/finance/chart',
   cacheMinutes: Number(process.env.CACHE_MINUTES || 60),
   scheduleEnabled: process.env.SCHEDULE_ENABLED !== 'false',
-  scheduleSources: (process.env.SCHEDULE_SOURCES || 'sec,prices,eia,events').split(',').map(value => value.trim()).filter(Boolean),
+  scheduleSources: (process.env.SCHEDULE_SOURCES || 'sec,prices,eia,events,company-research').split(',').map(value => value.trim()).filter(Boolean),
 };

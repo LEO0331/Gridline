@@ -46,7 +46,7 @@ export function summarizeSnapshot(snapshot = emptySnapshot, language = 'en', tim
   const generatedLabel = valid
     ? new Intl.DateTimeFormat(locale, { year: 'numeric', month: language === 'zh-TW' ? 'long' : 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short', timeZone }).format(date)
     : null;
-  const sources = SOURCE_ORDER.map(source => snapshot.sourceHealth?.[source]).filter(Boolean);
+  const sources = [...SOURCE_ORDER, 'company-research'].map(source => snapshot.sourceHealth?.[source]).filter(Boolean);
   const healthySources = sources.filter(item => item?.status === 'ok').length;
   const latestMarketDate = (snapshot.observations || [])
     .filter(item => item?.source === 'prices' && item?.type === 'close' && Number.isFinite(Date.parse(item.observedAt)))

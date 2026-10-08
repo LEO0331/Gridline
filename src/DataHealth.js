@@ -13,6 +13,7 @@ const sourceLabel = (source, language) => {
     prices: zh ? '市場價格' : 'Market prices',
     events: zh ? '事件來源' : 'Event sources',
     sec: 'SEC',
+    'company-research': zh ? '公司官方研究來源' : 'Official company research',
     eia: zh ? 'EIA（PJM 用電需求）' : 'EIA (PJM grid demand)',
   };
   return labels[source] || source;

@@ -1,6 +1,7 @@
 const { getJson, getText } = require('./http');
 const { fetchTickerHistory } = require('./price-history');
 const { ingestEvents } = require('./event-ingestion');
+const { ingestCompanyResearch } = require('./company-research');
 
 const SEC_TICKERS = 'https://www.sec.gov/files/company_tickers.json';
 const SEC_SUBMISSIONS = cik => `https://data.sec.gov/submissions/CIK${String(cik).padStart(10, '0')}.json`;
@@ -16,26 +17,37 @@ const FACT_TAGS = {
   dilutedEps: [['us-gaap', 'EarningsPerShareDiluted'], ['ifrs-full', 'DilutedEarningsLossPerShare']],
 };
 
-function factCandidates(facts, tags, requiredUnit) {
+function factCandidates(facts, tags, requiredUnit, cutoff = now().slice(0, 10)) {
   const candidates = tags.flatMap(([taxonomy, tag]) => Object.entries(facts?.facts?.[taxonomy]?.[tag]?.units || {})
     .flatMap(([unit, entries]) => entries.map(item => ({ ...item, unit, taxonomy, tag }))));
-  return candidates.filter(item => item.unit === requiredUnit && SEC_FORMS.has(item.form) && /^\d{4}-\d{2}-\d{2}$/.test(item.end || '') && /^\d{4}-\d{2}-\d{2}$/.test(item.filed || '') && item.val !== null && item.val !== '' && Number.isFinite(Number(item.val)));
+  return candidates.filter(item => (!requiredUnit || item.unit === requiredUnit) && SEC_FORMS.has(item.form) && /^\d{4}-\d{2}-\d{2}$/.test(item.end || '') && /^\d{4}-\d{2}-\d{2}$/.test(item.filed || '') && item.end <= cutoff && item.filed <= cutoff && item.val !== null && item.val !== '' && Number.isFinite(Number(item.val)));
 }
 
-function latestFact(facts, tags, requiredUnit) {
-  const valid = factCandidates(facts, tags, requiredUnit);
+function latestFact(facts, tags, requiredUnit, cutoff, preferComparable = false) {
+  const candidates = factCandidates(facts, tags, null, cutoff).filter(item => requiredUnit.endsWith('/shares') ? /^[A-Z]{3}\/shares$/.test(item.unit) : /^[A-Z]{3}$/.test(item.unit));
+  // A current interim disclosure must not be replaced by an older annual/quarterly period.
+  const latestEnd = candidates.reduce((end, item) => item.end > end ? item.end : end, '');
+  const latestPeriods = candidates.filter(item => item.end === latestEnd);
+  // At that date, prefer actual quarter/annual revenue or EPS over a same-end YTD total.
+  const comparablePeriods = preferComparable ? latestPeriods.filter(item => quarterly(item) || annual(item)) : [];
+  const valid = comparablePeriods.length ? comparablePeriods : latestPeriods;
   // Compare reporting periods before filing dates; a later filing may repeat an older comparative value.
-  valid.sort((a, b) => b.end.localeCompare(a.end) || String(b.start || '').localeCompare(String(a.start || '')) || b.filed.localeCompare(a.filed));
+  // Prefer USD only when both reporting-period dates match, never over a newer native-currency period.
+  valid.sort((a, b) => b.end.localeCompare(a.end) || String(b.start || '').localeCompare(String(a.start || ''))
+    || Number(b.unit === requiredUnit) - Number(a.unit === requiredUnit) || b.filed.localeCompare(a.filed));
   return valid[0];
 }
 
 const daysBetween = (start, end) => (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86400000;
 const quarterly = fact => /^\d{4}-\d{2}-\d{2}$/.test(fact?.start || '') && daysBetween(fact.start, fact.end) >= 60 && daysBetween(fact.start, fact.end) <= 120;
+const annual = fact => /^\d{4}-\d{2}-\d{2}$/.test(fact?.start || '') && daysBetween(fact.start, fact.end) >= 330 && daysBetween(fact.start, fact.end) <= 400;
+const periodKind = fact => quarterly(fact) ? 'quarter' : annual(fact) ? 'annual' : fact.start ? 'year-to-date' : 'instant';
 
-function priorYearQuarter(facts, tags, unit, current) {
-  if (!quarterly(current)) return null;
+function priorYearPeriod(facts, tags, current) {
+  const matchesPeriod = quarterly(current) ? quarterly : annual(current) ? annual : null;
+  if (!matchesPeriod) return null;
   const duration = daysBetween(current.start, current.end);
-  const comparable = factCandidates(facts, tags, unit).filter(item => item.taxonomy === current.taxonomy && item.tag === current.tag && quarterly(item)
+  const comparable = factCandidates(facts, tags, current.unit, current.filed).filter(item => item.taxonomy === current.taxonomy && item.tag === current.tag && matchesPeriod(item)
     && Math.abs(daysBetween(item.start, item.end) - duration) <= 14
     && Math.abs(daysBetween(item.end, current.end) - 365) <= 35
     && Math.abs(daysBetween(item.start, current.start) - 365) <= 35
@@ -56,7 +68,7 @@ function filingUrl(cik, fact, documents) {
 
 function factObservation(cik, ticker, type, fact, documents) {
   return observation('sec', type, Number(fact.val), {
-    ticker, unit: fact.unit, periodStart: fact.start || null, periodEnd: fact.end,
+    ticker, unit: fact.unit, periodStart: fact.start || null, periodEnd: fact.end, periodKind: periodKind(fact),
     filedAt: fact.filed, observedAt: `${fact.filed}T00:00:00.000Z`, form: fact.form, accession: fact.accn,
     fiscalYear: fact.fy, fiscalPeriod: fact.fp, frame: fact.frame, taxonomy: fact.taxonomy, factTag: fact.tag,
     sourceUrl: filingUrl(cik, fact, documents),
@@ -78,20 +90,24 @@ async function ingestSec(config) {
       payload.push({ ticker: company.ticker, submissions, facts });
       const filings = submissions.filings?.recent || {}; const allForms = (filings.form || []).map((form, index) => ({ form, filed: filings.filingDate?.[index], accession: filings.accessionNumber?.[index], primaryDocument: filings.primaryDocument?.[index] }));
       const documents = new Map(allForms.filter(item => item.accession && item.primaryDocument).map(item => [item.accession, item.primaryDocument]));
-      const forms = allForms.filter(item => SEC_FORMS.has(item.form) || item.form === '8-K').slice(0, 12);
+      const cutoff = String(config.asOf || now()).slice(0, 10);
+      const forms = allForms.filter(item => (SEC_FORMS.has(item.form) || item.form === '8-K') && item.filed <= cutoff).slice(0, 12)
+        .map(item => ({ ...item, sourceUrl: filingUrl(company.cik_str, { accn: item.accession }, documents) }));
       observations.push(observation('sec', 'filings', forms, { ticker: company.ticker, sourceUrl: SEC_SUBMISSIONS(company.cik_str) }));
-      const missingFacts = [];
+      const missingFacts = []; const factCoverage = {};
       for (const [label, tags] of Object.entries(FACT_TAGS)) {
         const unit = label === 'dilutedEps' ? 'USD/shares' : 'USD';
-        const fact = latestFact(facts, tags, unit);
-        if (!fact) { missingFacts.push(label); continue; }
+        const fact = latestFact(facts, tags, unit, cutoff, label === 'revenue' || label === 'dilutedEps');
+        if (!fact) { missingFacts.push(label); factCoverage[label] = { available: false }; continue; }
+        factCoverage[label] = { available: true, unit: fact.unit, periodKind: periodKind(fact), periodEnd: fact.end, comparison: null };
         observations.push(factObservation(company.cik_str, company.ticker, label, fact, documents));
         if (label === 'revenue' || label === 'dilutedEps') {
-          const prior = priorYearQuarter(facts, tags, unit, fact);
+          const prior = priorYearPeriod(facts, tags, fact);
+          if (prior) factCoverage[label].comparison = periodKind(fact);
           if (prior) observations.push(factObservation(company.cik_str, company.ticker, `${label}Prior`, prior, documents));
         }
       }
-      tickerOutcomes.push({ ticker: company.ticker, status: 'ok', recordCount: observations.length - firstObservation, missingFacts, message: missingFacts.length ? `Unavailable comparable USD facts: ${missingFacts.join(', ')}` : 'Issuer facts ingested.' });
+      tickerOutcomes.push({ ticker: company.ticker, status: 'ok', recordCount: observations.length - firstObservation, missingFacts, factCoverage, message: missingFacts.length ? `Issuer ingested; unavailable reported facts: ${missingFacts.join(', ')}` : 'Issuer facts ingested in reported units.' });
     } catch (error) {
       observations.splice(firstObservation);
       tickerOutcomes.push({ ticker: company.ticker, status: 'degraded', recordCount: 0, message: error.message });
@@ -174,4 +190,4 @@ async function ingestPrices(config) {
     message: `${observations.length} daily price observations ingested across ${coveredTickers.size}/${tickers.length} tickers (${providers})${missing.length ? `; unavailable: ${missing.join(', ')}` : ''}`,
   };
 }
-module.exports = { sec: ingestSec, eia: ingestEia, pjm: ingestPjm, ferc: ingestFerc, 'company-ir': ingestIr, prices: ingestPrices, events: ingestEvents };
+module.exports = { sec: ingestSec, eia: ingestEia, pjm: ingestPjm, ferc: ingestFerc, 'company-ir': ingestIr, prices: ingestPrices, events: ingestEvents, 'company-research': ingestCompanyResearch };

@@ -9,9 +9,10 @@ function observationKey(item) {
 function mergeSnapshotObservations(previous = [], fresh = [], outcomes = []) {
   const successful = new Set((outcomes || []).filter(item => item.status === 'ok').map(item => item.source));
   const perTicker = new Map((outcomes || []).filter(item => item.tickerOutcomes).map(item => [item.source, new Set(item.tickerOutcomes.filter(ticker => ticker.status === 'ok').map(ticker => ticker.ticker))]));
+  const usableTickers = new Map((outcomes || []).filter(item => item.tickerOutcomes).map(item => [item.source, new Set(item.tickerOutcomes.filter(ticker => ['ok', 'partial'].includes(ticker.status)).map(ticker => ticker.ticker))]));
   const retained = (previous || []).filter(item => item.source === 'events' || (perTicker.has(item.source) ? !perTicker.get(item.source).has(item.ticker) : !successful.has(item.source)));
   const merged = new Map();
-  const usableFresh = (fresh || []).filter(item => !perTicker.has(item.source) || perTicker.get(item.source).has(item.ticker));
+  const usableFresh = (fresh || []).filter(item => !usableTickers.has(item.source) || usableTickers.get(item.source).has(item.ticker));
   for (const item of [...retained, ...usableFresh]) merged.set(observationKey(item), item);
   return [...merged.values()].sort((a, b) => {
     const sourceOrder = String(a.source || '').localeCompare(String(b.source || ''));

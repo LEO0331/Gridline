@@ -37,9 +37,13 @@ async function refreshWithRetry(service, source, attempts = 3) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     result = await service.ingest(source, true, retryTickers ? { tickers: retryTickers } : {});
     if (result.tickerOutcomes) {
-      for (const item of result.tickerOutcomes) tickerOutcomes.set(item.ticker, item);
+      for (const item of result.tickerOutcomes) {
+        const prior = tickerOutcomes.get(item.ticker);
+        tickerOutcomes.set(item.ticker, prior?.status === 'partial' && item.status === 'degraded' && !item.recordCount
+          ? { ...prior, latestAttemptError: item.message || item.errors } : item);
+      }
       retryTickers = [...tickerOutcomes.values()].filter(item => item.status !== 'ok').map(item => item.ticker);
-      const successfulCount = [...tickerOutcomes.values()].filter(item => item.status === 'ok').length;
+      const successfulCount = [...tickerOutcomes.values()].filter(item => ['ok', 'partial'].includes(item.status)).length;
       result = { ...result, tickerOutcomes: [...tickerOutcomes.values()], status: retryTickers.length === 0 ? 'ok' : successfulCount ? 'partial' : 'degraded', recordCount: [...tickerOutcomes.values()].reduce((sum, item) => sum + (item.recordCount || 0), 0) };
     }
     // Event providers already retry transient errors within their own budgets.
