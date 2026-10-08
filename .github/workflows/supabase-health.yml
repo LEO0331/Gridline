@@ -1,0 +1,31 @@
+name: Check Supabase database health
+
+on:
+  schedule:
+    # Daily at 14:43 Asia/Taipei; independent of market-data refreshes.
+    - cron: '43 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-database-health
+  cancel-in-progress: false
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+      - name: Check database through the public health RPC
+        run: npm run health:supabase
+        env:
+          SUPABASE_URL: ${{ vars.REACT_APP_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.REACT_APP_SUPABASE_PUBLISHABLE_KEY }}

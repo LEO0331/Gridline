@@ -201,6 +201,8 @@ The gate requires at least 60 sourced daily closes through the expected US marke
 
 The shared company registry covers AI compute/transition (NBIS, CRWV, APLD, IREN, CIFR, CORZ), data-center operators (GDS, VNET, EQIX, DLR, IRM), infrastructure suppliers (AVGO, VRT, ETN, ANET, PWR), generation/energy (GEV, CEG, BE), and diversified cloud (ORCL). Category filters and ticker/name search narrow the company browser without changing the selected research company. Business descriptions link to official sources; categories are business roles, not investment rankings. `TICKERS` can select a supported subset for local ingestion, which is declared as `trackedTickers` in both snapshot artifacts.
 
+A separate [Supabase database health workflow](docs/supabase-health-check.md) makes three read-only RPC requests daily at approximately 14:43 Asia/Taipei. It reuses the public project configuration, reports failures through GitHub Actions, and provides best-effort activity against free-tier inactivity pauses.
+
 Before deploying the expanded account UI, apply [the additive watchlist migration](supabase/migrations/20261008_expand_watchlist.sql) to an existing Supabase database. Fresh installations use [user-preferences.sql](supabase/user-preferences.sql). The migration preserves saved preferences and row-level security. Individual price/issuer failures are disclosed and retain previous observations; successful tickers continue refreshing.
 
 Deployment runbook: [English](docs/static-snapshot-deployment.en.md) · [繁體中文](docs/static-snapshot-deployment.zh-TW.md).

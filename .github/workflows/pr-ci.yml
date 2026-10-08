@@ -31,6 +31,8 @@ jobs:
         run: npm run test:dev-server
       - name: Server and domain tests
         run: npm run test:api
+      - name: Supabase health-check tests
+        run: npm run test:supabase-health
       - name: Frontend unit tests
         run: npm run test:unit
       - name: Production build

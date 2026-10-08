@@ -201,6 +201,8 @@ Gate 要求每個啟用的 ticker（預設 20 個）均有至少 60 筆具來源
 
 共用公司清單涵蓋 AI 算力與轉型（NBIS、CRWV、APLD、IREN、CIFR、CORZ）、資料中心營運商（GDS、VNET、EQIX、DLR、IRM）、基礎設施供應商（AVGO、VRT、ETN、ANET、PWR）、發電與能源（GEV、CEG、BE），以及多元雲端業務（ORCL）。分類篩選及公司代號／名稱搜尋只改變公司瀏覽清單，保留所選研究公司。公司描述附上官方來源；分類表示業務角色，並非投資排名。`TICKERS` 可設定本地資料擷取的支援子集，兩個快照均以 `trackedTickers` 明示範圍。
 
+獨立的 [Supabase 資料庫健康檢查](docs/supabase-health-check.md) 每日約台北時間 14:43 執行三次唯讀 RPC。工作流程沿用公開專案設定，透過 GitHub Actions 回報失敗，並以定期資料庫活動降低免費方案因閒置暫停的機率；無法保證永不暫停。
+
 部署擴充追蹤清單的帳戶介面前，既有 Supabase 資料庫需套用[追加式遷移](supabase/migrations/20261008_expand_watchlist.sql)；新安裝使用 [user-preferences.sql](supabase/user-preferences.sql)。遷移保留既有偏好與資料列層級安全政策。個別股價或發行人來源失敗會明示並保留舊資料，成功的公司仍可持續更新。
 
 部署文件：[繁體中文](docs/static-snapshot-deployment.zh-TW.md) · [English](docs/static-snapshot-deployment.en.md)。
