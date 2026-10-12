@@ -25,7 +25,13 @@ jobs:
         with:
           node-version: 22
       - name: Check database through the public health RPC
+        id: database-health
         run: npm run health:supabase
         env:
           SUPABASE_URL: ${{ vars.REACT_APP_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.REACT_APP_SUPABASE_PUBLISHABLE_KEY }}
+      - name: Summarize database heartbeat
+        if: always()
+        run: node scripts/workflow-summary.js supabase
+        env:
+          HEALTH_OUTCOME: ${{ steps.database-health.outcome }}

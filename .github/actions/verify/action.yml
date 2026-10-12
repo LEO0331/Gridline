@@ -1,0 +1,20 @@
+name: Verify Gridline
+description: Shared regression gate for pull requests and production deployments
+runs:
+  using: composite
+  steps:
+    - name: Development server compatibility
+      shell: bash
+      run: npm run test:dev-server
+    - name: Workflow publishing and reporting regressions
+      shell: bash
+      run: npm run test:workflows
+    - name: Server and domain tests
+      shell: bash
+      run: npm run test:api
+    - name: Supabase health-check tests
+      shell: bash
+      run: npm run test:supabase-health
+    - name: Frontend unit tests
+      shell: bash
+      run: npm run test:unit

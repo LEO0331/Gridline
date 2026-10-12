@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # Monday 11:11 Asia/Taipei: detect newly disclosed dependency findings.
+    - cron: '11 3 * * 1'
 
 permissions:
   contents: read
@@ -16,6 +19,7 @@ concurrency:
 jobs:
   verify:
     name: Tests and production build
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -27,20 +31,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Development server compatibility
-        run: npm run test:dev-server
-      - name: Server and domain tests
-        run: npm run test:api
-      - name: Supabase health-check tests
-        run: npm run test:supabase-health
-      - name: Frontend unit tests
-        run: npm run test:unit
+      - uses: ./.github/actions/verify
+      - name: Public snapshot acceptance
+        run: npm run demo:check
       - name: Production build
         run: npm run build
 
   dependency-audit:
-    name: Dependency audit (advisory)
+    name: Dependency security gate
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -49,6 +49,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
       - name: Block high and critical dependency findings
-        run: npm audit --audit-level=high
+        run: npm audit --package-lock-only --audit-level=high
+      - name: Report dependency gate outcome
+        if: always()
+        env:
+          AUDIT_STATUS: ${{ job.status }}
+        run: |
+          echo "### Dependency security gate" >> "$GITHUB_STEP_SUMMARY"
+          echo "Result: $AUDIT_STATUS. High and critical findings block this job; inspect the audit step for package paths and advisories." >> "$GITHUB_STEP_SUMMARY"
