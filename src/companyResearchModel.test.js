@@ -24,3 +24,16 @@ test('retained financial data is dated as stale without being fabricated or remo
   expect(result.coverage.status).toBe('stale');
   expect(result.financials).toHaveLength(1);
 });
+
+test('published snapshot provides revenue EPS filings and sourced research for all20 tracked companies', () => {
+  const published = require('../public/data/dashboard-snapshot.json');
+  const asOf = new Date(published.generatedAt);
+  for (const ticker of published.trackedTickers) {
+    const research = buildCompanyResearch(published, ticker, asOf);
+    expect(research.financials.map(item => item.id)).toEqual(expect.arrayContaining(['revenue', 'dilutedEps']));
+    expect(research.filings.length).toBeGreaterThan(0);
+    expect(research.events.length).toBeGreaterThan(0);
+    expect(research.events.every(item => item.ticker === ticker)).toBe(true);
+  }
+  expect(buildCompanyResearch(published, 'GDS', asOf).financials.find(item => item.id === 'revenue').unit).toBe('CNY');
+});

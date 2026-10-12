@@ -27,6 +27,9 @@ export default function CompanyResearch({ snapshot, ticker, language = 'en', now
   const t = (en, tw) => zh ? tw : en;
   const research = useMemo(() => buildCompanyResearch(snapshot, ticker, now), [snapshot, ticker, now]);
   const { company, financials = [], filings = [], events = [], coverage = {}, profile } = research;
+  const coverageNote = coverage.missingFields?.length
+    ? `${t('Unavailable reported fields', '尚無可用申報欄位')}: ${coverage.missingFields.map(item => zh ? item.labelZh : item.label).join(', ')}`
+    : coverage.status === 'ok' ? null : coverage.message;
   const statusNames = { ok: t('Source check passed', '來源檢查通過'), partial: t('Partial coverage', '部分涵蓋'), degraded: t('Source check limited', '來源檢查有限'), stale: t('Retained data · refresh needed', '保留資料 · 需要更新'), missing: t('No financial data recorded', '尚無財務資料'), unavailable: t('Source unavailable', '來源暫無法取得') };
   const focus = asItems(zh ? profile?.focusZh || profile?.focus : profile?.focus);
   const risks = asItems(zh ? profile?.risksZh || profile?.risks : profile?.risks);
@@ -40,7 +43,7 @@ export default function CompanyResearch({ snapshot, ticker, language = 'en', now
   </article>;
   return <section className="company-research" aria-label={t('Company research', '公司研究')}>
     <header className="company-research-head"><div><p className="eyebrow">{t('COMPANY EVIDENCE', '公司證據')}</p><h2>{ticker} · {company?.name || ticker}</h2><p>{t('Reported financials and dated official developments for the selected company.', '所選公司的已申報財務數據與具日期的官方進展。')}</p></div>
-      <div className={`company-research-health ${coverage.status || 'missing'}`}><strong>{statusNames[coverage.status] || t('Coverage not recorded', '尚無涵蓋紀錄')}</strong><span>{t('Last successful SEC check', '最近成功 SEC 檢查')}: {dateLabel(coverage.lastSuccessAt)}</span>{coverage.message && <span>{coverage.message}</span>}</div>
+      <div className={`company-research-health ${coverage.status || 'missing'}`}><strong>{statusNames[coverage.status] || t('Coverage not recorded', '尚無涵蓋紀錄')}</strong><span>{t('Last successful SEC check', '最近成功 SEC 檢查')}: {dateLabel(coverage.lastSuccessAt)}</span>{coverageNote && <span>{coverageNote}</span>}</div>
     </header>
     <div className="company-research-financials"><h3>{t('SEC financial records', 'SEC 財務紀錄')}</h3><p className="company-research-note">{t('Amounts retain the source currency and units. Periods can differ by company and metric; these are reported values, not forecasts.', '金額保留來源幣別及單位。公司與指標的報告期間可能不同；此為申報數值，並非預測。')}</p>
       {financials.length ? <><div className="company-research-metrics">{financials.slice(0, 5).map(metric => <Metric key={metric.id} metric={metric} zh={zh} t={t} />)}</div>{financials.length > 5 && <details><summary>{t('More reported metrics', '更多已申報指標')} ({financials.length - 5})</summary><div className="company-research-metrics">{financials.slice(5).map(metric => <Metric key={metric.id} metric={metric} zh={zh} t={t} />)}</div></details>}</> : <p className="company-research-empty">{t('No supported SEC financial metrics are available for this company yet.', '此公司目前尚無可用的支援 SEC 財務指標。')}</p>}

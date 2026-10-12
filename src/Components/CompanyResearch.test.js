@@ -78,3 +78,10 @@ test('latest official release remains visible when older than the recent window'
   expect(screen.getByRole('link', { name: 'Older official release ↗' }).closest('details')).toBeNull();
   expect(screen.getByText('Older record')).toBeVisible();
 });
+
+test('missing fields use localized metric labels instead of internal identifiers', () => {
+  buildCompanyResearch.mockReturnValue({ ...base, coverage: { status: 'ok', missingFields: [{ id: 'longTermDebt', label: 'Long-term debt', labelZh: '長期負債借款' }] } });
+  render(<CompanyResearch snapshot={{}} ticker="APLD" language="zh-TW" />);
+  expect(screen.getByText('尚無可用申報欄位: 長期負債借款')).toBeVisible();
+  expect(screen.queryByText(/longTermDebt/)).not.toBeInTheDocument();
+});

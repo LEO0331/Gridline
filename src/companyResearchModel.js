@@ -55,6 +55,7 @@ export function buildCompanyResearch(snapshot = {}, ticker, now = new Date()) {
   return {
     company: companies.find(item => item.ticker === ticker), financials, filings, events, profile,
     coverage: { status: stale ? 'stale' : state?.status || (financials.length ? snapshot.sourceHealth?.sec?.status || 'partial' : 'missing'), lastSuccessAt,
+      missingFields: (state?.missingFacts || []).map(id => { const metric = METRICS.find(item => item[0] === id); return { id, label: metric?.[1] || 'Other reported metric', labelZh: metric?.[2] || '其他申報指標' }; }),
       message: state?.message || null },
     researchCoverage: snapshot.sourceHealth?.['company-research']?.tickers?.[ticker] || { status: events.length ? 'retained' : 'missing' },
   };
