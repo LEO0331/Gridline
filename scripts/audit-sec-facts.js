@@ -1,4 +1,4 @@
-const { getJson } = require('../server/http');
+const { getJson, getText } = require('../server/http');
 const config = require('../server/config');
 
 async function main() {
@@ -19,5 +19,16 @@ async function main() {
       return latest ? { unit, end: latest.end, filed: latest.filed } : null;
     }).filter(Boolean) })));
   console.log(`SEC_AUDIT ${JSON.stringify({ ticker, url, tags })}`);
+  const submissions = await getJson(`https://data.sec.gov/submissions/CIK${String(issuer.cik_str).padStart(10, '0')}.json`, headers);
+  const recent = submissions.filings?.recent || {};
+  const index = (recent.form || []).findIndex((form, i) => ['20-F', '10-K'].includes(form) && recent.filingDate[i] <= cutoff);
+  if (index >= 0 && /^[\w.%-]+$/.test(recent.primaryDocument[index]) && /^\d{10}-\d{2}-\d{6}$/.test(recent.accessionNumber[index])) {
+    const filingUrl = `https://www.sec.gov/Archives/edgar/data/${Number(issuer.cik_str)}/${recent.accessionNumber[index].replaceAll('-', '')}/${recent.primaryDocument[index]}`;
+    const html = await getText(filingUrl, headers);
+    const revenueFacts = [...html.matchAll(/<ix:nonfraction\b([^>]+)>([\s\S]*?)<\/ix:nonfraction>/gi)]
+      .map(match => ({ name: match[1].match(/\bname=["']([^"']+)["']/i)?.[1], context: match[1].match(/\bcontextref=["']([^"']+)["']/i)?.[1], unit: match[1].match(/\bunitref=["']([^"']+)["']/i)?.[1], scale: match[1].match(/\bscale=["']([^"']+)["']/i)?.[1], value: match[2].replace(/<[^>]*>/g, '').trim() }))
+      .filter(item => /revenue|sales/i.test(item.name || '') && !/deferred|unearned|recognized|cost|percent|growth|proforma|contractwithcustomerliability/i.test(item.name));
+    console.log(`SEC_FILING_AUDIT ${JSON.stringify({ ticker, filingUrl, form: recent.form[index], filedAt: recent.filingDate[index], revenueFacts: revenueFacts.slice(0, 60) })}`);
+  }
 }
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
