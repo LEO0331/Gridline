@@ -87,11 +87,14 @@ test('missing fields use localized metric labels instead of internal identifiers
 });
 
 test('distinguishes audited gaps from zero and uses the precise financial concept', () => {
-  buildCompanyResearch.mockReturnValue({ ...base, financials: [{ ...metric, label: 'Current portion of long-term debt', classification: 'reported-zero' }], coverage: { status: 'partial', missingFields: [{ id: 'capex', label: 'Cash PP&E expenditure', classification: 'not-separately-reported', sourceUrl: metric.sourceUrl }] } });
+  buildCompanyResearch.mockReturnValue({ ...base, financials: [{ ...metric, label: 'Current portion of long-term debt', classification: 'reported-zero', extractionMethod: 'sec-inline-xbrl' }], coverage: { status: 'partial', missingFields: [{ id: 'capex', label: 'Cash PP&E expenditure', classification: 'not-separately-reported', reason: 'No separate consolidated total is reported.', auditSourceUrl: 'https://www.sec.gov/Archives/audited-filing' }] } });
   render(<CompanyResearch snapshot={{}} ticker="APLD" />);
   expect(screen.getByText('Current portion of long-term debt')).toBeVisible();
   expect(screen.getByText('Explicitly reported zero')).toBeVisible();
   expect(screen.getByText(/Cash PP&E expenditure: Not separately reported/)).toBeVisible();
+  expect(screen.getByText('No separate consolidated total is reported.')).toBeVisible();
+  expect(screen.getByText('Extraction: Filing XBRL')).toBeVisible();
+  expect(screen.getAllByRole('link', { name: 'SEC source ↗' }).some(link => link.href.endsWith('/audited-filing'))).toBe(true);
 });
 
 test('shows original and fallback publisher links with independent review and automatic check dates', () => {
