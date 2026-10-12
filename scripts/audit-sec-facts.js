@@ -49,11 +49,13 @@ function debtTableRows(html) {
     const words = text.split(' ');
     const index = words.findIndex(word => /debt|borrow|mortgage|notes?$/i.test(word));
     if (index < 0) continue;
-    rows.add(words.slice(Math.max(0, index - 2), Math.max(0, index - 2) + 20).join(' '));
+    const excerpt = words.slice(Math.max(0, index - 2), Math.max(0, index - 2) + 20).join(' ');
+    const tags = [...match[1].matchAll(/<ix:nonfraction\b([^>]+)>/gi)].map(item => ({ name: attribute(item[1], 'name'), context: attribute(item[1], 'contextref'), unit: attribute(item[1], 'unitref'), scale: attribute(item[1], 'scale') }));
+    rows.add(JSON.stringify({ text: excerpt, tags }));
     if (rows.size >= 20) break;
   }
-  return [...rows].map(text => ({ text, classification: 'filing-table-row',
-    zeroTokenPresent: /(?:^|\s)(?:0(?:\.0+)?|—|–)(?:\s|$)/.test(text) }));
+  return [...rows].map(value => { const row = JSON.parse(value); return { ...row, classification: 'filing-table-row',
+    zeroTokenPresent: /(?:^|\s)(?:0(?:\.0+)?|—|–)(?:\s|$)/.test(row.text) }; });
 }
 
 function balanceSheetHeaders(html) {
