@@ -33,6 +33,7 @@ async function readPrevious() { try { return JSON.parse(await fs.readFile(output
 async function refreshWithRetry(service, source, attempts = 3) {
   let result;
   const tickerOutcomes = new Map();
+  const retryableTickers = new Set();
   let retryTickers;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     result = await service.ingest(source, true, retryTickers ? { tickers: retryTickers } : {});
@@ -41,10 +42,14 @@ async function refreshWithRetry(service, source, attempts = 3) {
         const prior = tickerOutcomes.get(item.ticker);
         tickerOutcomes.set(item.ticker, prior?.status === 'partial' && item.status === 'degraded' && !item.recordCount
           ? { ...prior, latestAttemptError: item.message || item.errors } : item);
+        if (item.status !== 'ok' && item.retryable !== false) retryableTickers.add(item.ticker);
+        else retryableTickers.delete(item.ticker);
       }
-      retryTickers = [...tickerOutcomes.values()].filter(item => item.status !== 'ok').map(item => item.ticker);
+      retryTickers = [...retryableTickers];
+      const incomplete = [...tickerOutcomes.values()].filter(item => item.status !== 'ok');
       const successfulCount = [...tickerOutcomes.values()].filter(item => ['ok', 'partial'].includes(item.status)).length;
-      result = { ...result, tickerOutcomes: [...tickerOutcomes.values()], status: retryTickers.length === 0 ? 'ok' : successfulCount ? 'partial' : 'degraded', recordCount: [...tickerOutcomes.values()].reduce((sum, item) => sum + (item.recordCount || 0), 0) };
+      result = { ...result, tickerOutcomes: [...tickerOutcomes.values()], status: incomplete.length === 0 ? 'ok' : successfulCount ? 'partial' : 'degraded', recordCount: [...tickerOutcomes.values()].reduce((sum, item) => sum + (item.recordCount || 0), 0) };
+      if (!retryTickers.length) return { ...result, attempts: attempt };
     }
     // Event providers already retry transient errors within their own budgets.
     // Do not repeat denied requests just because another provider is partial.
@@ -63,7 +68,7 @@ function shouldRefreshPrices(previous, tickers, now = new Date()) {
   });
 }
 async function main() {
-  const service = createService(config); const previous = await readPrevious(); const outcomes = [];
+  const previous = await readPrevious(); const service = createService({ ...config, priorSnapshot: previous }); const outcomes = [];
   const now = new Date();
   const trackedTickers = config.tickers || companies.map(company => company.ticker);
   const marketSession = isNyseTradingDay(easternParts(now));

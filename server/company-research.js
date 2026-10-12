@@ -2,6 +2,7 @@ const profiles = require('../src/data/companyResearch.json');
 const { getText } = require('./http');
 const { plain, articlePublicationDate } = require('./event-discovery');
 const { pageMatchesTitle, pageSupportsEvidence, sourceReader } = require('./event-ingestion');
+const { secFilings, secDocuments, developmentFromPage, officialLinks, hasPublicationEvidence } = require('./company-source-discovery');
 
 function allowedSource(profile, record) {
   try {
@@ -45,22 +46,105 @@ async function ingestCompanyResearch(config = {}, dependencies = {}) {
     const profile = registry.find(item => item.ticker === ticker);
     const records = profile?.sources || [];
     const errors = [];
+    const discoveryErrors = []; const sourceChecks = [];
+    const prior = config.priorHealth?.tickers?.[ticker] || config.priorHealth?.tickerOutcomes?.find(item => item.ticker === ticker) || {};
+    const seenUrls = new Set(prior.sourceCursor?.urls || []);
+    const seenAccessions = new Set(prior.sourceCursor?.accessions || []);
+    for (const item of config.previousObservations || []) if (item.ticker === ticker && item.source === 'company-research') seenUrls.add(item.sourceUrl || item.value?.url);
     let count = 0;
-    const fetchPage = sourceReader(read, { 'User-Agent': config.secUserAgent || 'Gridline company research https://github.com/LEO0331/Gridline', Accept: 'text/html' }, Date.now() + (dependencies.budgetMs || 12000), dependencies.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms))), 4 * 1024 * 1024);
+    const deadline = Date.now() + (dependencies.budgetMs || 45000);
+    const headers = { 'User-Agent': config.secUserAgent || 'Gridline company research https://github.com/LEO0331/Gridline', Accept: 'text/html' };
+    const fetchPage = sourceReader(read, headers, deadline, dependencies.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms))), 4 * 1024 * 1024);
+    const readJson = dependencies.getJson ? async url => {
+      if (Date.now() >= deadline) throw new Error('Provider request budget exhausted');
+      return dependencies.getJson(url, headers, { timeoutMs: Math.min(10000, deadline - Date.now()), maxBytes: 4 * 1024 * 1024 });
+    } : async url => JSON.parse(await fetchPage(url));
+    let filings;
+    const getFilings = async () => {
+      if (!profile?.issuerCik) return [];
+      if (!filings) filings = await readJson(`https://data.sec.gov/submissions/CIK${String(profile.issuerCik).padStart(10, '0')}.json`).then(value => secFilings(value, profile.issuerCik, now));
+      return filings;
+    };
+    const accept = (record, verificationStatus, identity = {}) => {
+      const value = { ...record, ticker, focus: profile.focus, focusZh: profile.focusZh, risks: profile.risks, risksZh: profile.risksZh, verificationStatus, ...identity };
+      observations.push({ source: 'company-research', type: 'companyDevelopment', ticker, value, observedAt: record.publishedAt, retrievedAt: now.toISOString(), sourceUrl: record.url });
+      count += 1; seenUrls.add(record.url);
+      payload.push({ ticker, url: record.url, verifiedAt: now.toISOString() });
+    };
+    const verify = (html, record) => {
+      if (!pageMatchesTitle(html, record.title) && !pageSupportsEvidence(html, record.title)) throw new Error('record title mismatch');
+      if (!pageSupportsEvidence(html, record.evidenceText)) throw new Error('supporting text missing');
+      if (!matchingDate(html, record)) throw new Error('publication date missing or mismatch');
+    };
     for (const record of records) {
+      let originalError;
       try {
         if (!allowedSource(profile, record) || !Number.isFinite(Date.parse(record.publishedAt)) || Date.parse(record.publishedAt) > now.getTime() || !record.evidenceText || record.evidenceText.length < 12) throw new Error('invalid official source metadata');
+        const previousCheck = prior.sourceChecks?.find(check => check.originalSourceUrl === record.url && check.blockedAt);
+        const previous403 = prior.errors?.find(error => error.url === record.url && /\b403\b/.test(error.message || ''));
+        const blockedAt = previousCheck?.blockedAt || (previous403 ? prior.checkedAt : null);
+        if (blockedAt && now.getTime() - Date.parse(blockedAt) < 7 * 86400000) throw Object.assign(new Error('403 access-denial cooldown'), { status: 403, blockedAt });
         const html = await fetchPage(record.url);
-        if (!pageMatchesTitle(html, record.title) && !pageSupportsEvidence(html, record.title)) throw new Error('record title mismatch');
-        if (!pageSupportsEvidence(html, record.evidenceText)) throw new Error('supporting text missing');
-        if (!matchingDate(html, record)) throw new Error('publication date missing or mismatch');
-        const value = { ...record, ticker, focus: profile.focus, focusZh: profile.focusZh, risks: profile.risks, risksZh: profile.risksZh };
-        observations.push({ source: 'company-research', type: 'companyDevelopment', ticker, value, observedAt: record.publishedAt, retrievedAt: now.toISOString(), sourceUrl: record.url });
-        count += 1;
-        payload.push({ ticker, url: record.url, verifiedAt: now.toISOString() });
-      } catch (error) { errors.push({ url: record.url, message: error.message }); }
+        verify(html, record); accept(record, 'primary-verified');
+        sourceChecks.push({ originalSourceUrl: record.url, effectiveSourceUrl: record.url, coverage: 'primary-verified', checkedAt: now.toISOString(), lastSuccessAt: now.toISOString() });
+        continue;
+      } catch (error) { originalError = error; }
+      let fallback;
+      // Invalid curated metadata is never rescued by a coincidental SEC text match.
+      if (allowedSource(profile, record) && Date.parse(record.publishedAt) <= now.getTime() && record.evidenceText?.length >= 12) {
+        try {
+          const candidates = (await getFilings()).filter(item => Math.abs(Date.parse(item.filedAt) - Date.parse(record.publishedAt)) <= 7 * 86400000).slice(0, 2);
+          for (const filing of candidates) {
+            for (const document of await secDocuments(filing, profile.issuerCik, readJson)) {
+              try { const html = await fetchPage(document.url); if (!pageSupportsEvidence(html, record.title)) throw new Error('exact record title missing'); if (!hasPublicationEvidence(html, record)) throw new Error('publication evidence missing'); verify(html, record); fallback = document; break; } catch { /* A different release is not a valid mirror. */ }
+            }
+            if (fallback) break;
+          }
+        } catch (error) { discoveryErrors.push({ source: 'sec-fallback', message: error.message }); }
+      }
+      const denied = originalError.status === 403 || /\b403\b/.test(originalError.message);
+      const retained = Boolean(profile.reviewedAt && Date.parse(profile.reviewedAt) <= now.getTime()) || (config.previousObservations || []).some(item => item.ticker === ticker && (item.value?.originalSourceUrl || item.value?.url || item.sourceUrl) === record.url);
+      const previousCheck = prior.sourceChecks?.find(check => check.originalSourceUrl === record.url);
+      const check = { originalSourceUrl: record.url, effectiveSourceUrl: fallback?.url || null, coverage: fallback ? 'official-fallback-verified' : retained ? 'retained-reviewed' : 'unavailable', checkedAt: now.toISOString(), lastError: originalError.message, ...(previousCheck?.lastSuccessAt ? { lastSuccessAt: previousCheck.lastSuccessAt } : {}), ...(denied ? { blockedAt: originalError.blockedAt || now.toISOString() } : {}) };
+      if (fallback) {
+        accept({ ...record, url: fallback.url, source: `SEC ${fallback.form} exhibit` }, 'official-fallback-verified', { sourceKind: 'sec-mirror', originalSourceUrl: record.url, issuerCik: fallback.cik, accession: fallback.accession });
+        check.lastSuccessAt = now.toISOString();
+      } else errors.push({ url: record.url, message: originalError.message, retryable: !denied && !/metadata|mismatch|missing/.test(originalError.message) });
+      sourceChecks.push(check);
     }
-    tickerOutcomes.push({ ticker, status: count && !errors.length ? 'ok' : count ? 'partial' : 'degraded', recordCount: count, errors,
+    // Discover a bounded number of newly seen official articles, then issuer-owned filings.
+    if (profile?.listingUrl && allowedSource(profile, { url: profile.listingUrl })) {
+      const listingDenied = prior.discoveryErrors?.find(error => error.url === profile.listingUrl && /403/.test(error.message));
+      const cooldown = listingDenied && now.getTime() - Date.parse(listingDenied.blockedAt || prior.checkedAt) < 7 * 86400000;
+      try {
+        if (cooldown) throw Object.assign(new Error('403 listing access-denial cooldown'), { blockedAt: listingDenied.blockedAt || prior.checkedAt });
+        const listing = await fetchPage(profile.listingUrl);
+        const links = officialLinks(listing, profile.listingUrl, profile.officialHosts).filter(url => !seenUrls.has(url) && !records.some(record => record.url === url)).slice(0, 3);
+        for (const url of links) {
+          const record = developmentFromPage(await fetchPage(url), url, `${ticker} official newsroom`, now);
+          if (record && Date.parse(record.publishedAt) >= now.getTime() - 90 * 86400000) { verify(await fetchPage(url), record); accept(record, 'primary-verified'); }
+        }
+      } catch (error) { discoveryErrors.push({ url: profile.listingUrl, message: error.message, ...(/403/.test(error.message) ? { blockedAt: error.blockedAt || now.toISOString() } : {}) }); }
+    }
+    try {
+      const newFilings = (await getFilings()).filter(item => !seenAccessions.has(item.accession) && Date.parse(item.filedAt) >= now.getTime() - 45 * 86400000).slice(0, 2);
+      for (const filing of newFilings) {
+        let checked = true;
+        for (const document of await secDocuments(filing, profile.issuerCik, readJson)) {
+          try {
+          const html = await fetchPage(document.url);
+          const record = developmentFromPage(html, document.url, `SEC ${filing.form} exhibit`, now);
+          if (record && Math.abs(Date.parse(record.publishedAt) - Date.parse(filing.filedAt)) <= 7 * 86400000 && !seenUrls.has(record.url)) {
+            verify(html, record); accept(record, 'official-fallback-verified', { sourceKind: 'sec-filing-discovery', issuerCik: document.cik, accession: document.accession });
+          }
+          } catch (error) { checked = false; discoveryErrors.push({ source: 'sec-discovery', url: document.url, message: error.message }); }
+        }
+        if (checked) seenAccessions.add(filing.accession);
+      }
+    } catch (error) { discoveryErrors.push({ source: 'sec-discovery', message: error.message }); }
+    tickerOutcomes.push({ ticker, status: count && !errors.length && !discoveryErrors.length ? 'ok' : count ? 'partial' : 'degraded', recordCount: count, errors,
+      checkedAt: now.toISOString(), retryable: errors.some(error => error.retryable), sourceChecks, discoveryErrors,
+      sourceCursor: { urls: [...seenUrls].slice(-200), accessions: [...seenAccessions].slice(-200) },
       message: records.length ? `${count}/${records.length} configured official company records verified${errors.length ? '; limited source access or evidence' : ''}.` : 'No official company sources configured.' });
     }));
   }

@@ -116,3 +116,9 @@ test('provider failure keeps its last successful check without copying old cover
   assert.equal(health.events.coverage.sources.ERCOT.lastSuccessAt, '2026-10-01T00:00:00Z');
   assert.equal(health.events.coverage.sources.ERCOT.acceptedCount, 0);
 });
+test('incremental company discovery retains previously admitted announcements', () => {
+  const prior = { id: 'prior-news', source: 'company-research', ticker: 'ORCL', observedAt: '2026-09-01', value: { url: 'https://www.oracle.com/news/old' } };
+  const fresh = { id: 'fresh-news', source: 'company-research', ticker: 'ORCL', observedAt: '2026-10-01', value: { url: 'https://www.oracle.com/news/new' } };
+  const merged = mergeSnapshotObservations([prior], [fresh], [{ source: 'company-research', status: 'ok', tickerOutcomes: [{ ticker: 'ORCL', status: 'ok' }] }]);
+  assert.equal(merged.length, 2);
+});

@@ -37,3 +37,33 @@ test('published snapshot provides revenue EPS filings and sourced research for a
   }
   expect(buildCompanyResearch(published, 'GDS', asOf).financials.find(item => item.id === 'revenue').unit).toBe('CNY');
 });
+
+test('field definitions and audited missing classifications remain explicit', () => {
+  const result = buildCompanyResearch({ ...snapshot, observations: [{ ...fact, type: 'currentDebt', value: 15, conceptLabel: 'Current portion of long-term debt', conceptLabelZh: '一年內到期長期借款', classification: 'verified-issuer-extension', extractionMethod: 'inline-xbrl' }], sourceHealth: { sec: { tickers: { VNET: { factCoverage: { capex: { classification: 'not-separately-reported', sourceUrl: fact.sourceUrl, periodEnd: fact.periodEnd } } } } } } }, 'VNET', now);
+  expect(result.financials[0]).toMatchObject({ label: 'Current portion of long-term debt', labelZh: '一年內到期長期借款', classification: 'verified-issuer-extension', extractionMethod: 'inline-xbrl' });
+  expect(result.coverage.missingFields[0]).toMatchObject({ id: 'capex', classification: 'not-separately-reported', sourceUrl: fact.sourceUrl });
+});
+
+test('SEC mirrors bind to the tracked issuer accession and retain original source and review date', () => {
+  const profile = profiles.find(item => item.ticker === 'VNET');
+  const accession = '0001104659-26-000001';
+  const item = { ...source, ticker: 'VNET', issuerCik: profile.issuerCik, accession, verificationStatus: 'official-fallback-verified', originalSourceUrl: source.url, url: `https://www.sec.gov/Archives/edgar/data/${Number(profile.issuerCik)}/${accession.replace(/-/g, '')}/release.htm` };
+  const record = { source: 'company-research', type: 'companyDevelopment', ticker: 'VNET', value: item, retrievedAt: '2026-10-08T00:00:00Z' };
+  const result = companyDevelopments({ ...snapshot, observations: [record] }, 'VNET', now);
+  expect(result).toHaveLength(1);
+  expect(result[0]).toMatchObject({ url: item.url, originalSourceUrl: source.url, verificationStatus: 'official-fallback-verified', automaticVerifiedAt: record.retrievedAt, reviewedAt: profile.reviewedAt });
+  expect(companyDevelopments({ ...snapshot, observations: [{ ...record, value: { ...item, issuerCik: '123' } }] }, 'VNET', now)[0].verificationStatus).toBe('retained-reviewed');
+  expect(companyDevelopments({ ...snapshot, observations: [{ ...record, value: { ...item, url: item.url.replace(accession.replace(/-/g, ''), '999') } }] }, 'VNET', now)[0].verificationStatus).toBe('retained-reviewed');
+});
+
+test('manual review is never labeled as an automatic verification', () => {
+  const item = companyDevelopments({ ...snapshot, observations: [] }, 'VNET', now)[0];
+  expect(item.verificationStatus).toBe('retained-reviewed');
+  expect(item.reviewedAt).toBeTruthy();
+  expect(item.automaticVerifiedAt).toBeUndefined();
+});
+
+test('old supported values retain their source and period with an explicit stale classification', () => {
+  const result = buildCompanyResearch({ ...snapshot, observations: [{ ...fact, periodEnd: '2024-12-31', filedAt: '2025-04-01' }] }, 'VNET', now);
+  expect(result.financials[0]).toMatchObject({ classification: 'stale-data', value: 0, unit: 'CNY', periodEnd: '2024-12-31', sourceUrl: fact.sourceUrl });
+});

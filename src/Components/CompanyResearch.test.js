@@ -85,3 +85,22 @@ test('missing fields use localized metric labels instead of internal identifiers
   expect(screen.getByText('尚無可用申報欄位: 長期負債借款')).toBeVisible();
   expect(screen.queryByText(/longTermDebt/)).not.toBeInTheDocument();
 });
+
+test('distinguishes audited gaps from zero and uses the precise financial concept', () => {
+  buildCompanyResearch.mockReturnValue({ ...base, financials: [{ ...metric, label: 'Current portion of long-term debt', classification: 'reported-zero' }], coverage: { status: 'partial', missingFields: [{ id: 'capex', label: 'Cash PP&E expenditure', classification: 'not-separately-reported', sourceUrl: metric.sourceUrl }] } });
+  render(<CompanyResearch snapshot={{}} ticker="APLD" />);
+  expect(screen.getByText('Current portion of long-term debt')).toBeVisible();
+  expect(screen.getByText('Explicitly reported zero')).toBeVisible();
+  expect(screen.getByText(/Cash PP&E expenditure: Not separately reported/)).toBeVisible();
+});
+
+test('shows original and fallback publisher links with independent review and automatic check dates', () => {
+  const event = { title: 'Official release', summary: 'Original English summary', publishedAt: '2026-08-01', reviewedAt: '2026-09-01', automaticVerifiedAt: '2026-10-08', verificationStatus: 'official-fallback-verified', originalSourceUrl: 'https://ir.applieddigital.com/release', url: 'https://www.sec.gov/Archives/release.htm' };
+  buildCompanyResearch.mockReturnValue({ ...base, events: [event] });
+  render(<CompanyResearch snapshot={{}} ticker="APLD" language="zh-TW" />);
+  expect(screen.getByRole('link', { name: 'Official release ↗' })).toBeVisible();
+  expect(screen.getByText('Original English summary')).toBeVisible();
+  expect(screen.getByRole('link', { name: '原始發布者 ↗' })).toHaveAttribute('href', event.originalSourceUrl);
+  expect(screen.getByRole('link', { name: '已驗證 SEC 備援文件 ↗' })).toHaveAttribute('href', event.url);
+  expect(screen.getByText(/自動檢查 2026-10-08.*人工審閱 2026-09-01/)).toBeVisible();
+});

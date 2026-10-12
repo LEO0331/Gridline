@@ -110,7 +110,7 @@ function compactSec(observations = []) {
       for (const key of [
         'id', 'source', 'type', 'value', 'observedAt', 'ticker', 'unit',
         'periodStart', 'periodEnd', 'filedAt', 'form', 'fiscalYear',
-        'fiscalPeriod', 'sourceUrl', 'periodKind', 'taxonomy', 'factTag',
+        'fiscalPeriod', 'sourceUrl', 'periodKind', 'taxonomy', 'factTag', 'classification', 'conceptLabel', 'conceptLabelZh', 'extractionMethod',
       ]) {
         if (row[key] !== undefined) compact[key] = row[key];
       }

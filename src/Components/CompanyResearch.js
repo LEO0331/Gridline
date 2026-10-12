@@ -5,6 +5,14 @@ import './CompanyResearch.css';
 const safeUrl = value => { try { return new URL(value).protocol === 'https:'; } catch { return false; } };
 const dateLabel = value => value ? String(value).slice(0, 10) : '—';
 const asItems = value => Array.isArray(value) ? value : value ? [value] : [];
+const classificationLabel = (status, t) => ({
+  'verified-standard-tag': t('Verified reported value', '已驗證申報數值'),
+  'verified-issuer-extension': t('Verified issuer-specific value', '已驗證公司專屬申報數值'),
+  'reported-zero': t('Explicitly reported zero', '明確申報為零'),
+  'stale-data': t('Stale reported value', '較舊申報數值'),
+  'not-separately-reported': t('Not separately reported', '未單獨申報'),
+  unavailable: t('Unavailable', '尚無可用數值'),
+}[status] || t('Unavailable', '尚無可用數值'));
 
 function SourceLink({ url, children }) {
   return safeUrl(url) ? <a href={url} target="_blank" rel="noopener noreferrer">{children}</a> : null;
@@ -16,9 +24,11 @@ function Metric({ metric, zh, t }) {
   return <article className="company-research-metric">
     <h4>{zh ? metric.labelZh || metric.label : metric.label}</h4>
     <strong>{value} <small>{metric.unit}</small></strong>
+    {metric.classification && <span>{classificationLabel(metric.classification, t)}</span>}
     <span>{t('Period', '報告期間')}: {metric.periodStart ? `${dateLabel(metric.periodStart)} → ` : ''}{dateLabel(metric.periodEnd)}</span>
     <span>{t('Filed', '申報')}: {dateLabel(metric.filedAt)}{metric.form ? ` · ${metric.form}` : ''}</span>
     <SourceLink url={metric.sourceUrl}>{t('SEC source ↗', 'SEC 來源 ↗')}</SourceLink>
+    {metric.extractionMethod && <span>{t('Extraction', '擷取方式')}: {metric.extractionMethod === 'companyfacts' ? t('SEC structured facts', 'SEC 結構化資料') : metric.extractionMethod === 'inline-xbrl' ? t('Filing XBRL', '申報 XBRL') : t('Verified filing extraction', '已驗證申報擷取')}</span>}
   </article>;
 }
 
@@ -39,7 +49,10 @@ export default function CompanyResearch({ snapshot, ticker, language = 'en', now
     <div className="company-research-event-date"><time dateTime={event.publishedAt}>{dateLabel(event.publishedAt)}</time>{event.archived && <span>{t('Older record', '較早紀錄')}</span>}</div>
     <h4><SourceLink url={event.url}>{zh ? event.titleZh || event.title : event.title} ↗</SourceLink></h4>
     <p>{zh ? event.summaryZh || event.summary : event.summary}</p>
-    <small>{event.source}{event.retrievedAt && ` · ${t('Verified', '驗證')} ${dateLabel(event.retrievedAt)}`}</small>
+    <small>{event.source} · {event.verificationStatus === 'official-fallback-verified' ? t('Official fallback verified', '官方備援來源已驗證') : event.verificationStatus === 'primary-verified' ? t('Primary source verified', '原始來源已驗證') : event.verificationStatus === 'unavailable' ? t('Source unavailable', '來源暫無法取得') : t('Retained reviewed source', '保留已審閱來源')}
+      {event.automaticVerifiedAt && ` · ${t('Automatic check', '自動檢查')} ${dateLabel(event.automaticVerifiedAt)}`}
+      {event.reviewedAt && ` · ${t('Reviewed', '人工審閱')} ${dateLabel(event.reviewedAt)}`}</small>
+    {event.originalSourceUrl && event.originalSourceUrl !== event.url && <div><SourceLink url={event.originalSourceUrl}>{t('Original publisher ↗', '原始發布者 ↗')}</SourceLink> · <SourceLink url={event.url}>{t('Verified SEC mirror ↗', '已驗證 SEC 備援文件 ↗')}</SourceLink></div>}
   </article>;
   return <section className="company-research" aria-label={t('Company research', '公司研究')}>
     <header className="company-research-head"><div><p className="eyebrow">{t('COMPANY EVIDENCE', '公司證據')}</p><h2>{ticker} · {company?.name || ticker}</h2><p>{t('Reported financials and dated official developments for the selected company.', '所選公司的已申報財務數據與具日期的官方進展。')}</p></div>
@@ -48,6 +61,7 @@ export default function CompanyResearch({ snapshot, ticker, language = 'en', now
     <div className="company-research-financials"><h3>{t('SEC financial records', 'SEC 財務紀錄')}</h3><p className="company-research-note">{t('Amounts retain the source currency and units. Periods can differ by company and metric; these are reported values, not forecasts.', '金額保留來源幣別及單位。公司與指標的報告期間可能不同；此為申報數值，並非預測。')}</p>
       {financials.length ? <><div className="company-research-metrics">{financials.slice(0, 5).map(metric => <Metric key={metric.id} metric={metric} zh={zh} t={t} />)}</div>{financials.length > 5 && <details><summary>{t('More reported metrics', '更多已申報指標')} ({financials.length - 5})</summary><div className="company-research-metrics">{financials.slice(5).map(metric => <Metric key={metric.id} metric={metric} zh={zh} t={t} />)}</div></details>}</> : <p className="company-research-empty">{t('No supported SEC financial metrics are available for this company yet.', '此公司目前尚無可用的支援 SEC 財務指標。')}</p>}
       {filings.length > 0 && <details className="company-research-filings"><summary>{t('Filing references', '申報文件')} ({filings.length})</summary><ul>{filings.map((filing, index) => <li key={`${filing.sourceUrl}-${index}`}><SourceLink url={filing.sourceUrl}>{filing.form || t('Filing', '申報')} · {dateLabel(filing.filedAt)} ↗</SourceLink></li>)}</ul></details>}
+      {coverage.missingFields?.length > 0 && <ul className="company-research-note">{coverage.missingFields.map(field => <li key={field.id}>{zh ? field.labelZh : field.label}: {classificationLabel(field.classification, t)}{field.periodEnd && ` · ${t('Period', '報告期間')} ${dateLabel(field.periodEnd)}`} {field.sourceUrl && <SourceLink url={field.sourceUrl}>{t('SEC source ↗', 'SEC 來源 ↗')}</SourceLink>}</li>)}</ul>}
     </div>
     <div className="company-research-bottom"><div className="company-research-profile"><h3>{t('Research focus', '研究焦點')}</h3>{focus.length ? <ul>{focus.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p className="company-research-empty">{t('A sourced business profile is not recorded yet.', '尚無具來源的業務研究摘要。')}</p>}{risks.length > 0 && <><h3>{t('What to verify next', '下一步應查證什麼')}</h3><ul>{risks.map((item, index) => <li key={index}>{item}</li>)}</ul></>}{profile?.sourceUrl && <SourceLink url={profile.sourceUrl}>{t('Business source ↗', '業務來源 ↗')}</SourceLink>}{profile?.sources?.map((source, index) => <SourceLink key={index} url={source.url}>{source.title || t('Business source', '業務來源')} ↗</SourceLink>)}</div>
       <div className="company-research-developments"><h3>{t('Official company developments', '公司官方進展')}</h3>{featured.map(renderEvent)}{older.length > 0 && <details><summary>{t('More dated records', '更多具日期紀錄')} ({older.length})</summary>{older.map(renderEvent)}</details>}{!events.length && <p className="company-research-empty">{t('No verified company-specific announcements are recorded yet.', '尚無已驗證的公司專屬公告紀錄。')}</p>}</div>

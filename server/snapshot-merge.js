@@ -10,7 +10,7 @@ function mergeSnapshotObservations(previous = [], fresh = [], outcomes = []) {
   const successful = new Set((outcomes || []).filter(item => item.status === 'ok').map(item => item.source));
   const perTicker = new Map((outcomes || []).filter(item => item.tickerOutcomes).map(item => [item.source, new Set(item.tickerOutcomes.filter(ticker => ticker.status === 'ok').map(ticker => ticker.ticker))]));
   const usableTickers = new Map((outcomes || []).filter(item => item.tickerOutcomes).map(item => [item.source, new Set(item.tickerOutcomes.filter(ticker => ['ok', 'partial'].includes(ticker.status)).map(ticker => ticker.ticker))]));
-  const retained = (previous || []).filter(item => item.source === 'events' || (perTicker.has(item.source) ? !perTicker.get(item.source).has(item.ticker) : !successful.has(item.source)));
+  const retained = (previous || []).filter(item => item.source === 'events' || item.source === 'company-research' || (perTicker.has(item.source) ? !perTicker.get(item.source).has(item.ticker) : !successful.has(item.source)));
   const merged = new Map();
   const usableFresh = (fresh || []).filter(item => !usableTickers.has(item.source) || usableTickers.get(item.source).has(item.ticker));
   for (const item of [...retained, ...usableFresh]) merged.set(observationKey(item), item);
@@ -37,7 +37,10 @@ function mergeSnapshotHealth(previous = {}, current = {}, observations = []) {
     const tickerStates = (next.tickers || prior.tickers) && Object.fromEntries([...new Set([...Object.keys(prior.tickers || {}), ...Object.keys(next.tickers || {})])].map(ticker => {
       const state = next.tickers?.[ticker] || prior.tickers?.[ticker] || {};
       const lastSuccessAt = state.lastSuccessAt || prior.tickers?.[ticker]?.lastSuccessAt;
-      return [ticker, { ...state, ...(lastSuccessAt ? { lastSuccessAt } : {}) }];
+      const priorState = prior.tickers?.[ticker] || {};
+      return [ticker, { ...state, ...(lastSuccessAt ? { lastSuccessAt } : {}),
+        ...(!state.sourceCursor && priorState.sourceCursor ? { sourceCursor: priorState.sourceCursor } : {}),
+        ...(!state.sourceChecks && priorState.sourceChecks ? { sourceChecks: priorState.sourceChecks } : {}) }];
     }));
     const eventSources = next.coverage?.sources && Object.fromEntries(Object.entries(next.coverage.sources).map(([name, state]) => {
       const lastSuccessAt = state.lastSuccessAt || prior.coverage?.sources?.[name]?.lastSuccessAt;

@@ -232,6 +232,107 @@ test('SEC omits prior-year comparison when only a mismatched duration is availab
   });
 });
 
+test('financial coverage distinguishes explicitly reported zero, stale and unavailable without inventing totals', async () => {
+  const facts = { facts: { 'us-gaap': {
+    LongTermDebtCurrent: { units: { USD: [entry(0, '2026-06-30', '2026-08-01')] } },
+    LongTermDebtNoncurrent: { units: { USD: [entry(200, '2023-12-31', '2024-03-01')] } },
+  } } };
+  await withJsonFixture({ company_tickers: { 0: { ticker: 'TEST', cik_str: 1 } }, submissions: { filings: { recent: {} } }, companyfacts: facts }, async ({ sec }) => {
+    const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['TEST'] });
+    const coverage = result.tickerOutcomes[0].factCoverage;
+    assert.equal(coverage.currentDebt.classification, 'reported-zero');
+    assert.equal(coverage.currentDebt.conceptLabel, 'Current portion of long-term borrowings');
+    assert.equal(result.observations.find(row => row.type === 'currentDebt').value, 0);
+    assert.equal(coverage.longTermDebt.classification, 'stale-data');
+    assert.equal(coverage.longTermDebt.periodEnd, '2023-12-31');
+    assert.equal(coverage.capex.classification, 'unavailable');
+    assert.equal(coverage.capex.available, false);
+    assert.equal(result.observations.some(row => row.type === 'capex' || row.type === 'longTermDebt'), false);
+  });
+});
+
+test('audited standard alternatives retain their definitions and never combine totals', async () => {
+  const cases = [
+    ['ORCL', 'currentDebt', 'NotesPayableCurrent', 7625000000, 'other borrowings'],
+    ['ORCL', 'longTermDebt', 'LongTermNotesPayable', 122342000000, 'other borrowings'],
+    ['APLD', 'currentDebt', 'NotesPayableCurrent', 112645000, 'reported debt'],
+    ['APLD', 'longTermDebt', 'LongTermNotesPayable', 6263947000, 'reported debt'],
+    ['APLD', 'capex', 'PaymentsToAcquireProductiveAssets', 2074698000, 'productive assets', '2026-06-01', '2026-08-31'],
+    ['EQIX', 'capex', 'PaymentsToAcquireOtherPropertyPlantAndEquipment', 2834000000, 'excludes real estate', '2026-01-01'],
+    ['EQIX', 'longTermDebt', 'LongTermDebt', 19873000000, 'including current'],
+    ['ETN', 'currentDebt', 'LongTermDebtAndCapitalLeaseObligationsCurrent', 11000000, 'finance lease'],
+    ['ETN', 'longTermDebt', 'LongTermDebtAndCapitalLeaseObligations', 18509000000, 'finance lease'],
+    ['PWR', 'longTermDebt', 'LongTermDebtAndCapitalLeaseObligations', 5421862000, 'finance lease'],
+    ['GEV', 'capex', 'PaymentsToAcquireProductiveAssets', 783000000, 'productive assets', '2026-01-01'],
+    ['GEV', 'currentDebt', 'LongTermDebtAndCapitalLeaseObligationsCurrent', 55000000, 'finance lease'],
+    ['GEV', 'longTermDebt', 'LongTermDebtAndCapitalLeaseObligations', 2794000000, 'finance lease'],
+  ];
+  for (const [ticker, field, tag, value, label, start, end = '2026-06-30'] of cases) {
+    const facts = { facts: { 'us-gaap': { [tag]: { units: { USD: [entry(value, end, '2026-09-01', { ...(start ? { start } : {}) })] } } } } };
+    await withJsonFixture({ company_tickers: { 0: { ticker, cik_str: 1 } }, submissions: { filings: { recent: {} } }, companyfacts: facts }, async ({ sec }) => {
+      const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: [ticker] });
+      const selected = result.observations.find(row => row.type === field);
+      assert.equal(selected.value, value, `${ticker} ${field}`);
+      assert.equal(selected.factTag, tag);
+      assert.ok(selected.conceptLabel.includes(label));
+      assert.equal(selected.classification, 'verified-standard-tag');
+      assert.equal(selected.extractionMethod, 'sec-companyfacts');
+      assert.ok(selected.auditSourceUrl.startsWith('https://www.sec.gov/Archives/'));
+      assert.equal(selected.periodStart, start || null);
+    });
+  }
+});
+
+test('audited unreported debt stays unavailable instead of using investment assets or old zeros', async () => {
+  for (const ticker of ['ANET', 'CORZ', 'DLR']) {
+    const facts = { facts: { 'us-gaap': {
+      LongTermDebtCurrent: { units: { USD: [entry(0, '2014-06-30', '2014-08-01')] } },
+      AvailableForSaleSecuritiesDebtSecuritiesCurrent: { units: { USD: [entry(11053100000, '2026-06-30', '2026-08-01')] } },
+    } } };
+    await withJsonFixture({ company_tickers: { 0: { ticker, cik_str: 1 } }, submissions: { filings: { recent: {} } }, companyfacts: facts }, async ({ sec }) => {
+      const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: [ticker] });
+      assert.equal(result.observations.some(row => row.type === 'currentDebt'), false);
+      assert.equal(result.tickerOutcomes[0].factCoverage.currentDebt.classification, 'not-separately-reported');
+      assert.ok(result.tickerOutcomes[0].factCoverage.currentDebt.reason);
+    });
+  }
+});
+
+test('audited DLR development cash spending can refresh a lagging standard tag and retains its distinct definition', async () => {
+  const http = require('./http'); const originalText = http.getText;
+  const html = '<xbrli:context id="all"><xbrli:entity><xbrli:identifier>1297996</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>2026-01-01</xbrli:startDate><xbrli:endDate>2026-06-30</xbrli:endDate></xbrli:period></xbrli:context><xbrli:unit id="usd"><xbrli:measure>iso4217:USD</xbrli:measure></xbrli:unit><ix:nonFraction name="us-gaap:PaymentsToDevelopRealEstateAssets" contextRef="all" unitRef="usd" scale="3">1,784,229</ix:nonFraction>';
+  http.getText = async () => html;
+  try {
+    await withJsonFixture({ company_tickers: { 0: { ticker: 'DLR', cik_str: 1297996 } }, submissions: { filings: { recent: { form: ['10-Q'], filingDate: ['2026-08-01'], accessionNumber: ['0001104659-26-089296'], primaryDocument: ['dlr-20260630x10q.htm'] } } }, companyfacts: { facts: { 'us-gaap': { PaymentsToDevelopRealEstateAssets: { units: { USD: [entry(870038000, '2026-03-31', '2026-05-01', { start: '2026-01-01' })] } } } } } }, async ({ sec }) => {
+      const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['DLR'] });
+      const selected = result.observations.find(row => row.type === 'capex');
+      assert.equal(selected.value, 1784229000);
+      assert.equal(selected.periodKind, 'year-to-date');
+      assert.equal(selected.classification, 'verified-standard-tag');
+      assert.equal(selected.extractionMethod, 'sec-inline-xbrl');
+      assert.ok(selected.conceptLabel.includes('not total PP&E'));
+    });
+  } finally { http.getText = originalText; }
+});
+
+test('VNET audited noncurrent extension remains native CNY and ignores segment balances', async () => {
+  const http = require('./http'); const originalText = http.getText;
+  const context = '<xbrli:context id="all"><xbrli:entity><xbrli:identifier>1508475</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:instant>2025-12-31</xbrli:instant></xbrli:period></xbrli:context>';
+  const html = context + '<xbrli:unit id="cny"><xbrli:measure>iso4217:CNY</xbrli:measure></xbrli:unit><ix:nonFraction name="vnet:LongTermBorrowingsNonCurrent" contextRef="all" unitRef="cny" scale="3">11,579,664</ix:nonFraction>';
+  http.getText = async () => html;
+  try {
+    await withJsonFixture({ company_tickers: { 0: { ticker: 'VNET', cik_str: 1508475 } }, submissions: { filings: { recent: { form: ['20-F'], filingDate: ['2026-04-16'], accessionNumber: ['0001104659-26-044361'], primaryDocument: ['vnet-20251231x20f.htm'] } } }, companyfacts: { facts: {} } }, async ({ sec }) => {
+      const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['VNET'] });
+      const selected = result.observations.find(row => row.type === 'longTermDebt');
+      assert.equal(selected.value, 11579664000);
+      assert.equal(selected.unit, 'CNY');
+      assert.equal(selected.periodKind, 'instant');
+      assert.equal(selected.classification, 'verified-issuer-extension');
+      assert.equal(selected.extractionMethod, 'sec-inline-xbrl');
+    });
+  } finally { http.getText = originalText; }
+});
+
 test('EIA requests actual PJM demand and excludes other returned measures', async () => {
   const payload = { response: { data: [
     { respondent: 'PJM', type: 'D', value: '100', period: '2026-09-22T23', 'value-units': 'megawatthours' },

@@ -2,7 +2,8 @@ const { getJson, getText } = require('./http');
 const { fetchTickerHistory } = require('./price-history');
 const { ingestEvents } = require('./event-ingestion');
 const { ingestCompanyResearch } = require('./company-research');
-const { inlineRevenueFacts } = require('./inline-sec-facts');
+const { inlineRevenueFacts, inlineFinancialFacts } = require('./inline-sec-facts');
+const { financialPolicy, financialMetadata } = require('./financial-policy');
 
 const SEC_TICKERS = 'https://www.sec.gov/files/company_tickers.json';
 const SEC_SUBMISSIONS = cik => `https://data.sec.gov/submissions/CIK${String(cik).padStart(10, '0')}.json`;
@@ -24,8 +25,10 @@ function factCandidates(facts, tags, requiredUnit, cutoff = now().slice(0, 10)) 
   return candidates.filter(item => (!requiredUnit || item.unit === requiredUnit) && SEC_FORMS.has(item.form) && /^\d{4}-\d{2}-\d{2}$/.test(item.end || '') && /^\d{4}-\d{2}-\d{2}$/.test(item.filed || '') && item.end <= cutoff && item.filed <= cutoff && item.val !== null && item.val !== '' && Number.isFinite(Number(item.val)));
 }
 
-function latestFact(facts, tags, requiredUnit, cutoff, preferComparable = false) {
-  const candidates = factCandidates(facts, tags, null, cutoff).filter(item => requiredUnit.endsWith('/shares') ? /^[A-Z]{3}\/shares$/.test(item.unit) : /^[A-Z]{3}$/.test(item.unit));
+function latestFact(facts, tags, requiredUnit, cutoff, preferComparable = false, contextKind) {
+  const candidates = factCandidates(facts, tags, null, cutoff)
+    .filter(item => contextKind === 'instant' ? !item.start : contextKind === 'duration' ? /^\d{4}-\d{2}-\d{2}$/.test(item.start || '') && daysBetween(item.start, item.end) > 0 : true)
+    .filter(item => requiredUnit.endsWith('/shares') ? /^[A-Z]{3}\/shares$/.test(item.unit) : /^[A-Z]{3}$/.test(item.unit));
   // A current interim disclosure must not be replaced by an older annual/quarterly period.
   const latestEnd = candidates.reduce((end, item) => item.end > end ? item.end : end, '');
   const latestPeriods = candidates.filter(item => item.end === latestEnd);
@@ -73,6 +76,7 @@ function factObservation(cik, ticker, type, fact, documents) {
     filedAt: fact.filed, observedAt: `${fact.filed}T00:00:00.000Z`, form: fact.form, accession: fact.accn,
     fiscalYear: fact.fy, fiscalPeriod: fact.fp, frame: fact.frame, taxonomy: fact.taxonomy, factTag: fact.tag,
     sourceUrl: filingUrl(cik, fact, documents),
+    ...financialMetadata(ticker, type.replace(/Prior$/, ''), fact),
   });
 }
 
@@ -97,11 +101,34 @@ async function ingestSec(config) {
       observations.push(observation('sec', 'filings', forms, { ticker: company.ticker, sourceUrl: SEC_SUBMISSIONS(company.cik_str) }));
       const missingFacts = []; const factCoverage = {};
       let inlineFacts;
+      const inlineDocuments = new Map();
       for (const [label, tags] of Object.entries(FACT_TAGS)) {
+        const policy = financialPolicy(company.ticker, label);
         const currency = ['GDS', 'VNET'].includes(company.ticker) ? 'CNY' : 'USD';
         const unit = label === 'dilutedEps' ? `${currency}/shares` : currency;
-        let selectedFacts = facts; let selectedTags = tags;
-        let fact = latestFact(facts, tags, unit, cutoff, label === 'revenue' || label === 'dilutedEps');
+        let selectedFacts = facts; let selectedTags = policy.tags || tags;
+        const contextKind = label.endsWith('Debt') ? 'instant' : label === 'capex' ? 'duration' : undefined;
+        let fact = latestFact(facts, selectedTags, unit, cutoff, label === 'revenue' || label === 'dilutedEps', contextKind);
+        const inlineFiling = policy.inlineTag && allForms.find(item => SEC_FORMS.has(item.form) && item.filed <= cutoff && (!policy.forms || policy.forms.includes(item.form)));
+        if (inlineFiling && (!fact || inlineFiling.filed > fact.filed || Date.parse(cutoff) - Date.parse(fact.end) > 400 * 86400000)) {
+          const filing = inlineFiling;
+          const sourceUrl = filing && filingUrl(company.cik_str, { accn: filing.accession }, documents);
+          try {
+            if (sourceUrl?.startsWith('https://www.sec.gov/Archives/')) {
+              if (!inlineDocuments.has(sourceUrl)) inlineDocuments.set(sourceUrl, getText(sourceUrl, headers));
+              const html = await inlineDocuments.get(sourceUrl);
+              const rows = inlineFinancialFacts(html, { cik: company.cik_str, qualifiedTag: policy.inlineTag, contextKind: label.endsWith('Debt') ? 'instant' : 'duration', form: filing.form, filed: filing.filed, accn: filing.accession, cutoff });
+              const [taxonomy, tag] = policy.inlineTag.split(':');
+              const byUnit = Object.fromEntries([...new Set(rows.map(row => row.unit))].map(reportedUnit => [reportedUnit, rows.filter(row => row.unit === reportedUnit)]));
+              const extractedFacts = { facts: { [taxonomy]: { [tag]: { units: byUnit } } } };
+              const extractedTags = [[taxonomy, tag]];
+              const extractedFact = latestFact(extractedFacts, extractedTags, unit, cutoff, false, contextKind);
+              if (extractedFact && (!fact || extractedFact.end >= fact.end)) {
+                selectedFacts = extractedFacts; selectedTags = extractedTags; fact = extractedFact;
+              }
+            }
+          } catch { /* An unavailable filing cannot remove the issuer's other financial evidence. */ }
+        }
         if (company.ticker === 'VNET' && label === 'revenue' && (!fact || Date.parse(cutoff) - Date.parse(fact.end) > 400 * 86400000)) {
           const annualFiling = allForms.find(item => item.form === '20-F' && item.filed <= cutoff);
           const filing = annualFiling && { ...annualFiling, sourceUrl: filingUrl(company.cik_str, { accn: annualFiling.accession }, documents) };
@@ -116,9 +143,17 @@ async function ingestSec(config) {
             }
           } catch { /* Missing extension evidence remains unavailable, preserving other issuer facts. */ }
         }
-        if (fact && Date.parse(cutoff) - Date.parse(fact.end) > 400 * 86400000) fact = null;
-        if (!fact) { missingFacts.push(label); factCoverage[label] = { available: false }; continue; }
-        factCoverage[label] = { available: true, unit: fact.unit, periodKind: periodKind(fact), periodEnd: fact.end, comparison: null };
+        const staleFact = fact && Date.parse(cutoff) - Date.parse(fact.end) > 400 * 86400000 ? fact : null;
+        if (staleFact) fact = null;
+        if (!fact) {
+          missingFacts.push(label);
+          factCoverage[label] = { available: false, ...financialMetadata(company.ticker, label),
+            ...(staleFact ? { ...(policy.classification ? {} : { classification: 'stale-data' }), periodEnd: staleFact.end, sourceUrl: filingUrl(company.cik_str, staleFact, documents) } : {}) };
+          continue;
+        }
+        factCoverage[label] = { available: true, unit: fact.unit, periodKind: periodKind(fact), periodStart: fact.start || null, periodEnd: fact.end, comparison: null,
+          sourceUrl: filingUrl(company.cik_str, fact, documents), taxonomy: fact.taxonomy, factTag: fact.tag,
+          ...financialMetadata(company.ticker, label, fact) };
         observations.push(factObservation(company.cik_str, company.ticker, label, fact, documents));
         if (label === 'revenue' || label === 'dilutedEps') {
           const prior = priorYearPeriod(selectedFacts, selectedTags, fact);

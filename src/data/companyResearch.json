@@ -22,7 +22,8 @@
         "summaryZh": "Nebius 公布夥伴持有基礎設施的模式，由 Nebius 提供 AI 雲端平台並向客戶供應容量。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1513845
   },
   {
     "ticker": "CRWV",
@@ -47,7 +48,8 @@
         "summaryZh": "CoreWeave 公布第二季收入及待履約合約，並增加已啟用與已簽約電力容量；申報結果仍有虧損。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1769628
   },
   {
     "ticker": "ORCL",
@@ -72,7 +74,8 @@
         "summaryZh": "Oracle 公布雲端基礎設施成長，同時說明資本投入及全年負自由現金流。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1341439
   },
   {
     "ticker": "AVGO",
@@ -97,7 +100,8 @@
         "summaryZh": "Broadcom 公布 AI 半導體需求與業績，其業務同時涵蓋其他半導體及基礎設施軟體。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1730168
   },
   {
     "ticker": "APLD",
@@ -122,7 +126,8 @@
         "summaryZh": "Applied Digital 宣布 Delta Forge 2 與美國投資等級大型雲端業者簽訂 210 MW 關鍵 IT 負載租約，15 年基本租期約有 52 億美元合約收入。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1144879
   },
   {
     "ticker": "IREN",
@@ -148,7 +153,8 @@
         "summaryZh": "IREN 公布 FY26 AI 雲端收入 1.288 億美元，2026 容量已簽約 ARR 為 40 億美元，相較已營運 ARR 約 10 億美元；8 月向 Microsoft 交付首個 Horizon 部署。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1878848
   },
   {
     "ticker": "CIFR",
@@ -174,7 +180,8 @@
         "summaryZh": "Cipher Digital 表示 Black Pearl 首批容量已於 8 月交付並開始收租，比原定時程提前兩個月；另取得最高 900 MW Apollo 場址選擇權並完成 Stingray 專案融資。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1819989
   },
   {
     "ticker": "CORZ",
@@ -199,7 +206,8 @@
         "summaryZh": "Core Scientific 公布約 1.1 GW 已租客戶電力容量，7 月中旬已有 437 MW 開始計費；AMD 合作包含五個場址約 530 MW 的 15 年協議。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1839341
   },
   {
     "ticker": "GDS",
@@ -224,7 +232,8 @@
         "summaryZh": "GDS 公布第二季收入人民幣 30.88 億元、使用率 79.2%，並將 2026 收入指引提高至人民幣 127 至 130 億元，資本支出約 100 億元，以擴大資料中心建設。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1526125
   },
   {
     "ticker": "VNET",
@@ -250,7 +259,8 @@
         "summaryZh": "VNET 公布 6 月底批發業務已投運容量 1,007 MW、已使用容量 744 MW；批發收入年增 29.3% 至人民幣 11 億元，另取得雲端業者 345 MW 新訂單。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1508475
   },
   {
     "ticker": "EQIX",
@@ -275,7 +285,8 @@
         "summaryZh": "Equinix 公布第二季月經常性收入成長 11%、淨增加 9,700 個互連連線；33 個市場共有 52 個擴建專案，2026 資本支出指引達 50 至 60 億美元。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1101239
   },
   {
     "ticker": "DLR",
@@ -300,7 +311,8 @@
         "summaryZh": "Digital Realty 公布按全部持股計算的年化基本租金待交付合約 19 億美元，公司應佔為 14 億美元；第二季小容量與互連客戶訂約貢獻 1.08 億美元。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1297996
   },
   {
     "ticker": "IRM",
@@ -326,7 +338,8 @@
         "summaryZh": "Iron Mountain 公布截至七月累計資料中心簽租 110 MW，其中第二季 13 MW、七月 75 MW。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1020569
   },
   {
     "ticker": "VRT",
@@ -352,7 +365,8 @@
         "summaryZh": "Vertiv 宣布四處工廠新設或擴產，涵蓋高密度資料中心所需的電力、整合機櫃與基礎設施方案。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1674101
   },
   {
     "ticker": "ETN",
@@ -377,7 +391,8 @@
         "summaryZh": "Eaton 宣布投入逾 3,000 萬美元擴充內布拉斯加州開關設備生產，新廠預計 2027 年上半年開始生產。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1551182
   },
   {
     "ticker": "ANET",
@@ -403,7 +418,8 @@
         "summaryZh": "Arista 推出用於機架級 AI 網路的 7060XE7 系列；氣冷 1.6T 型號預計 2026 年第四季供貨，其他型號預計 2027 年第一季。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1596532
   },
   {
     "ticker": "PWR",
@@ -429,7 +445,8 @@
         "summaryZh": "Quanta 公布收購 Phalcon 與 Enerfab，擴充服務資料中心及其他基礎設施客戶的電氣、製造與機械工程能力。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1050915
   },
   {
     "ticker": "GEV",
@@ -454,7 +471,8 @@
         "summaryZh": "GE Vernova 以 1.38 億美元投資計畫擴充 Charleroi 工廠，提高高壓斷路器、開關設備與儀用變壓器的生產能力。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1996810
   },
   {
     "ticker": "CEG",
@@ -480,7 +498,8 @@
         "summaryZh": "Constellation 公布 Crane 容量互連權利移轉獲 FERC 核准、燃料執照獲 NRC 核准，推進預期 2027 年重啟。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1868275
   },
   {
     "ticker": "BE",
@@ -505,6 +524,7 @@
         "summaryZh": "Bloom 公布 Oracle 燃料電池主協議，最高容量 2.8 GW，其中 1.2 GW 已簽約，部署持續至 2027 年。",
         "region": "All regions"
       }
-    ]
+    ],
+    "issuerCik": 1664703
   }
 ]

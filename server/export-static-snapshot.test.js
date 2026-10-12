@@ -110,3 +110,11 @@ test('partial company research survives later zero-record retry failures', async
   assert.equal(result.tickerOutcomes[0].recordCount, 1);
   assert.equal(result.tickerOutcomes[0].latestAttemptError, 'timeout');
 });
+
+test('terminal publisher denials stop wrapper retries without becoming healthy', async () => {
+  let calls = 0;
+  const result = await refreshWithRetry({ ingest: async () => { calls += 1; return { source: 'company-research', status: 'degraded', tickerOutcomes: [{ ticker: 'ORCL', status: 'degraded', retryable: false, recordCount: 0 }] }; } }, 'company-research');
+  assert.equal(calls, 1);
+  assert.equal(result.status, 'degraded');
+  assert.equal(result.attempts, 1);
+});
