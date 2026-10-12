@@ -9,6 +9,9 @@ runs:
     - name: Workflow publishing and reporting regressions
       shell: bash
       run: npm run test:workflows
+    - name: Security gate and exposure regressions
+      shell: bash
+      run: npm run test:security-gate
     - name: Server and domain tests
       shell: bash
       run: npm run test:api

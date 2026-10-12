@@ -1,0 +1,7 @@
+# Risk acceptance and its enforcement require repository-owner review.
+/config/security-exceptions.json @LEO0331
+/scripts/security-audit* @LEO0331
+/scripts/dependency-exposure* @LEO0331
+/.github/workflows/pr-ci.yml @LEO0331
+/.github/workflows/deploy-pages.yml @LEO0331
+/.github/actions/verify/ @LEO0331

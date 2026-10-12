@@ -55,12 +55,15 @@ test('data refresh avoids frontend installs and uses safe bounded publishing', (
   assert.ok(dispatch.run.includes('-f reason=snapshot'));
 });
 
-test('dependency audit remains blocking and runs weekly without installing packages', () => {
+test('dependency audit requires fresh build proof and remains blocking on policy failure', () => {
   const workflow = load('workflows/pr-ci.yml');
   assert.ok(workflow.on.schedule.length);
   const audit = workflow.jobs['dependency-audit'];
   assert.ok(!audit['continue-on-error']);
-  assert.ok(audit.steps.some(step => step.run === 'npm audit --package-lock-only --audit-level=high'));
+  assert.equal(audit.needs, 'verify');
+  assert.equal(audit.if, 'always()');
+  assert.ok(workflow.jobs.verify.steps.some(step => step.run === 'node scripts/dependency-exposure.js > dependency-exposure.json'));
+  assert.ok(audit.steps.some(step => step.run === 'npm run security:audit -- dependency-exposure.json'));
   assert.ok(!audit.steps.some(step => step.run === 'npm ci'));
 });
 

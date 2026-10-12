@@ -85,8 +85,14 @@ jobs:
       - name: Build site
         run: npm run build
         env:
+          GENERATE_SOURCEMAP: 'true'
           REACT_APP_SUPABASE_URL: ${{ vars.REACT_APP_SUPABASE_URL }}
           REACT_APP_SUPABASE_PUBLISHABLE_KEY: ${{ vars.REACT_APP_SUPABASE_PUBLISHABLE_KEY }}
+
+      - name: Verify production exposure and dependency security policy
+        run: |
+          node scripts/dependency-exposure.js > dependency-exposure.json
+          npm run security:audit -- dependency-exposure.json
 
       - name: Setup Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

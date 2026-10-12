@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "exceptions": [
+    {
+      "advisory": "GHSA-vfj7-8cjw-p6xm",
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "version": "3.0.3",
+      "severity": "high",
+      "range": "<=3.0.3",
+      "cwe": ["CWE-674"],
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "nodes": ["node_modules/braces"],
+      "integrity": "sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==",
+      "approvedAt": "2026-10-12T00:00:00+08:00",
+      "expiresAt": "2026-11-11T00:00:00+08:00",
+      "approvedBy": "Repository owner: explicit implementation authorization on 2026-10-12",
+      "reason": "Temporary acceptance of tooling-only stack-exhaustion risk while a replacement build/test toolchain is evaluated. Fresh production source-map, runtime-import and locked dependency-path verification is required for every audit.",
+      "review": "Weekly dependency workflow and owner review before any renewal; remove this entry when remediation is shipped."
+    }
+  ]
+}
