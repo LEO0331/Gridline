@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       ticker:
-        description: Supported issuer to inspect
+        description: Supported issuer(s), comma-separated, or ALL
         required: true
         default: VNET
 permissions:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
