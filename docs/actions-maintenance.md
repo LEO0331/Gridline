@@ -25,3 +25,13 @@ The PR job is named **Dependency security gate**, matching its blocking behavior
 The dependency security gate retains its existing high/critical threshold. It is separate from the deployment regression/build gate. Known unpatched advisories can therefore make the PR/weekly security job fail even when application verification and deployment succeed. No advisory exception or `continue-on-error` was introduced.
 
 Workflow safety tests exercise real temporary Git remotes, including concurrent collection, rejected-push recovery, permission failure, ownership checks and bounded retries. YAML guards also check shared regression gates, manual snapshot verification and scheduled Lighthouse behavior.
+
+## Completion evidence — 2026-10-12
+
+- Clean npm 10 installation succeeded. All 356 tests and production build passed locally; the shared regression gate and build also passed on GitHub Node 22.
+- [Application deployment](https://github.com/LEO0331/Gridline/actions/runs/38213625265) passed verification, snapshot acceptance, publication and Lighthouse.
+- [Live data refresh](https://github.com/LEO0331/Gridline/actions/runs/38213644942) succeeded without a dependency-install step, published both snapshot artifacts and ran the source coverage summary. Public readiness has zero blockers, with the existing disclosed partial event/news warnings.
+- [Snapshot deployment](https://github.com/LEO0331/Gridline/actions/runs/38213864989) passed the same regression/build gate and publication, with Lighthouse explicitly skipped.
+- [Supabase heartbeat](https://github.com/LEO0331/Gridline/actions/runs/38213648824) and its summary succeeded.
+- [Manual quality workflow](https://github.com/LEO0331/Gridline/actions/runs/38213648752) passed tests/build. Its separate dependency security gate failed on the documented unpatched findings, as required by the retained high/critical threshold.
+- Timed weekly execution will be observed on its next scheduled run. No scheduled event was fabricated for validation; workflow guards cover its skip-publication condition.
