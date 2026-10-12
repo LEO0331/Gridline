@@ -1,7 +1,7 @@
 const { getJson, getText } = require('../server/http');
 const config = require('../server/config');
 
-const relevantTag = /revenue|sales|diluted|debt|borrowing|capitallease|financelease|payments.*(?:property|productive|equipment|capital|realestate)|acquireproperty|capitalexpend/i;
+const relevantTag = /revenue|sales|diluted|debt|borrow|notes?payable|mortgage|capitallease|financelease|payments.*(?:property|productive|equipment|capital|realestate)|acquireproperty|capitalexpend/i;
 const attribute = (text, name) => text.match(new RegExp(`\\b${name}\\s*=\\s*["']([^"']*)["']`, 'i'))?.[1];
 const element = (text, name) => text.match(new RegExp(`<(?:[\\w-]+:)?${name}\\b[^>]*>([^<]+)<\\/(?:[\\w-]+:)?${name}>`, 'i'))?.[1]?.trim();
 
@@ -35,8 +35,31 @@ function filingFacts(html, cutoff) {
       val: Number.isFinite(val) ? val : null, nil: /^(true|1)$/i.test(attribute(match[1], '(?:xsi:)?nil') || '') };
     unique.set(JSON.stringify([name, contextRef, unit, value, scale, sign]), fact);
   }
+  const debtTotal = fact => Boolean(fact.instant && /debt|borrow|notes?payable|mortgage/i.test(fact.name) &&
+    !/interest|fairvalue|maturity|repayment|issuance|discount|cost|rate|weighted|amortization|extinguish/i.test(fact.name));
   return [...unique.values()].sort((a, b) => Number(a.dimensional) - Number(b.dimensional) ||
-    (b.instant || b.end).localeCompare(a.instant || a.end) || a.name.localeCompare(b.name)).slice(0, 80);
+    (b.instant || b.end).localeCompare(a.instant || a.end) || Number(debtTotal(b)) - Number(debtTotal(a)) ||
+    a.name.localeCompare(b.name)).slice(0, 80);
+}
+
+function debtTableRows(html) {
+  const rows = new Set();
+  for (const match of html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const text = match[1].replace(/<[^>]*>/g, ' ').replace(/&#160;|&#xA0;|&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/\s+/g, ' ').trim();
+    const words = text.split(' ');
+    const index = words.findIndex(word => /debt|borrow|mortgage|notes?$/i.test(word));
+    if (index < 0) continue;
+    rows.add(words.slice(Math.max(0, index - 2), Math.max(0, index - 2) + 20).join(' '));
+    if (rows.size >= 20) break;
+  }
+  return [...rows].map(text => ({ text, classification: 'filing-table-row',
+    zeroTokenPresent: /(?:^|\s)(?:0(?:\.0+)?|—|–)(?:\s|$)/.test(text) }));
+}
+
+function balanceSheetHeaders(html) {
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/&#160;|&#xA0;|&nbsp;/gi, ' ').replace(/\s+/g, ' ');
+  return [...new Set([...text.matchAll(/(?:condensed\s+)?(?:consolidated\s+)?balance\s+sheets(?:\s*\(unaudited\))?/gi)]
+    .map(match => match[0]))].slice(0, 5);
 }
 
 async function auditIssuer(ticker, issuer, headers, cutoff) {
@@ -68,7 +91,8 @@ async function auditIssuer(ticker, issuer, headers, cutoff) {
   const summaries = filingFacts(html, cutoff);
   console.log(`SEC_FILING_AUDIT ${JSON.stringify({ ticker, filingUrl, form: recent.form[index], filedAt: recent.filingDate[index],
     reportDate: recent.reportDate?.[index], accession: recent.accessionNumber[index], cutoff, facts: summaries,
-    revenueFacts: summaries.filter(item => /revenue|sales/i.test(item.name)) })}`);
+    revenueFacts: summaries.filter(item => /revenue|sales/i.test(item.name)), debtTableRows: debtTableRows(html),
+    balanceSheetHeaders: balanceSheetHeaders(html) })}`);
 }
 
 async function main() {
@@ -90,5 +114,5 @@ async function main() {
     }
   }
 }
-module.exports = { filingFacts };
+module.exports = { filingFacts, debtTableRows };
 if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
