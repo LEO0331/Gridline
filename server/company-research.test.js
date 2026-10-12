@@ -168,3 +168,13 @@ test('SEC bold release headings are discovered with short attributed excerpts', 
   assert.equal(result.summaryKind, 'source-excerpt');
   assert.ok(result.evidenceText.split(/\s+/).length <= 20);
 });
+
+test('failed SEC discovery remains eligible for the next refresh', async () => {
+  const dependencies = { ...secDeps, getJson: async url => {
+    const value = await secDeps.getJson(url); if (value.filings) value.filings.recent.filingDate = ['2026-10-01']; return value;
+  }, getText: async url => { if (url === record.url) return page; throw new Error('Timeout'); } };
+  const result = await ingestCompanyResearch({ tickers: ['TEST'] }, dependencies);
+  assert.deepEqual(result.tickerOutcomes[0].sourceCursor.accessions, []);
+  assert.equal(result.tickerOutcomes[0].status, 'partial');
+  assert.ok(result.tickerOutcomes[0].discoveryErrors.length);
+});

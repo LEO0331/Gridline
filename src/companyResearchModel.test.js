@@ -63,6 +63,16 @@ test('manual review is never labeled as an automatic verification', () => {
   expect(item.automaticVerifiedAt).toBeUndefined();
 });
 
+test('direct SEC discovery needs an issuer-bound filing but no original publisher URL', () => {
+  const profile = profiles.find(item => item.ticker === 'VNET');
+  const accession = '0001104659-26-000001';
+  const item = { ...source, title: 'New AI cloud capacity announcement', ticker: 'VNET', issuerCik: profile.issuerCik, accession, sourceKind: 'sec-filing-discovery', verificationStatus: 'official-fallback-verified', url: `https://www.sec.gov/Archives/edgar/data/${Number(profile.issuerCik)}/${accession.replace(/-/g, '')}/release.htm` };
+  const record = { source: 'company-research', type: 'companyDevelopment', ticker: 'VNET', value: item, retrievedAt: snapshot.generatedAt };
+  const result = companyDevelopments({ ...snapshot, observations: [record] }, 'VNET', now);
+  expect(result.find(event => event.url === item.url)).toMatchObject({ sourceKind: 'sec-filing-discovery', automaticVerifiedAt: snapshot.generatedAt });
+  expect(companyDevelopments({ ...snapshot, observations: [{ ...record, value: { ...item, issuerCik: 999 } }] }, 'VNET', now).some(event => event.url === item.url)).toBe(false);
+});
+
 test('old supported values retain their source and period with an explicit stale classification', () => {
   const result = buildCompanyResearch({ ...snapshot, observations: [{ ...fact, periodEnd: '2024-12-31', filedAt: '2025-04-01' }] }, 'VNET', now);
   expect(result.financials[0]).toMatchObject({ classification: 'stale-data', value: 0, unit: 'CNY', periodEnd: '2024-12-31', sourceUrl: fact.sourceUrl });
