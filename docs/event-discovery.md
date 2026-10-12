@@ -2,6 +2,8 @@
 
 The existing daily snapshot job runs discovery and article verification together, including weekends. No additional hourly job or API credentials are required.
 
+This page describes the regional/project event lane. The separate 20-company research lane also collects earnings and company developments using bounded corporate listing/feed discovery and issuer-bound SEC 8-K/6-K exhibits. An SEC company-release fallback does not resume the paused regional-event publishers or relabel their material. See [company research coverage](company-research-coverage.md).
+
 | Provider | Discovery | Fallback / limits |
 | --- | --- | --- |
 | Loudoun | Official County News RSS | County News listing, then curated candidates |
@@ -40,11 +42,11 @@ Each provider has a 75-second request budget and at most 12 candidate article ch
 
 The aggregate source is `partial` if any provider is limited, even when other providers succeed. When every provider is unavailable and no curated article passes, it is `degraded`; the coverage evidence remains present. A valid listing/feed with no relevant candidates is a successful empty check. Previously accepted events remain in the archive with their own verification dates. The last fully successful check for each provider is retained across failures, including fresh GitHub runners that merge the preceding committed snapshot.
 
-Events and Data Health display the same bilingual provider report. Neither implies coverage of every announcement or every U.S. infrastructure event.
+Events and Data status display the same bilingual provider report. Neither implies coverage of every announcement or every U.S. infrastructure event.
 
 The main dashboard uses a compact “Partial source coverage” indicator. Unavailable providers have a plain-language notice such as “Oracle news temporarily unavailable” in the detailed provider report, alongside check and last-success dates. Raw request errors remain inside a collapsed “Technical details” section. This changes presentation only; stored coverage, failures and previously verified events remain intact.
 
-## Live verification
+## Diagnostics and dated verification
 
 Run a read-only probe without changing snapshot or database files:
 
@@ -63,3 +65,5 @@ The manual **Check official event source access** GitHub workflow runs the same 
 The [October 5, 2026 GitHub runner report](https://github.com/LEO0331/Gridline/actions/runs/37271811936) verified three Loudoun articles, one Oracle corporate article, and the Texas Governor representative article “Governor Abbott Directs TCEQ To Halt Data Center Permits,” published September 21, 2026. Texas Governor listing discovery also passed. Oracle OCI Blog returned 403 for RSS, listing and article checks; FERC returned 403 for listing and article checks. Oracle OCI Blog had been locally accessible, so its local result did not justify daily activation. Only Texas Governor was admitted from the alternative set.
 
 Before these sources were paused, a local probe on October 5, 2026 reached Loudoun and Oracle's corporate newsroom, while ERCOT and Oracle investor news returned 403; PJM DNS lookup failed. These observations describe that machine and time, not GitHub runner access. No complete-access claim is made.
+
+The committed October 12 snapshot still reports partial event coverage. The October 5 report above is an admission checkpoint, not a claim that every endpoint remains accessible today. Current provider check and last-success timestamps live in `sourceHealth.events.coverage.sources`. The daily workflow's source summary reports coverage and stale success dates on both success and failure; a failed job can explicitly describe the preceding published snapshot. [Actions maintenance](actions-maintenance.md) documents those summaries and deployment validation.

@@ -63,8 +63,10 @@ The exporter therefore writes two files:
 - `dashboard-snapshot.json` — the full audit/backtest snapshot retained for historical tools and operational inspection;
 - `dashboard-overview.json` — a compact runtime projection used by the public dashboard.
 
-The runtime projection keeps 120 dated closes per tracked ticker (enough for the 90-session chart plus technical-indicator warmup), the latest complete PJM demand day and the comparable day one week earlier, current SEC facts, verified events, source health, the methodology and backtest-coverage metadata needed by Data Status, snapshot changes and demo-readiness metadata.
+The runtime projection keeps 120 dated closes per tracked ticker (enough for the 90-session chart plus technical-indicator warmup), the latest complete PJM demand day and the comparable day one week earlier, current SEC facts with audited concept/classification metadata, verified events, company research announcements, source health including field and publisher coverage, the methodology and backtest-coverage metadata needed by Data Status, snapshot changes and demo-readiness metadata.
 
-It removes duplicated provenance/lineage fields and full-history-only payloads from the critical request. The current committed full snapshot is about 1.6 MB uncompressed; the generated Overview projection is about 186 KB, an approximately 89% reduction before HTTP compression.
+It removes duplicated provenance/lineage fields and full-history-only payloads from the critical request. The 2026-10-12 committed artifacts are approximately 7.16 MB full and 1.05 MB compact (decimal bytes), about an 85% reduction before HTTP compression. Sizes change with retained history and company news; compare the generated files rather than treating these measurements as a payload limit.
+
+All 20 tracked companies share this projection. Financial gaps distinguish stale, unavailable and not-separately-reported values from explicit reported zero; partial publisher access retains dated reviewed evidence without a false new verification.
 
 If the compact file is unavailable, the browser loader falls back to `dashboard-snapshot.json` so deployment remains backward compatible.

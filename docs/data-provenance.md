@@ -10,10 +10,11 @@ Each observation receives a deterministic `observationId` derived from source, t
 - `observedAt` — price/data observation time, or SEC filing availability date;
 - `retrievedAt` — when Gridline fetched it;
 - SEC `periodStart`/`periodEnd` and unit separately from filing availability;
+- SEC taxonomy/tag, comparison-period metadata, extraction method and issuer-specific concept labels on financial facts;
 - lineage identifiers;
 - normalization transformation version.
 
-Derived MA5/MA10 signals store the ten price-observation IDs that contributed to the calculation. A source category is recorded, but no arbitrary numerical confidence percentage is assigned. Company fundamentals, exposure and valuation scores remain unavailable without a validated source method.
+Derived MA5/MA10 signals store the ten price-observation IDs that contributed to the calculation. A source category is recorded, but no arbitrary numerical confidence percentage is assigned. Reported revenue, diluted EPS and supported capex/debt facts are available for the 20-company universe under explicit definitions. Composite company fundamentals, exposure and valuation scores remain unavailable without a validated source method.
 
 ## Observed time vs retrieval time
 
@@ -36,4 +37,12 @@ This means the UI can separately answer:
 - **What data is being displayed?** — observation provenance;
 - **Did the latest provider refresh succeed?** — source health/outcome metadata.
 
-The `#health` workspace exposes this distinction to demo users instead of silently presenting retained data as newly fetched data.
+The Data status / 資料狀態 workspace (`#health`) exposes this distinction to demo users instead of silently presenting retained data as newly fetched data.
+
+## Financial and company-release evidence
+
+Financial facts retain reported currency without FX conversion. Quarter, annual, YTD and balance-sheet instant periods are distinct; comparisons require compatible tags, units and reporting durations. Issuer-specific definitions in `server/financial-policy.js` expose lease-inclusive debt, development expenditure and debt totals that include current maturities. Five reviewed debt fields remain not separately reported; no missing value implies zero. Facts older than 400 days are not emitted as fresh financial evidence, and retained historical values are marked stale.
+
+Company releases retain publication, retrieval and automated verification dates separately from the curated profile's manual review date. A corporate release verified through an SEC exhibit retains both its original publisher URL and the effective SEC URL, issuer CIK and accession. Newly discovered SEC announcements are identified separately from mirrors. Short original-language excerpts remain attributed; an English excerpt is not represented as a Chinese translation.
+
+Persisted source checks and discovery cursors describe what was checked, denied, retained or verified through an official fallback. Failed article requests do not advance filing cursors or manufacture a new success timestamp. Incremental announcement history is retained across successful refreshes as well as failures. The static relationship register has its own manual review dates and is not refreshed by these release checks.

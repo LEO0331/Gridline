@@ -1,6 +1,15 @@
 # GitHub Actions operation
 
-The six repository workflows have separate purposes. Historical entries in the Actions sidebar whose files were removed do not represent active scheduled jobs. Dependabot Updates is GitHub-managed; its weekly configuration is `.github/dependabot.yml`.
+The six repository workflows have separate purposes. The ten visible Actions sidebar entries also include three historical workflows whose files were removed (auth-test capture and two temporary lockfile generators) and GitHub-managed Dependabot Updates. Historical entries do not represent active scheduled jobs. Dependabot's weekly configuration is `.github/dependabot.yml`.
+
+| Workflow | Trigger / purpose |
+| --- | --- |
+| Deploy to GitHub Pages | Relevant `main` pushes/manual publication; Monday 10:37 Asia/Taipei Lighthouse-only audit. |
+| Refresh daily dashboard snapshot | Daily 06:17 Asia/Taipei (22:17 UTC on the preceding date); manual full or company-coverage refresh. |
+| Pull request quality gate | PRs targeting `main` and manual tests/build; Monday 11:11 Asia/Taipei dependency-only audit. |
+| Check Supabase database health | Daily 14:43 Asia/Taipei; manual heartbeat. |
+| Check official event source access | Manual diagnostic with optional inactive-source/article probes. |
+| Audit SEC issuer fact tags | Manual diagnostic for one ticker, a comma-separated list, or `ALL`. |
 
 ## Verification and publication
 
@@ -20,7 +29,7 @@ Supabase remains a separate daily heartbeat. Its always-running summary confirms
 
 ## Dependency checks
 
-The PR job is named **Dependency security gate**, matching its blocking behavior. It audits the lockfile without installing packages and additionally runs on Monday at 11:11 Asia/Taipei. Dependabot groups compatible npm updates and action updates weekly; major npm updates remain separate for review. Action references remain pinned to immutable commit hashes.
+The PR job is named **Dependency security gate**, matching its blocking behavior. It audits the lockfile without installing packages and additionally runs on Monday at 11:11 Asia/Taipei. Dependabot checks npm updates Monday at 04:17 and GitHub Actions updates at 04:47 Asia/Taipei, grouping compatible minor/patch npm updates and action updates separately; major npm updates remain separate for review. Action references remain pinned to immutable commit hashes.
 
 The dependency security gate retains its existing high/critical threshold. It is separate from the deployment regression/build gate. Known unpatched advisories can therefore make the PR/weekly security job fail even when application verification and deployment succeed. No advisory exception or `continue-on-error` was introduced.
 

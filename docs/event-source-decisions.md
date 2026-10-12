@@ -2,6 +2,8 @@
 
 This log records changes to the **active candidate list**, separate from the historical event observations and source-check history. Removing a candidate stops future checks of that URL; it does not erase past snapshots.
 
+The entries below are dated decisions, not independent current-health reports. The active regional providers remain Loudoun County News, Oracle corporate news and Texas Governor; PJM, ERCOT and Oracle investor-news discovery remain paused. Company research now checks issuer-bound SEC release exhibits separately, which does not reactivate those regional-event endpoints. Consult [event discovery](event-discovery.md), the published source-health timestamps and [company research coverage](company-research-coverage.md) for present behavior and limits.
+
 ## October 5, 2026 — admit Texas Governor after runner verification
 
 The [GitHub Actions access report](https://github.com/LEO0331/Gridline/actions/runs/37271811936) passed Texas Governor listing discovery and verified the representative article “Governor Abbott Directs TCEQ To Halt Data Center Permits,” published September 21, 2026. Texas Governor joins Loudoun County News and Oracle corporate news in daily discovery under its own publisher name. The representative diagnostic article is access evidence, not a manually injected snapshot event; normal daily discovery and article admission rules still apply.

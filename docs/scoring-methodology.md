@@ -2,6 +2,8 @@
 
 Gridline currently publishes a **descriptive price trend**, not a company fundamental score, valuation target, confidence percentage, or investment recommendation. The previous v1 values for fundamentals, data-center exposure, market emotion, and expectations gap were based partly on curated numerical inputs. New snapshots set those fields to `null`; old v1 and reconstructed company-history records are excluded from the public export and API views.
 
+The default universe is all 20 companies in `src/data/companyExposure.json`. Company-specific SEC facts and official research now appear alongside the trend, but do not change this formula or reinstate v1 numerical scores. The frontend also offers separately calculated RSI and Bollinger methods; see [technical signal methods](signal-methods.md).
+
 ## Inputs and formula
 
 For each tracked ticker, take the latest ten **distinct trading dates** with positive daily closing prices at or before the snapshot cutoff. All ten records must identify the same provider URL. Otherwise the trend is unavailable.

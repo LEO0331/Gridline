@@ -1,5 +1,7 @@
 # Ingestion API
 
+Use Node.js 22 and npm 10. The default universe contains all 20 tracked companies; set `TICKERS` to a supported subset when needed. Supabase is optional account/preference storage and is not required for this API or research ingestion.
+
 Run the API with `npm run api`, or run the API and React UI together with `npm run dev`. The API listens on `http://localhost:8787` by default. Copy `.env.example` to a local environment file or export its values before running provider ingestion.
 
 The API binds to `127.0.0.1` by default. If it is deliberately exposed on a network, set `HOST`, restrict `ALLOWED_ORIGINS`, and configure a long random `API_WRITE_TOKEN`. All state-changing POST endpoints require `Authorization: Bearer <token>` outside loopback and are rate limited. Do not place this token in the static React build. Public observation and score queries are paginated and bounded.
@@ -10,9 +12,11 @@ The API binds to `127.0.0.1` by default. If it is deliberately exposed on a netw
 | `GET /api/observations?ticker=ORCL&type=close` | Normalized historical observations. |
 | `GET /api/provenance?observationId=...` | Provenance for one normalized observation. |
 | `GET /api/scores?ticker=NBIS` | Current-version price-signal snapshots; legacy curated scores are excluded. |
-| `POST /api/ingest?source=prices` | Refresh one adapter. Sources: `sec`, `eia`, `pjm`, `ferc`, `company-ir`, `prices`. |
+| `POST /api/ingest?source=prices` | Refresh one adapter. Sources: `sec`, `eia`, `pjm`, `ferc`, `company-ir`, `company-research`, `events`, `prices`. |
 | `POST /api/ingest/all` | Refresh all adapters independently; unavailable credentials degrade only that source. |
 | `POST /api/scenario` | Run/persist one scenario analysis. |
+| `GET /api/scenario/runs` | Saved scenario runs for the current methodology. |
+| `GET /api/backtest/runs` | Saved backtest runs for the current methodology. |
 | `POST /api/backtest` | Run/persist one point-in-time backtest. |
 
 ## Storage model
@@ -20,7 +24,7 @@ The API binds to `127.0.0.1` by default. If it is deliberately exposed on a netw
 Gridline keeps two deployment profiles:
 
 - **API / production-style profile:** raw responses are archived under `data/bronze`; normalized observations, source health, versioned score snapshots, scenario runs and backtest runs are persisted in SQLite/WAL. Observation identity is deterministic, so ingesting the same source row again is idempotent and does not erase prior history.
-- **GitHub Pages demo profile:** the scheduled exporter writes `public/data/dashboard-snapshot.json`. Successful sources replace their prior static-source records; degraded sources retain last-known-good observations.
+- **GitHub Pages demo profile:** the scheduled exporter writes `public/data/dashboard-snapshot.json`. Successful non-news sources replace their prior static-source records (per ticker where supported); failed tickers retain last-known-good observations. Events and company research append/deduplicate accepted history even after successful refreshes, preserving earlier discoveries. The exporter also writes the compact `public/data/dashboard-overview.json` used by the UI.
 
 `data/` is intentionally ignored by Git. The committed static snapshot is a portable public-demo artifact, not the API database.
 
@@ -30,6 +34,7 @@ Gridline keeps two deployment profiles:
 - **EIA:** API key required. The starter connector reads PJM hourly RTO regional data.
 - **PJM Data Miner 2:** a PJM account/API subscription key is required. The starter connector reads `gen_by_fuel`; comply with PJM terms before redistribution.
 - **Data.FERC.gov:** API key required. The starter connector validates/snapshots the dataset catalog; choose and configure a specific production dataset before treating FERC as a live indicator.
+- **Company research:** all 20 companies have reviewed primary-source profiles. Daily checks verify official releases and issuer-bound SEC mirrors, discover bounded official listing/SEC announcements, and preserve cursors plus last-success dates across runs. Publisher 403 responses receive a seven-day original-source cooldown; failed checks retain dated reviewed evidence without claiming a new verification.
 - **Company IR:** configure only official RSS/Atom URLs in `COMPANY_IR_FEEDS`. Raw source material is retained for later parser/version upgrades.
 - **Prices:** Stooq is attempted first for the public demo. If the response is empty, stale, undersized or otherwise unusable, Gridline falls back per ticker to the Yahoo Finance chart endpoint. Each configured ticker must have at least 60 usable daily closes through the latest expected NYSE session before the `prices` source can be healthy. The current session is required at or after 4:15 PM New York time; earlier checks, weekends and holidays expect the previous trading session. Unfinished and future session rows are excluded. The snapshot acceptance gate uses the same session check. For a finance-company production deployment, replace demo feeds with an approved/licensed market-data provider.
 
@@ -42,6 +47,8 @@ An HTTP `200` does not imply a healthy data refresh. After adapter execution, no
 Event discovery checks Loudoun County News RSS/listing, Oracle corporate news and Texas Governor news. PJM, ERCOT and Oracle investor news are paused at the user's request; their previously verified history is retained without new requests. Each active provider records discovery and article-verification health independently, including errors and request/candidate limits. Partial access is `partial`; complete degradation retains coverage diagnostics. Accepted records from partial checks are published; previously accepted events keep their own last-verification dates. No API keys are needed for these public discovery routes. See [official event discovery](event-discovery.md) for admission rules, fallback behavior and the read-only GitHub runner probe. A configured-source check is not a claim to cover every U.S. infrastructure event.
 
 Texas Governor passed GitHub runner listing and representative article checks and is active daily. Oracle OCI Blog and FERC news remain opt-in diagnostics after runner checks returned 403; daily ingestion does not request them. They retain their own publisher identities; Texas Governor and FERC articles do not become ERCOT or PJM statements. FERC news-page discovery is separate from the API-key-based Data.FERC.gov adapter above.
+
+SEC publishes revenue, diluted EPS and available capex/current-debt/noncurrent-debt facts with native units, periods, filing links, audited concept labels and extraction methods. Standard, issuer-extension, reported-zero, stale, not-separately-reported and unavailable classifications remain distinct. A missing fact is not a reported zero. See [company research coverage](company-research-coverage.md) for issuer-specific definitions and remaining gaps.
 
 For the static snapshot, a degraded source retains last-known-good data. For the SQLite profile, immutable historical observations remain present. This is particularly important for price history because 30D/90D lookbacks and point-in-time backtests depend on continuity.
 
@@ -57,7 +64,7 @@ npm run demo:check
 
 The gate checks schema-v4 metadata, complete/recent market-price coverage for all tracked tickers, and non-zero semantics for healthy non-event sources. Historical v1 reconstruction is no longer required or published. The scheduled snapshot workflow runs this gate before committing an updated public snapshot.
 
-Use `#health` / **Research Lab → Data health** to inspect the same committed snapshot from the UI.
+Use `#health` / **Data status** to inspect the same committed snapshot from the UI.
 
 ## EIA attribution and integrity
 
@@ -67,6 +74,8 @@ EIA data is scoped to Gridline’s research and decision-support use only. Do no
 
 ## Scheduling
 
-With `SCHEDULE_ENABLED=true`, the local API scheduler checks once per minute and runs once daily at or after **4:15 PM America/New_York**. The GitHub Pages snapshot workflow runs daily at `22:17 UTC` (after the regular U.S. close in both daylight and standard time) and supports manual dispatch. SEC, EIA and event sources may refresh every day; market prices are fetched only on a published NYSE trading session. The 2026–2028 holiday dates come from the [NYSE calendar](https://www.nyse.com/trade/hours-calendars) and require review when new dates or exceptional closures are announced. Outside the published years, price ingestion relies on the provider's dated-row validation rather than silently suppressing updates. The dashboard's event-check freshness uses the New York calendar date.
+The local scheduler skips price requests on non-trading days. The static snapshot exporter additionally repairs missing or undersized price coverage on any day, and skips requests when the latest expected session is already covered. This distinction keeps weekend/holiday repair possible without redundant complete-history requests. The GitHub schedule corresponds to **06:17 Asia/Taipei** (22:17 UTC on the previous day); scheduled delivery may be delayed.
+
+With `SCHEDULE_ENABLED=true`, the local API scheduler checks once per minute and runs once daily at or after **4:15 PM America/New_York**. The GitHub Pages snapshot workflow runs daily at `22:17 UTC` (after the regular U.S. close in both daylight and standard time) and supports manual dispatch. The default `SCHEDULE_SOURCES` is `sec,prices,eia,events,company-research`. PJM, FERC and custom company-IR adapters remain available but are not enabled in the default public refresh. Manual workflow scope `company-coverage` refreshes only SEC and company research, preserving unrelated data. The workflow uses Node built-ins without frontend installation and validates/regenerates against the latest remote state on bounded concurrent-push retries; see [Actions operation](actions-maintenance.md). SEC, EIA, company research and event sources may refresh every day; market prices are fetched only on a published NYSE trading session. The 2026–2028 holiday dates come from the [NYSE calendar](https://www.nyse.com/trade/hours-calendars) and require review when new dates or exceptional closures are announced. Outside the published years, price ingestion relies on the provider's dated-row validation rather than silently suppressing updates. The dashboard's event-check freshness uses the New York calendar date.
 
 For a demo, this is deliberately a low-frequency model rather than continuous polling. Production provider licensing, SLAs, historical-vintage availability and redistribution rights remain deployment responsibilities outside this repository's demo configuration.

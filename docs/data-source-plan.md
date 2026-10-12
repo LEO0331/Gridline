@@ -1,21 +1,24 @@
-# MVP data-source plan
+# Data sources and ingestion boundaries
 
-This prototype uses explicitly labelled sample observations. Production ingestion should prefer primary, timestamped records and preserve raw responses in a bronze store before normalization.
+The published dashboard uses sourced observations for all 20 tracked companies, with explicit unavailable states and retained evidence when refreshes fail. Fixtures and sample payloads support tests and development; they are not a fallback for missing live prices or financial facts. Local ingestion stores adapter payloads in the bronze directory and normalized records in SQLite; GitHub Pages publishes validated full and compact JSON snapshots. Supabase handles accounts, preferences and its separate database heartbeat, rather than public-data ingestion.
 
-| Source | Access | MVP use | Cadence / depth | Reliability notes |
+| Source | Access | Current use | Cadence / depth | Reliability notes |
 |---|---|---|---|---|
-| SEC EDGAR submissions + company facts | Free public API, no key | Yes | Filing-driven, multi-year | Primary. Respect User-Agent and SEC rate guidance. Use filing date as availability time. |
-| Company investor relations | Public web/RSS | Yes | Earnings and announcement-driven | Primary for guidance and contracts; retain URL and release date. |
-| EIA Open Data | Free API key | Yes | Monthly/annual, long history | Primary energy series; cache requests and preserve observation periods. |
-| FERC and PJM filings | Public search / account | Yes, curated | Docket-driven | Primary regulatory/grid evidence; begin with curated high-impact records. |
-| Regional ISOs / utilities | Mixed public portals | Enhancement | Varies | Add region-by-region connectors after confirming terms. |
-| GDELT | Free public datasets | Optional | Near-real-time / historical | Discovery only; deduplicate against primary records. |
+| SEC EDGAR submissions + company facts + inline filings | Free public API, no key | Active for 20 issuers | Daily check of filing-driven, multi-year facts | Primary. Respect User-Agent and SEC rate guidance. Filing date is availability time; native currency and report duration remain explicit. Audited issuer policies recover supported debt/capex definitions. |
+| Company investor relations and SEC release exhibits | Public web/RSS | Active company research | Daily bounded release/discovery checks | Retain URL, publication date and separate manual/automated verification dates. Publisher denial can trigger an issuer-bound SEC mirror; seven-day 403 cooldown and discovery cursors persist across snapshots. |
+| EIA Open Data | Free API key | Active PJM actual demand | Daily refresh of hourly demand | Typed actual-demand hours support complete-day comparisons. Regional demand does not measure a company's load. |
+| Official regional events | Public listings/RSS/pages | Loudoun, Oracle corporate news and Texas Governor active | Daily selective discovery, including weekends | Admission requires title, publication date and supporting text. PJM, ERCOT and Oracle investor news discovery is paused; earlier verified events remain retained. |
+| FERC / PJM additional sources | Public portals; optional configured APIs | Not in default refresh | Opt-in diagnostics or optional adapters | FERC news and Oracle OCI Blog failed runner access and remain diagnostic only. Additional numerical sources require separate access and terms review. |
+| Regional ISOs / utilities | Mixed public portals | Future connector work | Varies | Add region-by-region connectors after confirming terms and a supported method. |
+| GDELT | Public datasets | Not implemented in the default pipeline | Possible discovery enhancement | Any future admission must deduplicate and verify against primary records. |
 | Market prices | Free demo providers / licensed production provider | Yes | Daily history | Stooq is attempted first and the Yahoo Finance chart feed is a demo fallback. Each tracked ticker must have a non-stale, usable history window. A zero-row, stale, undersized, or incomplete ticker refresh is degraded rather than successful, so the static snapshot retains last-known-good price history. Record the actual provider in provenance and replace demo feeds with approved/licensed market data for production use. |
 
 ## Confidence controls
 
-Bronze records retain raw payload, source URL and retrieval time. Silver normalizes identifiers, dates, units and data type. Published research signals are derived only when their required observations and method are available. Source category is recorded; no numerical quality score is assigned without a validated calibration. Missing data remains null, never zero.
+Bronze records retain adapter payload and retrieval time; normalized observations carry identifiers, source URLs, dates, units and data type. Published research signals are derived only when their required observations and method are available. Source category is recorded; no numerical quality score is assigned without a validated calibration. Missing data remains unavailable, never an invented numeric zero. [Financial definitions and remaining gaps](company-research-coverage.md), [provenance](data-provenance.md) and [event discovery](event-discovery.md) describe the source-specific rules.
 
 ## Fail-closed snapshot refresh
 
 A provider response is not considered healthy merely because the HTTP request succeeded. Price, SEC and grid ingestion must produce usable observations; empty responses are marked `degraded`. An event check may legitimately find zero qualifying records and still preserve prior event history. Price ingestion additionally requires complete coverage for every configured ticker before the source can be marked `ok`. During static snapshot export, degraded sources retain their last-known-good observations. This prevents an upstream empty response from erasing the history needed by lookback and retrospective price validation.
+
+Per-ticker failures retain prior observations and success dates while reporting current failures. Incremental company announcements are merged into prior history even after successful discovery; a consumed cursor must not erase earlier announcements. The daily workflow checks snapshot readiness before a bounded, concurrency-safe commit and Pages dispatch. It requires no frontend dependency installation. [Actions maintenance](actions-maintenance.md) documents shared deployment verification, source/freshness summaries and the independent Supabase heartbeat.

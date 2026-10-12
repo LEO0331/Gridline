@@ -6,6 +6,8 @@ The Overview now exposes all three methods through the technical-signal explorer
 
 ## Registry
 
+The same registry applies to all 20 tracked companies. It is independent of SEC financial-field coverage and does not require Supabase. Recorded server MA5/MA10 snapshots use `above`/`below`/`mixed`; the frontend common contract uses `upward`/`downward`/`mixed`. RSI and Bollinger states are calculated from runtime prices and are not server-recorded score versions.
+
 Frontend entry point:
 
 `src/signals/registry.js`

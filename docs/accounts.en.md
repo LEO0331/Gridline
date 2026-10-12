@@ -1,8 +1,8 @@
 # Accounts on Supabase Free
 
-The public dashboard needs no login. Accounts are optional and currently save a watchlist, language and capacity weight. The React side now covers sign-up, email confirmation/resend, sign-in, session restoration, password reset, password change, preference load/save, and sign-out. Supabase project configuration is still required before those flows can contact a real backend.
+The public dashboard needs no login. Accounts are optional and currently save a watchlist, language and capacity weight. The React side now covers sign-up, email confirmation/resend, sign-in, session restoration, password reset, password change, preference load/save, and sign-out. The deployed project is configured; the setup below is for a new project or reconfiguration.
 
-## Supabase setup you still need to do
+## Project setup and migration reference
 
 1. Create a **Free** project at https://supabase.com/dashboard. Do not enable paid add-ons unless you intentionally need them.
 2. Run `supabase/user-preferences.sql` in the project's SQL Editor. The script is safe to rerun: it creates the preference table when missing, enables Row Level Security, recreates the own-row policy, blocks anonymous preference access, and grants authenticated CRUD access.
@@ -17,7 +17,7 @@ The public dashboard needs no login. Accounts are optional and currently save a 
    - `REACT_APP_SUPABASE_URL`
    - `REACT_APP_SUPABASE_PUBLISHABLE_KEY`
 7. GitHub Pages: Settings → Secrets and variables → Actions → **Variables** → create the same two repository variables. The deployment workflows inject them at build time. These are browser configuration values, not secrets.
-8. The repository CSP already permits HTTPS/WebSocket traffic to `*.supabase.co`. If you later use a custom Supabase domain, add that host to `connect-src` in `public/index.html`.
+8. The repository CSP permits HTTPS/WebSocket traffic only to the configured `eomxjtbaefakfxtaoiwj.supabase.co` project. For a different project, update both hosts in `public/index.html`. If you later use a custom Supabase domain, add that host to `connect-src` in `public/index.html`.
 
 ## Implemented application behavior
 
@@ -33,6 +33,12 @@ The public dashboard needs no login. Accounts are optional and currently save a 
 - **Security boundary:** the browser accepts only an `sb_publishable_...` key. Secret/service-role credentials are never supported by the frontend.
 
 Supabase stores only account/session data plus the preference row. Market, EIA, SEC, PJM and other research-source payloads are not uploaded to Supabase by this feature.
+
+## Expanded watchlists and daily health check
+
+Fresh setups use the 20-symbol constraint in `supabase/user-preferences.sql`. Existing installations with the original four-symbol constraint apply `supabase/migrations/20261008_expand_watchlist.sql`; it widens the allowed watchlist without deleting rows or changing RLS. Research/news/financial coverage itself requires no Supabase migration.
+
+`supabase/migrations/20261008_add_database_health.sql` creates `gridline_health()`, an invoker-rights RPC returning only `ok`, executable by anonymous and authenticated roles. It does not read or modify accounts or preferences. The separate GitHub workflow calls it daily at 14:43 Asia/Taipei using the configured public project variables; `npm run health:supabase` uses `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` locally and requires three successful requests. It rejects privileged credentials, redirects and unexpected responses and bounds transient retries. This provides database activity and health visibility; inspect failures or missed schedules because it does not guarantee free-tier availability or automatic unpausing. See [Actions operation](actions-maintenance.md).
 
 ## Email delivery before public launch
 

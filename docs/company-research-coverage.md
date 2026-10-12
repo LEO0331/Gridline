@@ -51,7 +51,9 @@ This changes the scheduled public-data pipeline and company research panel. It r
 
 The GitHub clean-install failure was repaired by regenerating the missing optional `yaml` peer entry with the runner's npm 10 resolver. No new application dependency was added.
 
-## Completion verification (2026-10-12)
+## Historical initial SEC/profile completion (2026-10-12)
+
+These results describe the initial coverage release, before the financial-policy/publisher-fallback completion below. Test and observation totals are historical checkpoints, not the current suite or refresh counts.
 
 - Live SEC refresh: all 20 issuers succeeded, with 140 sourced observations in the final snapshot. Every company passes the published-snapshot regression for available revenue, diluted EPS, filing references and company-specific research.
 - VNET's current consolidated annual revenue and RMB EPS were confirmed in its original 2025 20-F; the obsolete 2019 standard revenue series is no longer presented as current.
@@ -63,8 +65,16 @@ The GitHub clean-install failure was repaired by regenerating the missing option
 
 ## Financial and publisher completion (2026-10-12)
 
+This is the dated completion checkpoint for the financial-field and publisher-fallback implementation. Subsequent incremental refresh counts can differ without reducing retained evidence coverage.
+
 - [Live focused refresh](https://github.com/LEO0331/Gridline/actions/runs/38211115163) succeeded. All 20 SEC issuers refreshed, producing 155 financial/filing observations. All 15 recoverable fields in the table above are now published; the other five are explicitly not separately reported (CORZ current debt, DLR both debt classifications, ANET both debt classifications).
 - Oracle's August 31, 2026 balance-sheet facts recovered current borrowings of USD 7.625 billion and noncurrent borrowings of USD 117.712 billion. VNET's noncurrent borrowing extension was recovered in CNY. DLR's development expenditure was recovered from its June 2026 inline filing.
 - Oracle, Broadcom and GDS configured releases were verified through matching SEC exhibits. Nine configured releases were verified directly; together with incremental announcements, the refresh admitted 16 observations across 12 companies. The other eight companies retain dated reviewed/previously verified records. Newsroom discovery remains partial where publishers deny access or requests time out; SEC alternatives are not assumed to contain every announcement.
 - `npm run verify` passed 4 development-server, 7 health-check, 156 backend and 165 frontend tests (332 total), plus the production build. The new regressions cover issuer-bound direct SEC announcements and failed-discovery cursor retention.
 - `npm run demo:check` passed with zero blockers; both remaining warnings disclose partial event/news checks, and compact/full snapshots match. Company prices and account authentication retain their existing behavior.
+
+## Current operational baseline (2026-10-12)
+
+The committed snapshot generated at `2026-10-12T06:42:35.900Z` has 155 SEC observations and successful checks for all 20 issuers. The only unsupported financial fields are the five reviewed debt classifications above. Its latest company-research check reports 12 refreshed observations: nine configured releases verified directly and Oracle, Broadcom and GDS verified through matching SEC exhibits. Eight companies retain dated evidence instead of a fresh direct-release verification. Aggregate event and company-research coverage remains partial; a successful SEC refresh does not imply unrestricted publisher access.
+
+The repository's later Actions maintenance release passed 356 tests and the production build. See [Actions maintenance](actions-maintenance.md) for the current verification gate, bounded snapshot publishing, source summaries and live-run evidence. Snapshot-only publication uses the same regression/build gate, while skipping Lighthouse; documentation-only pushes do not deploy. Company-coverage refresh remains independent of prices, EIA and event discovery. No additional account migration was needed for financial or publisher work; the earlier watchlist migration remains documented in [company expansion](data-center-expansion.md).

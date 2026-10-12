@@ -2,6 +2,8 @@
 
 Gridline records a compact, deterministic diff between the newly generated static dashboard snapshot and the immediately preceding committed snapshot.
 
+The comparison covers the configured 20-symbol universe and is included in both full and compact runtime exports. Financial facts and company announcements have their own evidence/coverage panels; they are not additional diff categories in `snapshot-diff-v1`.
+
 The goal is not to diff every JSON field. The public dashboard only surfaces changes that can alter a researcher's interpretation of the current snapshot:
 
 - latest dated closing price for a tracked ticker;
@@ -60,7 +62,7 @@ provider refresh     retained history
        dashboard-snapshot.json
 ```
 
-The comparison runs before the new snapshot is written, so the baseline is the exact static snapshot users saw before the refresh.
+The comparison runs before the new snapshot is written, so the baseline is the preceding committed static snapshot. On a concurrent remote update, the publishing workflow retrieves that newer baseline and regenerates rather than rebasing a stale generated diff; see [Actions operation](actions-maintenance.md).
 
 ## Change rules
 

@@ -1,8 +1,8 @@
 # Supabase 免費方案帳戶
 
-公開儀表板不需要登入。帳戶功能是選配，目前可儲存追蹤清單、語言與容量權重。React 專案端已涵蓋註冊、Email 確認／重寄、登入、工作階段恢復、忘記密碼、變更密碼、偏好載入／儲存與登出；實際連到 Supabase 前，仍需要你完成 Supabase 專案設定。
+公開儀表板不需要登入。帳戶功能是選配，目前可儲存追蹤清單、語言與容量權重。React 專案端已涵蓋註冊、Email 確認／重寄、登入、工作階段恢復、忘記密碼、變更密碼、偏好載入／儲存與登出；目前部署的專案已完成設定；以下步驟供新專案或重新設定使用。
 
-## 之後仍需在 Supabase 完成的設定
+## 專案設定與 migration 參考
 
 1. 在 https://supabase.com/dashboard 建立 **Free** 專案；除非確定需要，否則不必啟用付費附加功能。
 2. 在 SQL Editor 執行 `supabase/user-preferences.sql`。此腳本可重複執行：缺少資料表時建立 `user_preferences`、啟用 RLS、重新建立「只能存取自己資料列」政策、禁止匿名偏好存取，並授權 authenticated 使用者 CRUD。
@@ -17,7 +17,7 @@
    - `REACT_APP_SUPABASE_URL`
    - `REACT_APP_SUPABASE_PUBLISHABLE_KEY`
 7. GitHub Pages：Settings → Secrets and variables → Actions → **Variables** 建立相同兩個 repository variables。部署 workflow 會在 build 時注入；這兩項是瀏覽器端設定，不是秘密憑證。
-8. 專案的 CSP 已允許連線到 `*.supabase.co` 的 HTTPS／WebSocket。若之後改用自訂 Supabase 網域，要同步把該網域加入 `public/index.html` 的 `connect-src`。
+8. CSP 僅允許已設定的 `eomxjtbaefakfxtaoiwj.supabase.co` 專案 HTTPS／WebSocket；更換專案時須同步更新 `public/index.html` 中兩個 host。若之後改用自訂 Supabase 網域，要同步把該網域加入 `public/index.html` 的 `connect-src`。
 
 ## 專案端已完成的行為
 
@@ -33,6 +33,12 @@
 - **安全界線：** 前端只接受 `sb_publishable_...` key，不支援 secret／service-role 憑證。
 
 Supabase 只會保存帳戶／session 與偏好資料列；市場、EIA、SEC、PJM 等研究資料不會因這個帳戶功能上傳到 Supabase。
+
+## 擴充追蹤清單與每日健康檢查
+
+新專案使用 `supabase/user-preferences.sql` 的 20 標的限制；原本僅允許四個標的的既有專案套用 `supabase/migrations/20261008_expand_watchlist.sql`，只擴大允許清單，不刪除資料列或改變 RLS。研究／新聞／財務涵蓋本身無需 Supabase migration。
+
+`supabase/migrations/20261008_add_database_health.sql` 建立 `gridline_health()`，以呼叫者權限執行，僅回傳 `ok`，允許匿名與已登入角色呼叫。函式不讀取或修改帳戶與偏好。獨立 GitHub workflow 每日台北時間 14:43 使用公開專案 variables 呼叫；本機 `npm run health:supabase` 使用 `SUPABASE_URL` 與 `SUPABASE_PUBLISHABLE_KEY`，要求三次成功請求。檢查拒絕高權限金鑰、重新導向與非預期回應，短暫錯誤採有限重試。它提供資料庫活動與健康狀態；需留意失敗或排程中斷，並不保證免費方案永不暫停或自動恢復。詳見[Actions 操作](actions-maintenance.md)。
 
 ## 對外開放前的 Email 寄送
 
