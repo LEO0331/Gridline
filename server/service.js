@@ -11,7 +11,7 @@ function summarizeTickers(source, enabledTickers, tickers) {
   return {
     status: failed.length === 0 && successful.every(ticker => tickers[ticker].status === 'ok') ? 'ok' : successful.length ? 'partial' : 'degraded',
     recordCount,
-    message: `${source}: ${successful.length}/${enabledTickers.length} tracked tickers ingested (${recordCount} observations)${failed.length ? `; unavailable: ${failed.map(ticker => `${ticker}${tickers[ticker]?.message ? ` (${tickers[ticker].message})` : ''}`).join(', ')}` : ''}${missingFacts.length ? `; incomplete comparable USD facts: ${missingFacts.join(', ')}` : ''}`,
+    message: `${source}: ${successful.length}/${enabledTickers.length} tracked tickers ingested (${recordCount} observations)${failed.length ? `; unavailable: ${failed.map(ticker => `${ticker}${tickers[ticker]?.message ? ` (${tickers[ticker].message})` : ''}`).join(', ')}` : ''}${missingFacts.length ? `; incomplete reported financial facts: ${missingFacts.join(', ')}` : ''}`,
   };
 }
 

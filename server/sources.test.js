@@ -24,6 +24,23 @@ async function withJsonFixture(responses, run) {
 
 const entry = (val, end, filed, overrides = {}) => ({ val, end, filed, form: '10-Q', accn: '0001234567-26-000001', ...overrides });
 
+test('VNET extension revenue backfills from consolidated annual XBRL instead of stale standard tags', async () => {
+  const http = require('./http'); const originalText = http.getText;
+  const html = '<xbrli:context id="all"><xbrli:entity><xbrli:identifier>1508475</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>2025-01-01</xbrli:startDate><xbrli:endDate>2025-12-31</xbrli:endDate></xbrli:period></xbrli:context><xbrli:unit id="cny"><xbrli:measure>iso4217:CNY</xbrli:measure></xbrli:unit><ix:nonFraction name="vnet:HostingAndRelatedServicesRevenue" contextRef="all" unitRef="cny" scale="3">9,949,261</ix:nonFraction>';
+  http.getText = async url => { assert.ok(url.endsWith('vnet-report.htm')); return html; };
+  try {
+    await withJsonFixture({ company_tickers: { 0: { ticker: 'VNET', cik_str: 1508475 } }, submissions: { filings: { recent: { form: ['20-F'], filingDate: ['2026-04-16'], accessionNumber: ['0001104659-26-044361'], primaryDocument: ['vnet-report.htm'] } } }, companyfacts: { facts: { 'us-gaap': { RevenueFromContractWithCustomerExcludingAssessedTax: { units: { USD: [entry(100, '2019-12-31', '2020-04-02', { start: '2019-01-01', form: '20-F' })] } } } } } }, async ({ sec }) => {
+      const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['VNET'] });
+      const revenue = result.observations.find(item => item.type === 'revenue');
+      assert.equal(revenue.value, 9949261000);
+      assert.equal(revenue.unit, 'CNY');
+      assert.equal(revenue.taxonomy, 'vnet');
+      assert.equal(revenue.periodKind, 'annual');
+      assert.ok(revenue.sourceUrl.endsWith('vnet-report.htm'));
+    });
+  } finally { http.getText = originalText; }
+});
+
 test('SEC isolates failed issuers and unmatched tickers while retaining native-currency facts', async () => {
   await withJsonFixture({ company_tickers: { 0: { ticker: 'GOOD', cik_str: 1 }, 1: { ticker: 'BAD', cik_str: 2 } }, CIK0000000001: { filings: { recent: {} }, facts: { 'ifrs-full': { Revenue: { units: { CNY: [entry(100, '2025-12-31', '2026-03-01', { form: '20-F', start: '2025-01-01' })] } } } } }, CIK0000000002: new Error('issuer unavailable') }, async ({ sec }) => {
     const result = await sec({ secUserAgent: 'Researcher test@example.org', tickers: ['GOOD', 'BAD', 'MISSING'] });

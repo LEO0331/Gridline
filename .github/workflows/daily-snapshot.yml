@@ -6,6 +6,12 @@ on:
     # refresh daily; price ingestion checks the NYSE trading calendar.
     - cron: '17 22 * * *'
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Refresh scope
+        type: choice
+        options: [all, company-coverage]
+        default: all
 
 permissions:
   contents: write
@@ -33,6 +39,7 @@ jobs:
       - name: Refresh providers with retained last-known-good data
         run: npm run snapshot
         env:
+          SCHEDULE_SOURCES: ${{ inputs.scope == 'company-coverage' && 'sec,company-research' || 'sec,prices,eia,events,company-research' }}
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
           PJM_API_KEY: ${{ secrets.PJM_API_KEY }}

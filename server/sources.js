@@ -2,6 +2,7 @@ const { getJson, getText } = require('./http');
 const { fetchTickerHistory } = require('./price-history');
 const { ingestEvents } = require('./event-ingestion');
 const { ingestCompanyResearch } = require('./company-research');
+const { inlineRevenueFacts } = require('./inline-sec-facts');
 
 const SEC_TICKERS = 'https://www.sec.gov/files/company_tickers.json';
 const SEC_SUBMISSIONS = cik => `https://data.sec.gov/submissions/CIK${String(cik).padStart(10, '0')}.json`;
@@ -95,14 +96,32 @@ async function ingestSec(config) {
         .map(item => ({ ...item, sourceUrl: filingUrl(company.cik_str, { accn: item.accession }, documents) }));
       observations.push(observation('sec', 'filings', forms, { ticker: company.ticker, sourceUrl: SEC_SUBMISSIONS(company.cik_str) }));
       const missingFacts = []; const factCoverage = {};
+      let inlineFacts;
       for (const [label, tags] of Object.entries(FACT_TAGS)) {
-        const unit = label === 'dilutedEps' ? 'USD/shares' : 'USD';
-        const fact = latestFact(facts, tags, unit, cutoff, label === 'revenue' || label === 'dilutedEps');
+        const currency = ['GDS', 'VNET'].includes(company.ticker) ? 'CNY' : 'USD';
+        const unit = label === 'dilutedEps' ? `${currency}/shares` : currency;
+        let selectedFacts = facts; let selectedTags = tags;
+        let fact = latestFact(facts, tags, unit, cutoff, label === 'revenue' || label === 'dilutedEps');
+        if (company.ticker === 'VNET' && label === 'revenue' && (!fact || Date.parse(cutoff) - Date.parse(fact.end) > 400 * 86400000)) {
+          const annualFiling = allForms.find(item => item.form === '20-F' && item.filed <= cutoff);
+          const filing = annualFiling && { ...annualFiling, sourceUrl: filingUrl(company.cik_str, { accn: annualFiling.accession }, documents) };
+          try {
+            if (filing?.sourceUrl.startsWith('https://www.sec.gov/Archives/')) {
+              const html = await getText(filing.sourceUrl, headers);
+              const rows = inlineRevenueFacts(html, { cik: company.cik_str, qualifiedTag: 'vnet:HostingAndRelatedServicesRevenue', form: filing.form, filed: filing.filed, accn: filing.accession, cutoff });
+              const byUnit = Object.fromEntries([...new Set(rows.map(row => row.unit))].map(reportedUnit => [reportedUnit, rows.filter(row => row.unit === reportedUnit)]));
+              inlineFacts = { facts: { vnet: { HostingAndRelatedServicesRevenue: { units: byUnit } } } };
+              selectedFacts = inlineFacts; selectedTags = [['vnet', 'HostingAndRelatedServicesRevenue']];
+              fact = latestFact(selectedFacts, selectedTags, unit, cutoff, true);
+            }
+          } catch { /* Missing extension evidence remains unavailable, preserving other issuer facts. */ }
+        }
+        if (fact && Date.parse(cutoff) - Date.parse(fact.end) > 400 * 86400000) fact = null;
         if (!fact) { missingFacts.push(label); factCoverage[label] = { available: false }; continue; }
         factCoverage[label] = { available: true, unit: fact.unit, periodKind: periodKind(fact), periodEnd: fact.end, comparison: null };
         observations.push(factObservation(company.cik_str, company.ticker, label, fact, documents));
         if (label === 'revenue' || label === 'dilutedEps') {
-          const prior = priorYearPeriod(facts, tags, fact);
+          const prior = priorYearPeriod(selectedFacts, selectedTags, fact);
           if (prior) factCoverage[label].comparison = periodKind(fact);
           if (prior) observations.push(factObservation(company.cik_str, company.ticker, `${label}Prior`, prior, documents));
         }
