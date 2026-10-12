@@ -71,3 +71,10 @@ test('passes the selected ticker to the model and omits unsafe source links', ()
   rerender(<CompanyResearch snapshot={snapshot} ticker="IREN" />);
   expect(buildCompanyResearch).toHaveBeenLastCalledWith(snapshot, 'IREN', undefined);
 });
+
+test('latest official release remains visible when older than the recent window', () => {
+  buildCompanyResearch.mockReturnValue({ ...base, events: [{ title: 'Older official release', summary: 'A dated record.', source: 'Issuer', publishedAt: '2026-08-01', retrievedAt: '2026-10-08', url: 'https://ir.applieddigital.com/news/older', archived: true }] });
+  render(<CompanyResearch snapshot={{}} ticker="APLD" />);
+  expect(screen.getByRole('link', { name: 'Older official release ↗' }).closest('details')).toBeNull();
+  expect(screen.getByText('Older record')).toBeVisible();
+});

@@ -15,7 +15,10 @@ async function withJsonFixture(responses, run) {
     return responses[key];
   };
   delete require.cache[sourcesPath];
-  try { return await run(require('./sources'), requests); }
+  try {
+    const sources = require('./sources');
+    return await run({ ...sources, sec: config => sources.sec({ asOf: '2026-10-08T00:00:00Z', ...config }) }, requests);
+  }
   finally { http.getJson = original; delete require.cache[sourcesPath]; }
 }
 

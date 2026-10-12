@@ -30,8 +30,8 @@ export default function CompanyResearch({ snapshot, ticker, language = 'en', now
   const statusNames = { ok: t('Source check passed', '來源檢查通過'), partial: t('Partial coverage', '部分涵蓋'), degraded: t('Source check limited', '來源檢查有限'), stale: t('Retained data · refresh needed', '保留資料 · 需要更新'), missing: t('No financial data recorded', '尚無財務資料'), unavailable: t('Source unavailable', '來源暫無法取得') };
   const focus = asItems(zh ? profile?.focusZh || profile?.focus : profile?.focus);
   const risks = asItems(zh ? profile?.risksZh || profile?.risks : profile?.risks);
-  const recent = events.filter(item => !item.archived);
-  const older = [...recent.slice(3), ...events.filter(item => item.archived)];
+  const featured = events.slice(0, 3);
+  const older = events.slice(3);
   const renderEvent = (event, index) => <article className="company-research-event" key={`${event.url}-${index}`}>
     <div className="company-research-event-date"><time dateTime={event.publishedAt}>{dateLabel(event.publishedAt)}</time>{event.archived && <span>{t('Older record', '較早紀錄')}</span>}</div>
     <h4><SourceLink url={event.url}>{zh ? event.titleZh || event.title : event.title} ↗</SourceLink></h4>
@@ -47,7 +47,7 @@ export default function CompanyResearch({ snapshot, ticker, language = 'en', now
       {filings.length > 0 && <details className="company-research-filings"><summary>{t('Filing references', '申報文件')} ({filings.length})</summary><ul>{filings.map((filing, index) => <li key={`${filing.sourceUrl}-${index}`}><SourceLink url={filing.sourceUrl}>{filing.form || t('Filing', '申報')} · {dateLabel(filing.filedAt)} ↗</SourceLink></li>)}</ul></details>}
     </div>
     <div className="company-research-bottom"><div className="company-research-profile"><h3>{t('Research focus', '研究焦點')}</h3>{focus.length ? <ul>{focus.map((item, index) => <li key={index}>{item}</li>)}</ul> : <p className="company-research-empty">{t('A sourced business profile is not recorded yet.', '尚無具來源的業務研究摘要。')}</p>}{risks.length > 0 && <><h3>{t('What to verify next', '下一步應查證什麼')}</h3><ul>{risks.map((item, index) => <li key={index}>{item}</li>)}</ul></>}{profile?.sourceUrl && <SourceLink url={profile.sourceUrl}>{t('Business source ↗', '業務來源 ↗')}</SourceLink>}{profile?.sources?.map((source, index) => <SourceLink key={index} url={source.url}>{source.title || t('Business source', '業務來源')} ↗</SourceLink>)}</div>
-      <div className="company-research-developments"><h3>{t('Official company developments', '公司官方進展')}</h3>{recent.slice(0, 3).map(renderEvent)}{older.length > 0 && <details><summary>{t('More dated records', '更多具日期紀錄')} ({older.length})</summary>{older.map(renderEvent)}</details>}{!events.length && <p className="company-research-empty">{t('No verified company-specific announcements are recorded yet.', '尚無已驗證的公司專屬公告紀錄。')}</p>}</div>
+      <div className="company-research-developments"><h3>{t('Official company developments', '公司官方進展')}</h3>{featured.map(renderEvent)}{older.length > 0 && <details><summary>{t('More dated records', '更多具日期紀錄')} ({older.length})</summary>{older.map(renderEvent)}</details>}{!events.length && <p className="company-research-empty">{t('No verified company-specific announcements are recorded yet.', '尚無已驗證的公司專屬公告紀錄。')}</p>}</div>
     </div>
   </section>;
 }
