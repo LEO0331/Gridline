@@ -49,3 +49,9 @@ test('future releases are withheld and human-readable dates are checked when str
   const result = await ingestCompanyResearch({ tickers: ['TEST'] }, { ...deps, now: new Date('2026-07-01') });
   assert.equal(result.observations.length, 0);
 });
+
+test('visible publication dateline can resolve an earlier SEO timestamp, not an arbitrary body date', () => {
+  const html = '<meta property="article:published_time" content="2026-07-31 23:12:03"><h1>Issuer Announces New AI Capacity</h1><p>SANTA CLARA, Calif., August 1, 2026 -- Company announcement.</p>';
+  assert.equal(matchingDate(html, record), true);
+  assert.equal(matchingDate(html.replace('August 1, 2026', 'August 2, 2026'), record), false);
+});

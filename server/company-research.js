@@ -14,7 +14,16 @@ function allowedSource(profile, record) {
 function matchingDate(html, record) {
   const extracted = articlePublicationDate(html, record.source);
   const expected = record.publishedAt.slice(0, 10);
-  if (extracted) return extracted.slice(0, 10) === expected;
+  if (extracted?.slice(0, 10) === expected) return true;
+  // Publisher SEO timestamps can precede the visible release dateline (e.g. Arista).
+  // Only accept a conflicting date when the first dateline near the exact headline confirms it.
+  if (extracted) {
+    const heading = [...String(html).matchAll(/<h([1-3])(?:\s[^>]*)?>([\s\S]*?)<\/h\1>/gi)]
+      .find(match => plain(match[2]).toLowerCase().includes(record.title.toLowerCase()));
+    const nearHeadline = heading ? plain(html.slice(heading.index + heading[0].length)).slice(0, 2000) : '';
+    const dateline = nearHeadline.match(/\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+\d{1,2},?\s+20\d{2}\b/i)?.[0];
+    return Boolean(dateline && new Date(`${dateline} UTC`).toISOString().slice(0, 10) === expected);
+  }
   const date = new Date(record.publishedAt);
   const full = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const short = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
