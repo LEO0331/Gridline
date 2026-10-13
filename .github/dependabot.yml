@@ -8,6 +8,14 @@ updates:
       time: '04:17'
       timezone: Asia/Taipei
     open-pull-requests-limit: 5
+    # React 18/19 requires a coordinated framework and test-library migration.
+    ignore:
+      - dependency-name: react
+        versions: ['>=18.0.0']
+      - dependency-name: react-dom
+        versions: ['>=18.0.0']
+      - dependency-name: '@testing-library/react'
+        versions: ['>=13.0.0']
     groups:
       compatible-updates:
         patterns: ['*']

@@ -14,3 +14,9 @@ A successful accepted-risk security check is not a clean dependency audit or a p
 The parser override crosses a transitive major-version constraint. Its compatibility is established for the exercised Gridline build/tests, rather than assumed for every possible consumer of the parser API. Future changes to the build toolchain must recheck this override.
 
 The isolated [Vite/Vitest evaluation](build-tool-remediation.md) actually removed both affected packages, built successfully and passed all 165 frontend tests. It remains a prototype: production auth/dev-server/browser-target/lint/deployment and full-suite parity must be verified before replacement. The main CRA dependency graph remains vulnerable during temporary acceptance.
+
+## React compatibility repair — 2026-10-13
+
+The merged React DOM 19 and Testing Library React 16 updates conflicted with the application's React 17 dependency and legacy renderer. The release keeps React and React DOM aligned at 17.0.2 and uses Testing Library React 12.1.5, whose peers explicitly support React versions below 18. The npm 10 lockfile was regenerated and clean installation succeeded without `--force` or `--legacy-peer-deps`.
+
+Dependabot excludes React/React DOM versions 18+ and Testing Library React versions 13+ until a coordinated framework migration. Compatible patch/minor updates still proceed; remove those exclusions only as part of that migration. The other merged SDK, matcher and Actions updates remain in place. The optional performance reporter uses the merged web-vitals 6 `on*` APIs and INP instead of the removed FID API; reporting remains disabled unless a callback is provided.
