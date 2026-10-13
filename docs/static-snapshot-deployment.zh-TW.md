@@ -16,6 +16,8 @@ Gridline 將**資料更新**與**網站部署**分開處理。
 
 無論更新成功或失敗，都會產生工作摘要，揭露來源／ticker 涵蓋、保留證據、缺少財務欄位分類及新鮮度警示。收集失敗時會明確標示摘要可能描述的是先前已發布快照。發布保護及排程詳見 [Actions 維運說明](actions-maintenance.md)。
 
+上傳部署 artifact 前，Pages 也會驗證新的 production source maps／執行期依賴路徑，並套用[安全例外政策](security-exception-policy.md)。唯一接受的 `braces` 風險於台北時間 2026-11-11 00:00 到期；新的／已變更的高風險弱點、任何嚴重弱點、無效稽核結果或過期／缺少的證據都會阻擋發布。僅更新快照的 dispatch 不會略過這些檢查。
+
 因此「snapshot commit 已成功」**不等於** GitHub Pages 已更新。請確認後續的 `Deploy to GitHub Pages` workflow 也有執行成功，或比對部署網站 `#health` 的產生時間是否已更新。
 
 ## 成功更新時會改變哪些內容

@@ -59,6 +59,7 @@ test('lower-severity findings stay reported without needing a high exception', (
   audit.vulnerabilities.formatter = { name: 'formatter', severity: 'moderate', via: [{ name: 'formatter', dependency: 'formatter', severity: 'moderate', url: 'https://github.com/advisories/GHSA-aaaa-bbbb-cccc', range: '*' }], nodes: ['node_modules/formatter'] };
   audit.vulnerabilities.micromatch.via.push('formatter'); audit.metadata.vulnerabilities.moderate++; audit.metadata.vulnerabilities.total++;
   const result = evaluateAudit(audit, options); assert.equal(result.ok, true); assert.equal(result.notices.length, 1);
+  assert.deepEqual(result.accepted[1].advisories, [identity.url]);
 });
 test('registry errors, timeouts, nonstandard exit codes and invalid JSON never pass', () => {
   for (const response of [{ status: 2, stdout: '{}' }, { status: 0, stdout: 'invalid' }, { status: 0, stdout: '{"error":{}}' }, { error: new Error('Timeout'), status: null, stdout: '' }]) {
@@ -73,4 +74,11 @@ test('a downgraded aggregate severity cannot hide high or critical originating a
     audit.metadata.vulnerabilities.moderate++; audit.metadata.vulnerabilities.total++;
     assert.throws(() => evaluateAudit(audit, options), /understates/);
   }
+});
+
+test('duplicate advisory identities with different attack metadata cannot hide behind a matching entry', () => {
+  const { audit, options } = fixture();
+  const changed = copy(audit.vulnerabilities.braces.via[0]); changed.cvss.vectorString = 'different';
+  audit.vulnerabilities.braces.via.unshift(changed);
+  assert.equal(evaluateAudit(audit, options).ok, false);
 });

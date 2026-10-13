@@ -16,6 +16,8 @@ Gridline separates **data refresh** from **site deployment**.
 
 An always-running refresh summary reports source/ticker coverage, retained evidence, missing financial-field classifications and freshness warnings. If collection fails, the summary explicitly identifies that it may describe the previous published snapshot. See [Actions operation](actions-maintenance.md) for publication safeguards and schedules.
 
+Before artifact upload, Pages also verifies fresh production source maps/runtime dependency paths and enforces the [security exception policy](security-exception-policy.md). The single accepted `braces` risk expires at 2026-11-11 00:00 Asia/Taipei; new/changed high findings, any critical finding, invalid audit results or expired/missing proof block publication. Snapshot-only dispatch does not bypass these checks.
+
 A snapshot commit by itself is **not** proof that GitHub Pages has been updated. Confirm the subsequent `Deploy to GitHub Pages` run, or compare the deployed `#health` generation time with the committed snapshot.
 
 ## What a successful refresh updates

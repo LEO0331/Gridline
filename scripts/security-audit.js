@@ -41,7 +41,7 @@ function evaluateAudit(audit, { policy, lock, exposure, fingerprint, now = new D
       if (!via || via.name !== name || via.dependency !== name || !LEVELS.includes(via.severity) || typeof via.url !== 'string' || typeof via.range !== 'string') fail('Originating advisory metadata is invalid.');
       return [{ package: name, advisory: via, finding: item }];
     });
-    const unique = [...new Map(result.map(item => [`${item.package}|${item.advisory.url}|${item.advisory.range}|${item.advisory.severity}`, item])).values()];
+    const unique = [...new Map(result.map(item => [JSON.stringify([item.package, item.advisory.url, item.advisory.range, item.advisory.severity, item.advisory.cwe, item.advisory.cvss?.vectorString]), item])).values()];
     memo.set(name, unique); return unique;
   };
   const proofValid = () => fingerprint && ['lockfileSha256', 'manifestSha256', 'sourceTreeSha256'].every(key => /^[a-f0-9]{64}$/.test(fingerprint[key] || '')) && exposure?.reportVersion === 1 && exposure.ok === true && Array.isArray(exposure.errors) && !exposure.errors.length && exposure.bundle?.javascriptFiles > 0 && exposure.bundle?.mappedSources > 0 && same(exposure.fingerprint, fingerprint) &&
@@ -63,7 +63,7 @@ function evaluateAudit(audit, { policy, lock, exposure, fingerprint, now = new D
     const blockingCauses = causes.filter(origin => ['high', 'critical'].includes(origin.advisory.severity));
     if (!blockingCauses.length || !blockingCauses.every(origin => origin.advisory.severity !== 'critical' && matches(origin))) {
       blocked.push({ package: name, reason: 'Unapproved high advisory, changed dependency identity, or missing/current exposure proof.' });
-    } else accepted.push({ package: name, advisories: [...new Set(causes.map(origin => origin.advisory.url))] });
+    } else accepted.push({ package: name, advisories: [...new Set(blockingCauses.map(origin => origin.advisory.url))] });
   }
   return { ok: blocked.length === 0, counts, blocked, accepted, notices, exceptions: policy.exceptions.map(({ advisory, expiresAt, reason }) => ({ advisory, expiresAt, reason })) };
 }
