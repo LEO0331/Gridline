@@ -22,3 +22,9 @@ The merged React DOM 19 and Testing Library React 16 updates conflicted with the
 Dependabot excludes React/React DOM versions 18+ and Testing Library React versions 13+ until a coordinated framework migration. Compatible patch/minor updates still proceed; remove those exclusions only as part of that migration. The other merged SDK, matcher and Actions updates remain in place. The optional performance reporter uses the merged web-vitals 6 `on*` APIs and INP instead of the removed FID API; reporting remains disabled unless a callback is provided.
 
 The [GitHub quality run](https://github.com/LEO0331/Gridline/actions/runs/38331045040) passed clean installation, all 380 tests, build, fresh exposure verification and dependency policy. The [publication run](https://github.com/LEO0331/Gridline/actions/runs/38331039892) passed production verification, Pages deployment and Lighthouse. This repairs the peer conflict without bypassing resolution or upgrading the React framework major.
+
+## YAML optional-peer lockfile repair — 2026-10-13
+
+The subsequent user-event update removed Tailwind's nested optional `yaml@2.9.1` peer from the lockfile while retaining YAML 1 at the root. The npm 10 runner then rejected `npm ci` as out of sync. The existing transitive YAML package is now overridden to exactly 2.9.1 across its consumers, so the required root dependency also satisfies the optional peer and the resolver does not depend on a separately removable nested entry. No new package was introduced.
+
+Regenerate with npm 10 and verify clean installation. An isolated npm 11 regeneration followed by npm 10 `ci --dry-run` also validated successfully, retaining `node_modules/yaml` at 2.9.1. This checks compatibility of the resulting lockfile; it does not replace CI or justify `--force`/`--legacy-peer-deps`. Keep full workflow/parser tests and production build checks when changing this override.
