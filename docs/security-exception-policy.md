@@ -31,3 +31,12 @@ npm run security:audit -- .omx/research/dependency-exposure.json
 Create the report directory first if it does not exist. Regenerate the report after source, manifest or lockfile changes. The security-gate regressions are included in `npm run verify` and the shared CI action; `npm run test:security-gate` runs them independently.
 
 Permanent remediation is evaluated in an isolated branch. The Vite/Vitest candidate removes both packages and passes its production build and all 165 frontend tests, but requires the documented integration acceptance checks before replacing the stable production toolchain. Its clean candidate audit is not a claim about the current CRA graph.
+
+## Completion verification — 2026-10-13
+
+- [Final quality workflow](https://github.com/LEO0331/Gridline/actions/runs/38325505496): all 380 regression tests and production build passed; fresh exposure proof transferred between jobs and the dependency security gate passed.
+- [Production publication](https://github.com/LEO0331/Gridline/actions/runs/38325498188): regression/build, source exposure, advisory policy, Pages deployment and Lighthouse passed.
+- Current exposure verification checked eight browser bundles, 146 mapped sources and 84 runtime source files; no affected package was found in browser/runtime paths.
+- The raw registry audit still contains 48 propagated high entries accepted under the one approved advisory and five moderate entries. There were zero unapproved blockers. This is accepted risk, not a clean production dependency graph.
+- Regression cases reject expired approval, altered versions/integrity/nodes, changed attack metadata, new high/critical advisories, understated origin severity, inconsistent duplicate advisory records, stale or mismatched proof, registry failures, missing maps and computed/hoisted runtime imports.
+- Documentation links and snapshot acceptance passed; existing partial event/news warnings remain disclosed. No main application dependency migration was shipped.

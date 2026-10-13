@@ -44,3 +44,7 @@ Workflow safety tests exercise real temporary Git remotes, including concurrent 
 - [Supabase heartbeat](https://github.com/LEO0331/Gridline/actions/runs/38213648824) and its summary succeeded.
 - [Manual quality workflow](https://github.com/LEO0331/Gridline/actions/runs/38213648752) passed tests/build. Its separate dependency security gate failed on the documented unpatched findings, as required by the retained high/critical threshold.
 - Timed weekly execution will be observed on its next scheduled run. No scheduled event was fabricated for validation; workflow guards cover its skip-publication condition.
+
+## Security-policy completion — 2026-10-13
+
+The [current security-policy report](security-exception-policy.md) supersedes the historical unconditional audit failure above. All 380 tests, the fresh exposure-artifact transfer, the dependency policy job, Pages publication and Lighthouse passed on GitHub. The owner-approved `braces` exception expires at 2026-11-11 00:00 Asia/Taipei; the raw vulnerable findings remain visible. The [replacement experiment](build-tool-remediation.md) passed a clean candidate audit/build and 165 frontend tests, but is not the production toolchain.
