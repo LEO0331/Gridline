@@ -1,17 +1,17 @@
 # Pull-request quality gate
 
-Every pull request targeting `main` runs the `Pull request quality gate` workflow on Node.js 22. It also supports manual execution. Its Monday 11:11 Asia/Taipei (03:11 UTC) schedule runs only the dependency security gate.
+Every pull request targeting `main` runs the `Pull request quality gate` workflow on Node.js 22. It also supports manual execution. Monday 11:11 Asia/Taipei (03:11 UTC) performs a fresh production build/exposure check and dependency audit, skipping the full test suite and snapshot-age acceptance.
 
 Blocking checks:
 
 1. install exactly from the committed lock file with `npm ci`;
-2. the shared `.github/actions/verify` regression action: development-server, workflow publication/reporting, server/domain, Supabase health-check and frontend tests;
+2. the shared `.github/actions/verify` regression action: development-server, workflow publication/reporting, security-policy/exposure, server/domain, Supabase health-check and frontend tests;
 3. public snapshot acceptance (`npm run demo:check`);
 4. production build (`npm run build`).
 
-A separate **Dependency security gate** job runs `npm audit --package-lock-only --audit-level=high`, without installing dependencies. It runs for PRs, manual dispatches and the weekly schedule.
+A separate **Dependency security gate** job requires the successful fresh build/exposure artifact from the same workflow run. It runs `npm run security:audit -- dependency-exposure.json`, querying the complete current registry audit without another dependency installation.
 
-The dependency job is blocking. The documented unpatched toolchain advisories currently prevent it from passing; application tests/build passing does not mean the security gate passed. No advisory suppression or `continue-on-error` is configured. See [dependency maintenance](dependency-maintenance.md). Keep Node 22 aligned with lockfile regeneration to avoid npm lock-resolution drift.
+The job remains blocking. The repository owner authorized one exact, expiring `braces` advisory exception after exposure review; it expires 2026-11-11 at 00:00 Asia/Taipei. Changed or unknown high findings, any critical findings, expired exceptions, stale/missing exposure proof and failed audit requests block. Successful accepted-risk checks do not mean a clean raw audit. See [security policy](security-exception-policy.md) and [dependency maintenance](dependency-maintenance.md). Keep npm 10 aligned with the Node 22 runner when regenerating the lockfile.
 
 `npm run verify` reproduces the code-test/build sequence locally. It does not contact external providers and does not require the committed public snapshot to be demo-ready.
 

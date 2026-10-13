@@ -12,10 +12,11 @@ function fixture(t) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), typeof content === 'string' ? content : JSON.stringify(content));
   };
-  write('package.json', { dependencies: { 'react-scripts': '5.0.1' } });
+  write('package.json', { dependencies: { 'react-scripts': '5.0.1', react: '17.0.1' } });
   write('package-lock.json', { lockfileVersion: 2, packages: {
     '': { dependencies: { 'react-scripts': '5.0.1' } },
     'node_modules/react-scripts': { dependencies: { braces: '3.0.3', 'sprintf-js': '1.0.3' } },
+    'node_modules/react': { version: '17.0.1' },
     'node_modules/braces': { version: '3.0.3', integrity: 'sha512-example' },
     'node_modules/sprintf-js': { version: '1.0.3', integrity: 'sha512-example-format' }
   } });
@@ -70,6 +71,49 @@ test('rejects computed runtime imports', t => {
   const { write, check } = fixture(t);
   write('server/adapter.js', 'const parse = require(packageName);');
   assert.ok(check().errors.some(error => error.includes('Opaque runtime import')));
+});
+
+test('rejects concatenated and escaped literal require/import calls', t => {
+  const { write, check } = fixture(t);
+  for (const content of ["require('bra' + 'ces');", "import('sprintf-' + 'js');", "require('bra\\x63es');", "import('sprintf-\\u006as');"]) {
+    write('server/adapter.js', content);
+    const result = check();
+    assert.equal(result.ok, false, content);
+    assert.ok(result.errors.some(error => error.includes('Computed or escaped runtime import')), content);
+  }
+});
+
+test('rejects multiline named and default imports and reexports from affected packages', t => {
+  const { write, check } = fixture(t);
+  for (const content of ["import {\nparse\n} from 'braces';", "import format, {\nvsprintf\n} from 'sprintf-js';", "export {\nparse\n} from 'braces';"]) {
+    write('server/adapter.js', content);
+    assert.ok(check().errors.some(error => error.includes('Vulnerable direct runtime import')), content);
+  }
+});
+
+test('traverses transitive hoisted imports used by runtime code', t => {
+  const { root, write, check } = fixture(t);
+  const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json')));
+  lock.packages['node_modules/react-scripts'].dependencies = { micromatch: '4.0.8', 'sprintf-js': '1.0.3' };
+  lock.packages['node_modules/micromatch'] = { version: '4.0.8', dependencies: { braces: '3.0.3' } };
+  write('package-lock.json', lock);
+  assert.equal(check().ok, true);
+  write('server/adapter.js', "const match = require('micromatch');");
+  assert.ok(check().errors.some(error => error.includes('Application dependency reaches braces: micromatch > braces')));
+});
+
+test('allows normal React, builtin and relative static imports', t => {
+  const { write, check } = fixture(t);
+  write('src/index.js', "import React, {\nuseState\n} from 'react';\nimport './styles.css';");
+  write('server/index.js', "const http = require('node:http');\nconst fs = require('fs');\nconst local = require('./adapter');");
+  const result = check();
+  assert.equal(result.ok, true, result.errors.join('\n'));
+});
+
+test('fails closed on unresolved runtime bare imports', t => {
+  const { write, check } = fixture(t);
+  write('server/adapter.js', "require('unlocked-package');");
+  assert.ok(check().errors.some(error => error.includes('Unresolved runtime import')));
 });
 
 test('rejects runtime dependency graph routes and unclassified locked instances', t => {

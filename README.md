@@ -182,6 +182,7 @@ Equivalent commands:
 npm run test:dev-server
 npm run test:supabase-health
 npm run test:workflows
+npm run test:security-gate
 npm run test:api
 npm run test:unit
 npm run build

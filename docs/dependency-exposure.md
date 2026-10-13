@@ -1,6 +1,6 @@
 # Build dependency exposure evidence
 
-Reviewed on 2026-10-12. This report separates the browser/application exposure check from the remaining risk of running vulnerable build tools. It does not claim that those tools have been patched.
+Reviewed on 2026-10-13. This report separates the browser/application exposure check from the remaining risk of running vulnerable build tools. It does not claim that those tools have been patched.
 
 ## Repeatable check
 
@@ -11,11 +11,11 @@ node scripts/dependency-exposure.js
 node --test scripts/dependency-exposure.test.js
 ```
 
-The verifier exits unsuccessfully if production JavaScript or its source maps are missing, mapped source content is incomplete, a mapped package path or literal import identifies `braces` or `sprintf-js`, application/data-adapter code directly imports them, or a runtime dependency can reach an affected locked instance. Computed imports in `src` or `server` require explicit review and currently fail the check.
+The verifier exits unsuccessfully if production JavaScript or its source maps are missing, mapped source content is incomplete, a mapped package path or literal import identifies `braces` or `sprintf-js`, application/data-adapter code directly imports them, or a runtime dependency can reach an affected locked instance. Computed, concatenated or escaped imports in nonexcluded runtime files require explicit review and fail the check. Multiline static imports and reexports are included in import scanning.
 
 It inspects every JavaScript bundle under `build`, including lazy chunks, and both source-map paths and source content. It scans JS/JSX/MJS/CJS files under `src`, `server` and `scripts`. Test files, test setup and explicitly named development/audit tooling are separately listed as exclusions in the report. These exclusions do not make the packages safe to run in CI.
 
-The lockfile graph is traversed using dependencies, optional dependencies and installed peers with Node-style package resolution. `react-scripts` and the three existing Testing Library roots are explicitly classified as tooling. This classification uses their role, not their `dependencies` versus `devDependencies` placement. Every affected locked instance must be reachable through tooling; application roots reaching either package fail the check. Duplicate instances must have the same version and integrity. The report includes representative shortest routes from each root, rather than enumerating every possible route through the graph.
+The lockfile graph is traversed using dependencies, optional dependencies and installed peers with Node-style package resolution. `react-scripts` and the three existing Testing Library roots are explicitly classified as tooling. This classification uses their role, not their `dependencies` versus `devDependencies` placement. The scanner also resolves bare package imports found in nonexcluded runtime files and traverses them as runtime roots, including hoisted transitive packages absent from the manifest. For example, a server importing `micromatch` is rejected because it reaches `braces`, even when only CRA declares `micromatch`. Builtins identified by Node's `isBuiltin` and relative/local imports are skipped as package roots; unresolved bare imports fail closed. Every affected locked instance must be reachable through tooling; application roots reaching either package fail the check. Duplicate instances must have the same version and integrity. The report includes representative shortest routes from each root, rather than enumerating every possible route through the graph.
 
 ## Observed evidence
 
@@ -40,4 +40,4 @@ Source maps and literal imports provide repeatable evidence for the inspected bu
 
 CRA build/test tools still process repository-controlled patterns and format strings. Contributors who can modify a pull request can influence those inputs and potentially exhaust CI resources. A browser exposure pass therefore supports a narrowly documented temporary exception; it does not remove build-time denial-of-service risk. Review the exact exception's advisory, affected versions, integrity, expiry and weekly audit result separately. New findings or new runtime exposure must block rather than inherit that exception.
 
-The eight regression tests cover missing/incomplete maps, suspicious mapped paths and content, direct runtime imports, computed imports, runtime graph reachability, unclassified instances and inconsistent identities.
+The thirteen regression tests cover missing/incomplete maps, suspicious mapped paths and content, direct runtime imports, computed/concatenated/escaped calls, multiline imports and reexports, hoisted runtime dependency routes, normal React/builtin/local imports, unresolved imports, unclassified instances and inconsistent identities.

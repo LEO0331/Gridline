@@ -16,6 +16,9 @@ Reviewed against the repository implementation on **2026-10-12**. Guides describ
 | Workflow schedules, publishing recovery and live verification | [Actions maintenance](actions-maintenance.md) |
 | Independent daily Supabase heartbeat | [Health check](supabase-health-check.md) |
 | Dependency patches and unresolved advisories | [Dependency maintenance](dependency-maintenance.md) |
+| Exact temporary advisory acceptance and expiry | [Security policy](security-exception-policy.md) |
+| Runtime/bundle/dependency-path exposure evidence | [Exposure verification](dependency-exposure.md) |
+| Isolated replacement build/test toolchain results | [Remediation evaluation](build-tool-remediation.md) |
 
 ## Research coverage and evidence
 

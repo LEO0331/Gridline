@@ -28,7 +28,8 @@ test('expiry is enforced at the exact Taipei deadline and cannot exceed thirty d
 test('new advisories, changed severity, range or attack vector block', () => {
   for (const change of [item => { item.url += '-new'; }, item => { item.severity = 'critical'; }, item => { item.range = '<=4.0.0'; }, item => { item.cvss.vectorString = 'different'; }]) {
     const { audit, options } = fixture(); change(audit.vulnerabilities.braces.via[0]);
-    assert.equal(evaluateAudit(audit, options).ok, false);
+    if (audit.vulnerabilities.braces.via[0].severity === 'critical') assert.throws(() => evaluateAudit(audit, options), /understates/);
+    else assert.equal(evaluateAudit(audit, options).ok, false);
   }
 });
 test('new unknown high packages and critical propagated entries always block', () => {
@@ -62,5 +63,14 @@ test('lower-severity findings stay reported without needing a high exception', (
 test('registry errors, timeouts, nonstandard exit codes and invalid JSON never pass', () => {
   for (const response of [{ status: 2, stdout: '{}' }, { status: 0, stdout: 'invalid' }, { status: 0, stdout: '{"error":{}}' }, { error: new Error('Timeout'), status: null, stdout: '' }]) {
     assert.throws(() => runRegistryAudit(() => response));
+  }
+});
+
+test('a downgraded aggregate severity cannot hide high or critical originating advisories', () => {
+  for (const severity of ['high', 'critical']) {
+    const { audit, options } = fixture();
+    audit.vulnerabilities.fake = { name: 'fake', severity: 'moderate', nodes: ['node_modules/fake'], via: [{ name: 'fake', dependency: 'fake', severity, url: 'https://github.com/advisories/GHSA-aaaa-bbbb-cccc', range: '*' }] };
+    audit.metadata.vulnerabilities.moderate++; audit.metadata.vulnerabilities.total++;
+    assert.throws(() => evaluateAudit(audit, options), /understates/);
   }
 });

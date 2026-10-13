@@ -6,7 +6,7 @@ The six repository workflows have separate purposes. The ten visible Actions sid
 | --- | --- |
 | Deploy to GitHub Pages | Relevant `main` pushes/manual publication; Monday 10:37 Asia/Taipei Lighthouse-only audit. |
 | Refresh daily dashboard snapshot | Daily 06:17 Asia/Taipei (22:17 UTC on the preceding date); manual full or company-coverage refresh. |
-| Pull request quality gate | PRs targeting `main` and manual tests/build; Monday 11:11 Asia/Taipei dependency-only audit. |
+| Pull request quality gate | PR/manual tests/build; Monday 11:11 Asia/Taipei fresh build/exposure verification and dependency audit. |
 | Check Supabase database health | Daily 14:43 Asia/Taipei; manual heartbeat. |
 | Check official event source access | Manual diagnostic with optional inactive-source/article probes. |
 | Audit SEC issuer fact tags | Manual diagnostic for one ticker, a comma-separated list, or `ALL`. |
@@ -29,13 +29,13 @@ Supabase remains a separate daily heartbeat. Its always-running summary confirms
 
 ## Dependency checks
 
-The PR job is named **Dependency security gate**, matching its blocking behavior. It audits the lockfile without installing packages and additionally runs on Monday at 11:11 Asia/Taipei. Dependabot checks npm updates Monday at 04:17 and GitHub Actions updates at 04:47 Asia/Taipei, grouping compatible minor/patch npm updates and action updates separately; major npm updates remain separate for review. Action references remain pinned to immutable commit hashes.
+The PR job is named **Dependency security gate**, matching its blocking behavior. It audits the lockfile using fresh build/exposure evidence from the prerequisite job, without a second installation. Monday 11:11 Asia/Taipei builds and checks exposure before auditing, while skipping full regressions and snapshot-age acceptance. Dependabot checks npm updates Monday at 04:17 and GitHub Actions updates at 04:47 Asia/Taipei, grouping compatible minor/patch npm updates and action updates separately; major npm updates remain separate for review. Action references remain pinned to immutable commit hashes.
 
-The dependency security gate retains its existing high/critical threshold. It is separate from the deployment regression/build gate. Known unpatched advisories can therefore make the PR/weekly security job fail even when application verification and deployment succeed. No advisory exception or `continue-on-error` was introduced.
+The gate blocks new or changed high findings and every critical finding. One exact, owner-approved `braces@3.0.3` risk exception expires at 2026-11-11 00:00 Asia/Taipei and requires fresh matching exposure proof. Raw findings remain reported; there is no blanket exclusion or `continue-on-error`. Pages applies the same exposure/security policy after its production build and before artifact upload. An expired exception blocks publication as well as PR/weekly checks. See [security policy](security-exception-policy.md).
 
 Workflow safety tests exercise real temporary Git remotes, including concurrent collection, rejected-push recovery, permission failure, ownership checks and bounded retries. YAML guards also check shared regression gates, manual snapshot verification and scheduled Lighthouse behavior.
 
-## Completion evidence — 2026-10-12
+## Historical completion evidence — 2026-10-12
 
 - Clean npm 10 installation succeeded. All 356 tests and production build passed locally; the shared regression gate and build also passed on GitHub Node 22.
 - [Application deployment](https://github.com/LEO0331/Gridline/actions/runs/38213625265) passed verification, snapshot acceptance, publication and Lighthouse.

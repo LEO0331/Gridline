@@ -12,19 +12,19 @@ function evaluateAudit(audit, { policy, lock, exposure, fingerprint, now = new D
   const fail = message => { throw new Error(message); };
   const nowMs = new Date(now).getTime();
   if (!Number.isFinite(nowMs)) fail('Invalid audit time.');
-  if (!audit || audit.error || audit.auditReportVersion !== 2 || !audit.vulnerabilities || !audit.metadata?.vulnerabilities) fail('Registry audit failed or returned an unsupported report.');
+  if (!audit || audit.error || audit.auditReportVersion !== 2 || !audit.vulnerabilities || typeof audit.vulnerabilities !== 'object' || Array.isArray(audit.vulnerabilities) || !audit.metadata?.vulnerabilities) fail('Registry audit failed or returned an unsupported report.');
   const entries = Object.entries(audit.vulnerabilities);
   const counts = audit.metadata.vulnerabilities;
   for (const level of [...LEVELS, 'total']) if (!Number.isInteger(counts[level]) || counts[level] < 0) fail('Audit vulnerability counts are invalid.');
   if (counts.total !== entries.length || LEVELS.some(level => counts[level] !== entries.filter(([, item]) => item.severity === level).length)) fail('Audit counts do not match reported findings.');
   for (const [name, item] of entries) {
-    if (item.name !== name || !LEVELS.includes(item.severity) || !Array.isArray(item.via) || !item.via.length || !Array.isArray(item.nodes) || !item.nodes.length) fail('Audit finding metadata is incomplete.');
+    if (!/^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/i.test(name) || name.length > 214 || item.name !== name || !LEVELS.includes(item.severity) || !Array.isArray(item.via) || !item.via.length || !Array.isArray(item.nodes) || !item.nodes.length) fail('Audit finding metadata is incomplete.');
   }
   if (policy?.version !== 1 || !Array.isArray(policy.exceptions)) fail('Security exception policy is invalid.');
   const identities = new Set();
   for (const exception of policy.exceptions) {
     const start = Date.parse(exception.approvedAt); const end = Date.parse(exception.expiresAt);
-    if (!/^GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/.test(exception.advisory || '') || exception.url !== `https://github.com/advisories/${exception.advisory}` || exception.severity !== 'high' || !exception.reason || !exception.review || !exception.approvedBy || !exception.version || !exception.range || !exception.integrity || !Array.isArray(exception.nodes) || !exception.nodes.length) fail('Exception approval or exact matching metadata is missing.');
+    if (!/^GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/.test(exception.advisory || '') || exception.url !== `https://github.com/advisories/${exception.advisory}` || exception.severity !== 'high' || !exception.reason || !exception.review || !exception.approvedBy || !exception.version || !exception.range || !exception.integrity || !Array.isArray(exception.nodes) || !exception.nodes.length || !Array.isArray(exception.cwe) || !exception.cwe.length || typeof exception.cvssVector !== 'string' || !exception.cvssVector.startsWith('CVSS:')) fail('Exception approval or exact matching metadata is missing.');
     if (!Number.isFinite(start) || !Number.isFinite(end) || start > nowMs || end <= nowMs || end <= start || end - start > 30 * 86400000) fail(`Exception ${exception.advisory} is expired, future-dated or exceeds 30 days.`);
     if (identities.has(exception.advisory)) fail('Duplicate advisory exceptions are not allowed.');
     identities.add(exception.advisory);
@@ -57,6 +57,7 @@ function evaluateAudit(audit, { policy, lock, exposure, fingerprint, now = new D
   };
   for (const [name, finding] of entries) {
     const causes = origins(name);
+    if (causes.some(origin => LEVELS.indexOf(origin.advisory.severity) > LEVELS.indexOf(finding.severity))) fail('Audit finding understates its originating advisory severity.');
     if (finding.severity === 'critical') { blocked.push({ package: name, reason: 'Critical findings cannot be excepted.' }); continue; }
     if (finding.severity !== 'high') { notices.push({ package: name, severity: finding.severity }); continue; }
     const blockingCauses = causes.filter(origin => ['high', 'critical'].includes(origin.advisory.severity));
@@ -86,7 +87,8 @@ function main(args = process.argv.slice(2), env = process.env) {
     const result = evaluateAudit(audit, { policy: read('config/security-exceptions.json'), lock: read('package-lock.json'), exposure: read(args[0]), fingerprint: exposureFingerprint(root) });
     fs.mkdirSync(path.join(root, '.omx/research'), { recursive: true });
     fs.writeFileSync(path.join(root, '.omx/research/security-audit-result.json'), `${JSON.stringify({ checkedAt: new Date().toISOString(), ...result }, null, 2)}\n`);
-    summary = `### Dependency security gate\n\nResult: **${result.ok ? 'Passed with temporary accepted risk' : 'Blocked'}**. Raw audit: ${result.counts.high} high, ${result.counts.critical} critical, ${result.counts.moderate} moderate affected entries.\n\n`;
+    const verdict = !result.ok ? 'Blocked' : result.accepted.length ? 'Passed with temporary accepted risk' : 'Passed without exceptions';
+    summary = `### Dependency security gate\n\nResult: **${verdict}**. Raw audit: ${result.counts.high} high, ${result.counts.critical} critical, ${result.counts.moderate} moderate affected entries.\n\n`;
     if (result.accepted.length) summary += `Accepted ${result.accepted.length} propagated entries under an exact advisory exception, verified against a fresh build and locked tooling-only paths. This is risk acceptance, not a vulnerability fix.\n\n${result.exceptions.map(item => `- ${safe(item.advisory)} expires ${safe(item.expiresAt)}. ${safe(item.reason)}`).join('\n')}\n\n`;
     if (result.blocked.length) summary += `Blocked findings:\n${result.blocked.map(item => `- ${safe(item.package)}: ${safe(item.reason)}`).join('\n')}\n`;
     if (result.notices.length) summary += `\n${result.notices.length} lower-severity entries remain reported by the raw audit.\n`;

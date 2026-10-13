@@ -2,10 +2,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { isBuiltin } = require('node:module');
 
 const PACKAGES = ['braces', 'sprintf-js'];
 const TOOL_ROOTS = new Set(['react-scripts', '@testing-library/jest-dom', '@testing-library/react', '@testing-library/user-event']);
-const TOOL_FILES = new Set(['scripts/start.js', 'scripts/dev.js', 'scripts/dev-server-config.js', 'scripts/dependency-exposure.js', 'scripts/dependency-security-gate.js']);
+const TOOL_FILES = new Set(['scripts/start.js', 'scripts/dev.js', 'scripts/dev-server-config.js', 'scripts/dependency-exposure.js', 'scripts/security-audit.js']);
 const LIMITATIONS = ['Source-map and literal-import checks are evidence for this build, not a proof against deliberately obfuscated code.', 'Build and test tooling still processes repository-controlled patterns and format strings; untrusted pull requests remain a CI denial-of-service risk.', 'This verifier does not patch installed packages or accept new advisories.'];
 const vulnerableSpecifier = value => /^(?:braces|sprintf-js)(?:\/|$)/.test(value);
 const sourcePackage = value => /(?:^|[\\/])node_modules[\\/](?:braces|sprintf-js)(?:[\\/]|$)/.test(value);
@@ -21,10 +22,11 @@ function filesUnder(directory) {
 function importedSpecifiers(text) {
   const values = [];
   // Scan literals conservatively, including commented imports: a false positive fails closed.
-  for (const pattern of [/\b(?:require|import)\s*\(\s*(['"])([^'"\r\n]+)\1/g, /\b(?:import|export)\s+(?:[^;\r\n]*?\s+from\s*)?(['"])([^'"\r\n]+)\1/g]) {
+  for (const pattern of [/\b(?:require|import)\s*\(\s*(['"])([^'"\r\n]+)\1/g, /\b(?:import|export)\s+(?:[^;\r\n]*?\s+from\s*)?(['"])([^'"\r\n]+)\1/g,
+    /\b(?:import|export)\s+(?:\{[^}]*\}|\*(?:\s+as\s+[\w$]+)?|[\w$]+(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+[\w$]+))?)\s+from\s*(['"])([^'"\r\n]+)\1/g]) {
     for (const match of text.matchAll(pattern)) values.push(match[2]);
   }
-  return values;
+  return [...new Set(values)];
 }
 
 function exposureFingerprint(root = path.resolve(__dirname, '..')) {
@@ -50,14 +52,15 @@ function resolvePackage(packages, importer, name) {
   }
 }
 
-function packageEvidence(lock, manifest, errors) {
+function packageEvidence(lock, manifest, errors, runtimeImports = []) {
   const packages = lock.packages;
   if (!packages || !packages['']) { errors.push('Lockfile must contain the complete packages graph.'); return []; }
-  const roots = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.optionalDependencies });
+  const roots = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.optionalDependencies }).map(name => ({ name, runtimeFile: null }));
+  roots.push(...[...new Map(runtimeImports.map(item => [item.name, item])).values()].map(item => ({ name: item.name, runtimeFile: item.file })));
   const routes = new Map();
-  for (const rootName of roots) {
+  for (const { name: rootName, runtimeFile } of roots) {
     const first = resolvePackage(packages, '', rootName);
-    if (!first) { errors.push(`Unresolved root dependency: ${rootName}`); continue; }
+    if (!first) { errors.push(runtimeFile ? `Unresolved runtime import: ${runtimeFile}: ${rootName}` : `Unresolved root dependency: ${rootName}`); continue; }
     const queue = [[first, [rootName]]];
     const seen = new Set();
     while (queue.length) {
@@ -68,7 +71,7 @@ function packageEvidence(lock, manifest, errors) {
       if (PACKAGES.includes(name)) {
         if (!routes.has(location)) routes.set(location, []);
         routes.get(location).push({ root: rootName, path: route });
-        if (!TOOL_ROOTS.has(rootName)) errors.push(`Application dependency reaches ${name}: ${route.join(' > ')}`);
+        if (runtimeFile || !TOOL_ROOTS.has(rootName)) errors.push(`Application dependency reaches ${name}: ${route.join(' > ')}${runtimeFile ? ` (runtime import in ${runtimeFile})` : ''}`);
       }
       for (const dependency of Object.keys({ ...packages[location].dependencies, ...packages[location].optionalDependencies, ...packages[location].peerDependencies })) {
         const target = resolvePackage(packages, location, dependency);
@@ -93,6 +96,7 @@ function verifyExposure({ root = path.resolve(__dirname, '..'), buildDir = path.
   const errors = [];
   const bundle = { javascriptFiles: 0, mappedSources: 0 };
   const imports = { filesChecked: 0, excludedFiles: [] };
+  const runtimeImports = [];
   const javascript = filesUnder(buildDir).filter(file => /\.(?:js|mjs)$/.test(file));
   if (!javascript.length) errors.push('No production JavaScript bundles found. Build with source maps first.');
   for (const file of javascript) {
@@ -121,15 +125,22 @@ function verifyExposure({ root = path.resolve(__dirname, '..'), buildDir = path.
       }
       imports.filesChecked++;
       const content = fs.readFileSync(file, 'utf8');
-      if (/^(?:src|server)\//.test(relative) && /\b(?:require|import)\s*\(\s*(?!['"\s])/.test(content)) errors.push(`Opaque runtime import requires explicit review: ${relative}`);
+      if (/\b(?:require|import)\s*\(\s*(?!['"\s])/.test(content)) errors.push(`Opaque runtime import requires explicit review: ${relative}`);
+      for (const call of content.matchAll(/\b(?:require|import)\s*\(\s*(['"])([^'"\r\n]*)\1([^)]*)\)/g)) {
+        if (call[3].trim() || call[2].includes('\\')) errors.push(`Computed or escaped runtime import requires explicit review: ${relative}`);
+      }
       for (const specifier of importedSpecifiers(content)) {
         if (vulnerableSpecifier(specifier) || sourcePackage(specifier)) errors.push(`Vulnerable direct runtime import: ${relative}: ${specifier}`);
+        if (specifier.includes('\\')) errors.push(`Escaped runtime import requires explicit review: ${relative}`);
+        if (isBuiltin(specifier) || specifier.startsWith('.') || specifier.startsWith('/')) continue;
+        const name = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
+        runtimeImports.push({ name, file: relative });
       }
     }
   }
   let packages = [];
   try {
-    packages = packageEvidence(lock || JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8')), manifest || JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')), errors);
+    packages = packageEvidence(lock || JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8')), manifest || JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')), errors, runtimeImports);
   } catch (error) { errors.push(`Dependency graph unavailable: ${error.message}`); }
   let fingerprint = null;
   try { fingerprint = exposureFingerprint(root); } catch (error) { errors.push(`Exposure fingerprint unavailable: ${error.message}`); }

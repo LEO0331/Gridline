@@ -4,9 +4,9 @@
 **Historical review date:** 2026-09-16
 **Historical status:** High and critical findings identified in that review were remediated; verification passed at that time.
 
-## Current status — 2026-10-12
+## Current operational status — 2026-10-13
 
-The review findings and test counts below are historical evidence, not a current clean dependency audit. Current unpatched build-tool advisories still fail the high/critical PR and weekly dependency security gate; no exceptions were added. A compatible parser patch was applied. Production deployments run the shared regression gate, snapshot acceptance and build before publishing, while the dependency audit remains a separate PR/weekly job. See [Actions operation](actions-maintenance.md) for the 356-test completion evidence and live run links.
+The findings and test counts below are historical evidence, not a current clean dependency audit. The repository owner subsequently authorized an exact temporary `braces` risk exception after runtime/bundle/dependency-path review. It expires at 2026-11-11 00:00 Asia/Taipei. New or changed high findings, all critical findings, expired exceptions and failed/missing exposure evidence still block. PR/weekly checks use fresh matching build evidence; Pages enforces exposure and advisory policy before artifact upload. The moderate `sprintf-js` finding remains reported. See [security policy](security-exception-policy.md), [exposure limitations](dependency-exposure.md) and [Actions operation](actions-maintenance.md).
 
 Supabase remains optional account/preference storage. The expanded 20-symbol watchlist migration preserves rows and owner-only RLS. The daily health RPC returns a constant and exposes no account data; it uses the browser-safe publishable key and does not supply research storage. The CSP permits only the configured project origin.
 
