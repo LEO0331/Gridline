@@ -61,3 +61,14 @@ test('a newer automated event check supersedes older manual-review records', asy
     expect(result.observations.map(item => item.id)).toEqual(['automated']);
   } finally { global.fetch = originalFetch; }
 });
+
+test('old last-known-good snapshot is not still shown as live after failed refreshes', () => {
+  const summary = summarizeSnapshot({
+    generatedAt: '2026-10-01T12:00:00Z',
+    freshness: 'fresh',
+    observations: [{ source: 'prices', type: 'close', observedAt: '2026-09-30T00:00:00Z' }],
+  }, 'en', 'UTC', new Date('2026-10-07T12:00:00Z'));
+  expect(summary.retainedSnapshot).toBe(true);
+  expect(summary.freshness).toBe('stale');
+  expect(summary.latestMarketDate).toBe('2026-09-30T00:00:00Z');
+});
