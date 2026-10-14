@@ -79,7 +79,7 @@ async function fetchTickerHistory({
     const rows = validateHistory(parseStooqHistory(await getText(primaryUrl)), ticker, { now });
     return { ticker, provider: 'Stooq', providerUrl: primaryUrl, rows };
   } catch (error) {
-    failures.push(`Stooq: ${error.message}`);
+    failures.push({ provider: 'Stooq', reason: error.message });
   }
 
   if (priceFallbackBaseUrl) {
@@ -88,11 +88,13 @@ async function fetchTickerHistory({
       const rows = validateHistory(parseYahooHistory(await getJson(fallbackUrl, { 'User-Agent': 'Gridline market-data client' })), ticker, { now });
       return { ticker, provider: 'Yahoo Finance', providerUrl: fallbackUrl, rows };
     } catch (error) {
-      failures.push(`Yahoo Finance: ${error.message}`);
+      failures.push({ provider: 'Yahoo Finance', reason: error.message });
     }
   }
 
-  throw new Error(`No usable price history for ${ticker}. ${failures.join(' | ')}`);
+  const error = new Error(`No usable price history for ${ticker}. ${failures.map(item => `${item.provider}: ${item.reason}`).join(' | ')}`);
+  error.providerErrors = failures;
+  throw error;
 }
 
 module.exports = {
