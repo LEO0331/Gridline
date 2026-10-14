@@ -62,6 +62,7 @@ export function summarizeSnapshot(snapshot = emptySnapshot, language = 'en', tim
     healthySources,
     totalSources: sources.length,
     freshness: retained ? 'stale' : snapshot.freshness || 'unknown',
+    publicationFreshness: snapshot.freshness || 'unknown',
     retainedSnapshot: retained,
     latestMarketDate,
   };
