@@ -49,7 +49,7 @@ test('snapshot failure is retryable and replaces the error state after success',
 
   await waitFor(() => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByText('Snapshot 2026-09-24')).toBeInTheDocument();
+    expect(screen.getByText('Published 2026-09-24')).toBeInTheDocument();
   });
 });
 
