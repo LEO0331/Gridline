@@ -65,3 +65,9 @@ test('old schema without declared coverage is explicitly not demo-ready', () => 
   expect(result.blockers).toContain('schema');
   expect(result.blockers).toContain('backtestCoverage');
 });
+
+test('Data Status flags retained snapshots older than 96 hours', () => {
+  const result = buildDataHealth(readySnapshot(), new Date('2026-09-21T12:00:00Z'));
+  expect(result.blockers).toContain('snapshotStale');
+  expect(result.state).toBe('attention');
+});
