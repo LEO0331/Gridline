@@ -2,9 +2,11 @@ name: Refresh daily dashboard snapshot
 
 on:
   schedule:
-    # 22:17 UTC is after 4 PM ET in both EST and EDT. Non-price sources
-    # refresh daily; price ingestion checks the NYSE trading calendar.
-    - cron: '17 22 * * *'
+    # 12:17 UTC is 8:17 AM EDT / 7:17 AM EST, giving the previous
+    # NYSE session's official daily price bars overnight to settle.
+    # A same-evening run was blocked when both providers lacked that close.
+    # Keep exact-session freshness validation instead of accepting stale bars.
+    - cron: '17 12 * * *'
   workflow_dispatch:
     inputs:
       scope:
