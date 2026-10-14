@@ -15,7 +15,37 @@ function coverage(row = {}) {
   return hasDate(row.lastSuccessAt) ? 'retained (refresh incomplete)' : 'unavailable';
 }
 
-function snapshotSummary(snapshot, { now = new Date(), sources, refreshOutcome = 'success' } = {}) {
+function providerFailureSummary(report) {
+  const blocked = Array.isArray(report?.blockedTickers) ? report.blockedTickers : [];
+  const failures = Array.isArray(report?.providerFailures) ? report.providerFailures : [];
+  const providers = new Map();
+  for (const row of failures) {
+    for (const provider of row.providers || []) {
+      // Summarize known conditions without echoing upstream response bodies or URLs.
+      const reason = String(provider.reason || '');
+      const category = /expected completed NYSE session|latest market row/i.test(reason) ? 'session lag'
+        : /timeout|aborted/i.test(reason) ? 'timeout'
+          : /403|429|rate limit/i.test(reason) ? 'access/rate limit'
+            : 'request/data error';
+      const name = String(provider.provider || 'Unknown');
+      if (!providers.has(name)) providers.set(name, { count: 0, categories: {} });
+      const state = providers.get(name);
+      state.count += 1;
+      state.categories[category] = (state.categories[category] || 0) + 1;
+    }
+  }
+  const lines = ['', '### Current attempt: blocked price recovery', '',
+    `Expected NYSE session: ${clean(report?.expectedSession || 'unknown')}. Blocked tickers: **${blocked.length}**.`,
+    blocked.length ? `Missing: ${blocked.map(clean).join(', ')}.` : 'No price-specific blockers recorded.',
+    '', '| Provider | Failed tickers | Failure types |', '| --- | ---: | --- |'];
+  for (const [name, value] of providers) {
+    lines.push(`| ${clean(name)} | ${value.count} | ${clean(Object.entries(value.categories).map(([category, count]) => `${category}: ${count}`).join('; '))} |`);
+  }
+  if (!providers.size) lines.push('| Not diagnosed | — | See failure logs |');
+  return { lines, blockedCount: blocked.length, providers };
+}
+
+function snapshotSummary(snapshot, { now = new Date(), sources, refreshOutcome = 'success', refreshReport = null, retryStage = 'initial' } = {}) {
   const nowMs = new Date(now).getTime();
   if (!Number.isFinite(nowMs)) throw new Error('Summary time must be a valid date.');
   const annotations = [];
@@ -53,8 +83,15 @@ function snapshotSummary(snapshot, { now = new Date(), sources, refreshOutcome =
     }
   }
   lines.push(...detailsLines);
+  const failures = refreshOutcome !== 'success' && refreshReport ? providerFailureSummary(refreshReport) : null;
+  if (failures) {
+    lines.push(...failures.lines);
+    annotations.push(`Refresh still missing ${failures.blockedCount} required ticker closes for ${clean(refreshReport.expectedSession)}; last published valid snapshot retained.`);
+  }
   if (annotations.length) lines.push('', '### Attention', '', ...annotations.map((message) => `- ${clean(message)}`));
-  return { markdown: `${lines.join('\n')}\n`, annotations };
+  return { markdown: `${lines.join('\n')}\n`, annotations,
+    criticalAnnotations: failures && retryStage === 'final' && failures.blockedCount
+      ? [`Final scheduled price retry blocked: ${failures.blockedCount} tickers remain unavailable. Review provider breakdown and enable GitHub Actions failure notifications.`] : [] };
 }
 
 function heartbeatSummary(outcome, now = new Date()) {
@@ -68,9 +105,9 @@ function heartbeatSummary(outcome, now = new Date()) {
 function writeReport(report, env = process.env) {
   if (env.GITHUB_STEP_SUMMARY) fs.appendFileSync(env.GITHUB_STEP_SUMMARY, report.markdown);
   else process.stdout.write(report.markdown);
-  for (const message of report.annotations) {
-    console.log(`::warning::${message.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
-  }
+  const encode = message => message.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+  for (const message of report.annotations) console.log(`::warning::${encode(message)}`);
+  for (const message of report.criticalAnnotations || []) console.log(`::error::${encode(message)}`);
 }
 
 function main(args = process.argv.slice(2), env = process.env) {
@@ -78,11 +115,17 @@ function main(args = process.argv.slice(2), env = process.env) {
   if (args[0] === 'supabase') return writeReport(heartbeatSummary(env.HEALTH_OUTCOME || 'unknown', now), env);
   if (args[0] !== 'snapshot' || !args[1]) throw new Error('Usage: node scripts/workflow-summary.js snapshot <snapshot.json> [source,source] | supabase');
   const snapshot = JSON.parse(fs.readFileSync(args[1], 'utf8'));
-  writeReport(snapshotSummary(snapshot, { now, sources: args[2]?.split(',').filter(Boolean), refreshOutcome: env.REFRESH_OUTCOME || 'success' }), env);
+  let refreshReport = null;
+  if (env.REFRESH_OUTCOME !== 'success' && env.SNAPSHOT_REFRESH_REPORT) {
+    try { refreshReport = JSON.parse(fs.readFileSync(env.SNAPSHOT_REFRESH_REPORT, 'utf8')); }
+    catch { /* The collection step may fail before generating diagnostics. */ }
+  }
+  writeReport(snapshotSummary(snapshot, { now, sources: args[2]?.split(',').filter(Boolean),
+    refreshOutcome: env.REFRESH_OUTCOME || 'success', refreshReport, retryStage: env.RETRY_STAGE }), env);
 }
 
 if (require.main === module) {
   try { main(); } catch (error) { console.error(`Workflow summary could not be produced: ${error.message}`); process.exitCode = 1; }
 }
 
-module.exports = { coverage, snapshotSummary, heartbeatSummary, writeReport, main };
+module.exports = { coverage, providerFailureSummary, snapshotSummary, heartbeatSummary, writeReport, main };
