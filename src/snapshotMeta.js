@@ -39,9 +39,13 @@ export async function loadDashboardSnapshot() {
   } catch { return snapshot; }
 }
 
-export function summarizeSnapshot(snapshot = emptySnapshot, language = 'en', timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone) {
+export function summarizeSnapshot(snapshot = emptySnapshot, language = 'en', timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, now = new Date()) {
   const date = new Date(snapshot.generatedAt || '');
   const valid = Number.isFinite(date.getTime());
+  const nowMs = new Date(now).getTime();
+  // A snapshot can remain in the public folder after a failed run. Its stored
+  // freshness describes publication time, not how current it is today.
+  const retained = valid && Number.isFinite(nowMs) && nowMs - date.getTime() > 96 * 60 * 60 * 1000;
   const locale = language === 'zh-TW' ? 'zh-TW' : 'en-US';
   const generatedLabel = valid
     ? new Intl.DateTimeFormat(locale, { year: 'numeric', month: language === 'zh-TW' ? 'long' : 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short', timeZone }).format(date)
@@ -57,7 +61,8 @@ export function summarizeSnapshot(snapshot = emptySnapshot, language = 'en', tim
     generatedUtc: valid ? date.toISOString() : null,
     healthySources,
     totalSources: sources.length,
-    freshness: snapshot.freshness || 'unknown',
+    freshness: retained ? 'stale' : snapshot.freshness || 'unknown',
+    retainedSnapshot: retained,
     latestMarketDate,
   };
 }
