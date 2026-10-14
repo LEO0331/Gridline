@@ -7,6 +7,10 @@ on:
     # A same-evening run was blocked when both providers lacked that close.
     # Keep exact-session freshness validation instead of accepting stale bars.
     - cron: '17 12 * * *'
+    # Separate scheduled jobs are bounded 3-hour recovery windows; no sleeping
+    # runners. They refresh prices only, and skip when the snapshot is current.
+    - cron: '17 15 * * *'
+    - cron: '17 18 * * *'
   workflow_dispatch:
     inputs:
       scope:
@@ -36,25 +40,33 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+      - name: Check whether a price-only recovery is needed
+        id: price-retry
+        if: github.event_name == 'schedule' && github.event.schedule != '17 12 * * *'
+        run: node scripts/price-retry-plan.js
       - name: Refresh, validate and publish with bounded concurrency recovery
+        if: steps.price-retry.outputs.needed != 'false'
         id: publish-snapshot
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           node scripts/publish-snapshot.js
         env:
-          SCHEDULE_SOURCES: ${{ inputs.scope == 'company-coverage' && 'sec,company-research' || 'sec,prices,eia,events,company-research' }}
+          SCHEDULE_SOURCES: ${{ github.event_name == 'schedule' && github.event.schedule != '17 12 * * *' && 'prices' || (inputs.scope == 'company-coverage' && 'sec,company-research' || 'sec,prices,eia,events,company-research') }}
+          SNAPSHOT_REFRESH_REPORT: ${{ runner.temp }}/gridline-refresh-report.json
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
           PJM_API_KEY: ${{ secrets.PJM_API_KEY }}
           FERC_API_KEY: ${{ secrets.FERC_API_KEY }}
           COMPANY_IR_FEEDS: ${{ secrets.COMPANY_IR_FEEDS }}
       - name: Report source coverage and freshness
-        if: always()
+        if: always() && steps.publish-snapshot.outcome != 'skipped'
         run: node scripts/workflow-summary.js snapshot public/data/dashboard-snapshot.json "$REFRESH_SOURCES"
         env:
           REFRESH_OUTCOME: ${{ steps.publish-snapshot.outcome }}
-          REFRESH_SOURCES: ${{ inputs.scope == 'company-coverage' && 'sec,company-research' || 'sec,prices,eia,events,company-research' }}
+          REFRESH_SOURCES: ${{ github.event_name == 'schedule' && github.event.schedule != '17 12 * * *' && 'prices' || (inputs.scope == 'company-coverage' && 'sec,company-research' || 'sec,prices,eia,events,company-research') }}
+          SNAPSHOT_REFRESH_REPORT: ${{ runner.temp }}/gridline-refresh-report.json
+          RETRY_STAGE: ${{ github.event.schedule == '17 18 * * *' && 'final' || 'initial' }}
       - name: Dispatch Pages deployment for refreshed snapshot
         if: steps.publish-snapshot.outputs.changed == 'true'
         env:
