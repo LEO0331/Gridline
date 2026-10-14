@@ -99,3 +99,19 @@ test('price loader fails closed when both providers omit the expected session', 
     getJson: async () => yahooFixture(70, '2026-10-01'),
   }), /No usable price history.*expected completed NYSE session 2026-10-02/);
 });
+
+test('both failed providers expose structured errors for GitHub diagnostics', async () => {
+  await assert.rejects(() => fetchTickerHistory({
+    ticker: 'NBIS',
+    priceBaseUrl: 'https://stooq.example/',
+    priceFallbackBaseUrl: 'https://query.example/chart',
+    now: new Date('2026-10-14T12:17:00Z'),
+    getText: async () => { throw new Error('timed out'); },
+    getJson: async () => yahooFixture(70, '2026-10-12'),
+  }), error => {
+    assert.deepEqual(error.providerErrors.map(item => item.provider), ['Stooq', 'Yahoo Finance']);
+    assert.match(error.providerErrors[0].reason, /timed out/);
+    assert.match(error.providerErrors[1].reason, /expected completed NYSE session 2026-10-13/);
+    return true;
+  });
+});
