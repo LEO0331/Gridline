@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { refreshWithRetry, shouldRefreshPrices, publishSnapshots } = require('./export-static-snapshot');
+const { refreshWithRetry, shouldRefreshPrices, priceRefreshTickers, publishSnapshots } = require('./export-static-snapshot');
 const fs = require('fs/promises');
 const path = require('path');
 const os = require('os');
@@ -75,8 +75,27 @@ test('snapshot exporter does not count duplicates or unfinished closes toward we
   assert.equal(shouldRefreshPrices(snapshot, ['ORCL'], now), true);
 });
 
-test('snapshot exporter preserves daily trading-day price refreshes even with current history', () => {
-  assert.equal(shouldRefreshPrices(priceSnapshot(['ORCL'], '2026-10-02'), ['ORCL'], new Date('2026-10-05T12:00:00Z')), true);
+test('snapshot exporter skips redundant trading-day fetches before the next close is due', () => {
+  assert.equal(shouldRefreshPrices(priceSnapshot(['ORCL'], '2026-10-02'), ['ORCL'], new Date('2026-10-05T12:00:00Z')), false);
+  assert.equal(shouldRefreshPrices(priceSnapshot(['ORCL'], '2026-10-02'), ['ORCL'], new Date('2026-10-06T12:00:00Z')), true);
+});
+
+test('price recovery targets only missing sessions and retries only failed tickers', async () => {
+  const snapshot = priceSnapshot(['NBIS'], '2026-10-13');
+  snapshot.observations.push(...priceSnapshot(['AVGO'], '2026-10-12').observations);
+  const missing = priceRefreshTickers(snapshot, ['NBIS', 'AVGO', 'ORCL'], new Date('2026-10-14T15:17:00Z'));
+  assert.deepEqual(missing, ['AVGO', 'ORCL']);
+  const requests = [];
+  await refreshWithRetry({ ingest: async (_source, _force, options) => {
+    requests.push(options.tickers);
+    return requests.length === 1 ? { source: 'prices', tickerOutcomes: [
+      { ticker: 'AVGO', status: 'ok', recordCount: 60 },
+      { ticker: 'ORCL', status: 'degraded', retryable: true, recordCount: 0 },
+    ] } : { source: 'prices', tickerOutcomes: [
+      { ticker: 'ORCL', status: 'ok', recordCount: 60 },
+    ] };
+  } }, 'prices', 2, missing);
+  assert.deepEqual(requests, [['AVGO', 'ORCL'], ['ORCL']]);
 });
 
 test('snapshot exporter does not repeat bounded event checks after partial access or complete denial', async () => {

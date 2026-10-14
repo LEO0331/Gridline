@@ -48,9 +48,17 @@ test('data refresh avoids frontend installs and uses safe bounded publishing', (
   const publisher = steps.find(step => step.id === 'publish-snapshot');
   assert.ok(publisher.run.includes('node scripts/publish-snapshot.js'));
   assert.ok(publisher.env.SEC_USER_AGENT);
+  assert.ok(publisher.env.SNAPSHOT_REFRESH_REPORT);
+  assert.ok(publisher.if.includes('price-retry.outputs.needed'));
+  assert.ok(publisher.env.SCHEDULE_SOURCES.includes("'prices'"));
+  const preflight = steps.find(step => step.id === 'price-retry');
+  assert.ok(preflight.run.includes('scripts/price-retry-plan.js'));
+  assert.ok(preflight.if.includes('github.event.schedule'));
   const summary = steps.find(step => step.run?.includes('workflow-summary.js'));
-  assert.equal(summary.if, 'always()');
+  assert.equal(summary.if, "always() && steps.publish-snapshot.outcome != 'skipped'");
   assert.ok(summary.env.REFRESH_OUTCOME.includes('publish-snapshot.outcome'));
+  assert.ok(summary.env.SNAPSHOT_REFRESH_REPORT);
+  assert.ok(summary.env.RETRY_STAGE.includes("'final'"));
   const dispatch = steps.find(step => step.run?.includes('gh workflow run'));
   assert.ok(dispatch.if.includes("steps.publish-snapshot.outputs.changed == 'true'"));
   assert.ok(dispatch.run.includes('-f reason=snapshot'));
@@ -58,7 +66,7 @@ test('data refresh avoids frontend installs and uses safe bounded publishing', (
 
 test('daily snapshot runs the next US morning after price feeds have settled', () => {
   const workflow = load('workflows/daily-snapshot.yml');
-  assert.deepEqual(workflow.on.schedule.map(item => item.cron), ['17 12 * * *']);
+  assert.deepEqual(workflow.on.schedule.map(item => item.cron), ['17 12 * * *', '17 15 * * *', '17 18 * * *']);
   for (const [runAt, expectedHour, expectedSession] of [
     ['2026-10-14T12:17:00Z', '08', '2026-10-13'], // EDT
     ['2026-11-04T12:17:00Z', '07', '2026-11-03'], // EST

@@ -230,7 +230,7 @@ async function ingestPrices(config) {
         sourceUrl: history.providerUrl,
       })));
       tickerOutcomes.push({ ticker, status: 'ok', recordCount: rows.length, latestSession: rows.at(-1).date, provider: history.provider });
-    } catch (error) { tickerOutcomes.push({ ticker, status: 'degraded', recordCount: 0, message: error.message }); }
+    } catch (error) { tickerOutcomes.push({ ticker, status: 'degraded', recordCount: 0, message: error.message, ...(error.providerErrors ? { providerErrors: error.providerErrors } : {}) }); }
   }
 
   const coveredTickers = new Set(observations.map(item => item.ticker));

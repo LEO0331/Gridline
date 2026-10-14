@@ -83,3 +83,22 @@ test('snapshot CLI writes a step summary without embedding arbitrary source mess
     assert.doesNotMatch(markdown, /secret-fixture-value/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('blocked final price retry reports upstream provider categories without raw errors', () => {
+  const report = snapshotSummary(snapshot('prices', { status: 'ok', recordCount: 260, lastSuccessAt: recent }), {
+    now, refreshOutcome: 'failure', retryStage: 'final',
+    refreshReport: { expectedSession: '2026-10-13', blockedTickers: ['NBIS', 'AVGO'],
+      providerFailures: [
+        { ticker: 'NBIS', providers: [{ provider: 'Stooq', reason: 'The operation was aborted due to timeout' },
+          { provider: 'Yahoo Finance', reason: 'latest market row is 2026-10-12; expected completed NYSE session 2026-10-13' }] },
+        { ticker: 'AVGO', providers: [{ provider: 'Stooq', reason: 'fetch failed' },
+          { provider: 'Yahoo Finance', reason: 'latest market row is 2026-10-12; expected completed NYSE session 2026-10-13' }] },
+      ] },
+  });
+  assert.match(report.markdown, /Blocked tickers: \*\*2\*\*/);
+  assert.match(report.markdown, /Stooq \| 2 \| timeout: 1; request\/data error: 1/);
+  assert.match(report.markdown, /Yahoo Finance \| 2 \| session lag: 2/);
+  assert.doesNotMatch(report.markdown, /fetch failed/);
+  assert.equal(report.criticalAnnotations.length, 1);
+  assert.match(report.criticalAnnotations[0], /Final scheduled price retry blocked/);
+});

@@ -30,11 +30,11 @@ async function publishSnapshots(snapshot, readiness, { fullPath = output, runtim
   return { runtimeSnapshot, runtimeJson };
 }
 async function readPrevious() { try { return JSON.parse(await fs.readFile(output, 'utf8')); } catch { return { observations: [], sourceHealth: {}, companyHistory: [], scores: [] }; } }
-async function refreshWithRetry(service, source, attempts = 3) {
+async function refreshWithRetry(service, source, attempts = 3, initialTickers = null) {
   let result;
   const tickerOutcomes = new Map();
   const retryableTickers = new Set();
-  let retryTickers;
+  let retryTickers = initialTickers;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     result = await service.ingest(source, true, retryTickers ? { tickers: retryTickers } : {});
     if (result.tickerOutcomes) {
@@ -58,24 +58,27 @@ async function refreshWithRetry(service, source, attempts = 3) {
   }
   return { ...result, attempts };
 }
-function shouldRefreshPrices(previous, tickers, now = new Date()) {
-  if (isNyseTradingDay(easternParts(now))) return true;
+function priceRefreshTickers(previous, tickers, now = new Date()) {
   const expectedSession = latestExpectedPriceSession(now);
-  // A delayed weekday run must still be able to recover on a weekend or holiday.
-  return tickers.some(ticker => {
+  // Only request incomplete ticker histories. This also supports late recovery
+  // across weekends and holidays without refetching already settled symbols.
+  return tickers.filter(ticker => {
     const rows = priceRows(previous, ticker).filter(row => row.observedAt.slice(0, 10) <= expectedSession);
     return rows.length < MIN_PRICE_ROWS || rows.at(-1)?.observedAt.slice(0, 10) !== expectedSession;
   });
+}
+function shouldRefreshPrices(previous, tickers, now = new Date()) {
+  return priceRefreshTickers(previous, tickers, now).length > 0;
 }
 async function main() {
   const previous = await readPrevious(); const service = createService({ ...config, priorSnapshot: previous }); const outcomes = [];
   const now = new Date();
   const trackedTickers = config.tickers || companies.map(company => company.ticker);
   const marketSession = isNyseTradingDay(easternParts(now));
-  const refreshPrices = shouldRefreshPrices(previous, trackedTickers, now);
+  const pendingPrices = priceRefreshTickers(previous, trackedTickers, now);
   for (const source of config.scheduleSources) {
-    if (source === 'prices' && !refreshPrices) continue;
-    outcomes.push(await refreshWithRetry(service, source));
+    if (source === 'prices' && !pendingPrices.length) continue;
+    outcomes.push(await refreshWithRetry(service, source, 3, source === 'prices' ? pendingPrices : null));
   }
   const fresh = await service.observations();
   const currentHealth = await service.health();
@@ -123,7 +126,20 @@ async function main() {
     priceCoverage: readiness.priceCoverage,
   };
   if (!readiness.ready) {
-    console.error(JSON.stringify({ published: false, demoReadiness: snapshot.demoReadiness, blockers: readiness.checks.filter(item => item.severity === 'blocker' && !item.ok), outcomes }, null, 2));
+    const blockers = readiness.checks.filter(item => item.severity === 'blocker' && !item.ok);
+    // A runner-local diagnostic is visible to the always() workflow summary,
+    // while the previously published JSON files remain untouched.
+    if (process.env.SNAPSHOT_REFRESH_REPORT) {
+      await fs.writeFile(process.env.SNAPSHOT_REFRESH_REPORT, JSON.stringify({
+        checkedAt: generatedAt,
+        expectedSession: latestExpectedPriceSession(now),
+        blockedTickers: blockers.filter(item => item.id.startsWith('prices-')).map(item => item.id.slice(7)),
+        providerFailures: outcomes.find(item => item.source === 'prices')?.tickerOutcomes
+          ?.filter(item => item.status !== 'ok')
+          .map(item => ({ ticker: item.ticker, providers: item.providerErrors || [] })) || [],
+      }));
+    }
+    console.error(JSON.stringify({ published: false, demoReadiness: snapshot.demoReadiness, blockers, outcomes }, null, 2));
   }
   const { runtimeSnapshot, runtimeJson } = await publishSnapshots(snapshot, readiness);
   console.log(JSON.stringify({
@@ -149,4 +165,4 @@ async function main() {
   }, null, 2));
 }
 if (require.main === module) main().catch(error => { console.error(error); process.exit(1); });
-module.exports = { refreshWithRetry, shouldRefreshPrices, publishSnapshots };
+module.exports = { refreshWithRetry, shouldRefreshPrices, priceRefreshTickers, publishSnapshots };

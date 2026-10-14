@@ -57,6 +57,7 @@ export function buildDataHealth(snapshot = {}, now = new Date()) {
   if (!snapshot.backtestCoverage) blockers.push('backtestCoverage');
   if (!snapshot.methodologies?.companyScore) blockers.push('methodology');
   if (priceCoverage.some(item => !item.ready)) blockers.push('prices');
+  if (ageHours !== null && ageHours > 96) blockers.push('snapshotStale');
 
   return {
     state: blockers.length ? 'attention' : sources.some(item => ['degraded', 'partial'].includes(item.status)) ? 'ready-with-warnings' : 'ready',

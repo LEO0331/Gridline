@@ -21,7 +21,7 @@
     "snapshot": "node server/export-static-snapshot.js",
     "demo:check": "node scripts/verify-demo-snapshot.js",
     "test:api": "node --test server/*.test.js server/**/*.test.js",
-    "test:workflows": "node --test scripts/publish-snapshot.test.js scripts/workflow-summary.test.js scripts/workflow-config.test.js",
+    "test:workflows": "node --test scripts/publish-snapshot.test.js scripts/workflow-summary.test.js scripts/workflow-config.test.js scripts/price-retry-plan.test.js",
     "test:security-gate": "node --test scripts/security-audit.test.js scripts/dependency-exposure.test.js",
     "security:audit": "node scripts/security-audit.js",
     "test:dev-server": "node --test scripts/dev-server-config.test.js",
