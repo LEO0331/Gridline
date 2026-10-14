@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 // YAML is already supplied by the existing React build toolchain.
 const YAML = require('yaml');
+const { easternParts, latestExpectedPriceSession } = require('../server/us-market-calendar');
 const load = name => YAML.parse(fs.readFileSync(path.join(__dirname, '..', '.github', name), 'utf8'));
 
 test('pull requests and deployments use the same regression gate', () => {
@@ -53,6 +54,20 @@ test('data refresh avoids frontend installs and uses safe bounded publishing', (
   const dispatch = steps.find(step => step.run?.includes('gh workflow run'));
   assert.ok(dispatch.if.includes("steps.publish-snapshot.outputs.changed == 'true'"));
   assert.ok(dispatch.run.includes('-f reason=snapshot'));
+});
+
+test('daily snapshot runs the next US morning after price feeds have settled', () => {
+  const workflow = load('workflows/daily-snapshot.yml');
+  assert.deepEqual(workflow.on.schedule.map(item => item.cron), ['17 12 * * *']);
+  for (const [runAt, expectedHour, expectedSession] of [
+    ['2026-10-14T12:17:00Z', '08', '2026-10-13'], // EDT
+    ['2026-11-04T12:17:00Z', '07', '2026-11-03'], // EST
+    ['2026-10-19T12:17:00Z', '08', '2026-10-16'], // Monday after weekend
+  ]) {
+    const at = new Date(runAt);
+    assert.equal(easternParts(at).hour, expectedHour, runAt);
+    assert.equal(latestExpectedPriceSession(at), expectedSession, runAt);
+  }
 });
 
 test('dependency audit requires fresh build proof and remains blocking on policy failure', () => {
