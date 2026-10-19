@@ -4,10 +4,10 @@
   "private": true,
   "homepage": "https://leo0331.github.io/Gridline",
   "dependencies": {
-    "@supabase/supabase-js": "^2.117.3",
+    "@supabase/supabase-js": "^2.118.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^12.1.5",
-    "@testing-library/user-event": "^14.6.7",
+    "@testing-library/user-event": "^14.6.8",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-scripts": "^5.0.1",
