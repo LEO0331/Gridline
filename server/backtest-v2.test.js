@@ -81,3 +81,26 @@ test('retrieval cutoff excludes future revisions but retains unknown retrieval d
   assert.match(research.warnings.join(' '), /missing retrieval dates/i);
   assert.equal(priceRows([original, revision], 'NBIS', '2026-02-03T00:00:00Z')[0].value, 900);
 });
+
+test('sample cautions expose small completed samples without changing the simulation', () => {
+  const result = runBacktestV2({ ticker: 'NBIS', holdingSessions: 3 }, fixture());
+  assert.equal(result.sampleQuality.status, 'low-sample');
+  assert.equal(result.sampleQuality.completedTrades, result.trades.length);
+  assert.equal(result.sampleQuality.lowSampleTradeThreshold, 20);
+  assert.equal(result.validation.inSample.sampleQuality.periodObservations, 16);
+  assert.equal(result.validation.outOfSample.sampleQuality.periodObservations, 7);
+  assert.equal(result.validation.outOfSample.sampleQuality.status, 'low-sample');
+  const pending = runBacktestV2({ ticker: 'NBIS' }, fixture().filter(r => r.ticker === 'NBIS').slice(0, 12));
+  assert.equal(pending.sampleQuality.status, 'no-completed-trades');
+});
+
+test('insufficient history does not produce equity curves or a single-date benchmark return', () => {
+  const result = runBacktestV2({ ticker: 'NBIS' }, [row(0, 100), row(0, 200, 'SPY')]);
+  assert.equal(result.sampleQuality.status, 'insufficient-history');
+  assert.equal(result.metrics.portfolioReturn, null);
+  assert.equal(result.metrics.maxDrawdown, null);
+  assert.deepEqual(result.equity, []);
+  assert.equal(result.benchmark, null);
+  assert.equal(result.validation.outOfSample.portfolioReturn, null);
+  assert.equal(result.validation.outOfSample.benchmark, null);
+});

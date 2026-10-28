@@ -6,4 +6,5 @@ test.each([['en', 'Market context', 'Unavailable'], ['zh-TW', '市場背景', '�
   render(<MarketContext snapshot={{ generatedAt: new Date().toISOString(), observations: [] }} tickers={['NBIS']} ticker="NBIS" language={language} />);
   expect(screen.getByLabelText(section)).toBeTruthy();
   expect(screen.getAllByText(unavailable).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(language === 'en' ? /Missing stock or benchmark observations/ : /缺少公司或基準觀察值/).length).toBe(4);
 });
