@@ -38,3 +38,14 @@ test('participation counts covered companies and excludes insufficient or stale 
   expect(result.participation).toBe(50);
   expect(result.benchmarks[1].trend).toBe('unavailable');
 });
+
+test('requires the expected NYSE close while respecting weekends and holidays', () => {
+  const snapshot = { generatedAt: now, observations: [...rows('A'), ...rows('SPY')] };
+  expect(marketContext(snapshot, ['A'], '2026-03-04T00:00:00Z').coverage).toBe(0);
+  const fridayRows = [...rows('A'), ...rows('SPY')].filter(row => row.observedAt.slice(0, 10) <= '2026-02-27');
+  const weekend = { generatedAt: '2026-03-01T12:00:00Z', observations: fridayRows };
+  expect(marketContext(weekend, ['A'], '2026-03-01T12:00:00Z').coverage).toBe(1);
+  expect(marketContext(weekend, ['A'], '2026-03-03T00:00:00Z').coverage).toBe(0);
+  const holidayRows = Array.from({ length: 61 }, (_, i) => new Date(Date.UTC(2026, 4, 3 + i)).toISOString()).flatMap((observedAt, i) => ['A', 'SPY'].map(ticker => ({ id: `${ticker}-${i}`, source: 'prices', type: 'close', ticker, observedAt, value: 100 + i, providerName: 'Stooq', sourceUrl: `https://example.com/${ticker}` })));
+  expect(marketContext({ generatedAt: '2026-07-04T12:00:00Z', observations: holidayRows }, ['A'], '2026-07-04T12:00:00Z').coverage).toBe(1);
+});

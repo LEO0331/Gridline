@@ -1,7 +1,10 @@
 import { normalizePriceObservations, latestSourceSegment } from './signals/series';
-import { observationRecency } from './freshness';
+import { latestExpectedPriceSession } from './us-market-calendar';
 
-const recent = (row, now) => row && observationRecency(row.observedAt, now).status === 'current';
+const recent = (row, now) => {
+  const date = new Date(now);
+  return Boolean(row && Number.isFinite(date.getTime()) && row.date === latestExpectedPriceSession(date));
+};
 const series = (snapshot, ticker) => latestSourceSegment(normalizePriceObservations(snapshot?.observations || [], ticker, snapshot?.generatedAt));
 
 // Align shared sessions and require a common provider; the providers have different or

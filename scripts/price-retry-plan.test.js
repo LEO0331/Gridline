@@ -6,7 +6,7 @@ const path = require('node:path');
 const { planPriceRetry, main } = require('./price-retry-plan');
 
 function snapshot(tickers, day) {
-  return { trackedTickers: tickers, observations: tickers.flatMap(ticker =>
+  return { trackedTickers: tickers, observations: [...tickers, 'SPY', 'QQQ'].flatMap(ticker =>
     Array.from({ length: 60 }, (_, index) => {
       const date = new Date(`${day}T00:00:00Z`);
       date.setUTCDate(date.getUTCDate() - index);
@@ -24,10 +24,19 @@ test('skips a retry after prices through the previous NYSE session are committed
 
 test('targets missing tickers, including weekends and invalid history', () => {
   const prior = snapshot(['NBIS', 'AVGO'], '2026-10-13');
-  prior.observations = prior.observations.filter(row => row.ticker === 'NBIS');
+  prior.observations = prior.observations.filter(row => row.ticker !== 'AVGO');
   assert.deepEqual(planPriceRetry(prior, new Date('2026-10-14T18:17:00Z')).missing, ['AVGO']);
   const onWeekend = snapshot(['NBIS'], '2026-10-15');
-  assert.deepEqual(planPriceRetry(onWeekend, new Date('2026-10-17T15:17:00Z')).missing, ['NBIS']);
+  assert.deepEqual(planPriceRetry(onWeekend, new Date('2026-10-17T15:17:00Z')).missing, ['NBIS', 'SPY', 'QQQ']);
+});
+
+test('missing benchmarks trigger retry without entering the tracked company universe', () => {
+  const prior = snapshot(['NBIS'], '2026-10-13');
+  prior.observations = prior.observations.filter(row => row.ticker !== 'SPY');
+  const result = planPriceRetry(prior, new Date('2026-10-14T15:17:00Z'));
+  assert.deepEqual(result.missing, ['SPY']);
+  assert.equal(result.trackedCount, 1);
+  assert.equal(result.benchmarkCount, 2);
 });
 
 test('missing or malformed publication requires recovery rather than skipping', () => {
