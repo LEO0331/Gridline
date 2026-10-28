@@ -39,9 +39,10 @@ Reviewed against the repository implementation on **2026-10-12**. Guides describ
 | --- | --- |
 | Sourced market-signal methodology | [English](scoring-methodology.md) · [繁體中文](scoring-methodology.zh-TW.md) |
 | Independent research evidence views | [Signal lenses](signal-lenses.md) |
-| Moving-average, RSI and Bollinger methods | [Technical signals](signal-methods.md) |
+| Moving-average, RSI, breakout and Bollinger methods | [English](signal-methods.md) · [繁體中文](signal-methods.zh-TW.md) |
+| Benchmark and thematic-basket context | [English](market-context.md) · [繁體中文](market-context.zh-TW.md) |
 | Observed price lookback and source continuity | [Price lookback](exposure-lookback.md) |
-| Retrospective price-only method check | [Backtesting](backtesting.md) |
+| Retrospective price-only method check and v2 simulation | [English](backtesting.md) · [繁體中文](backtesting.zh-TW.md) |
 | Bounded user assumptions | [Scenario analysis](scenario-analysis.md) |
 | Material changes between committed snapshots | [Snapshot changes](snapshot-changes.md) |
 | Local API SQLite history | [Persistent storage](persistent-storage.md) |

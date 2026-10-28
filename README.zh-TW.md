@@ -33,10 +33,10 @@ Gridline 是雙語、聚焦特定問題的研究流程：**資料中心建設是
 - **前後快照差異**：每次更新都與前一份已提交快照比較重要的使用者可見變化，包括最新收盤價、已記錄趨勢訊號狀態、已驗證事件新增／更新／封存轉換，以及來源健康狀態。
 - **Demo hardening**：明確區分 snapshot 載入／錯誤／空資料狀態與 retry；顯示觀察資料時效；SVG 圖表可用鍵盤逐筆查看；drawer 具焦點管理；提供清楚 focus 狀態、skip navigation，且行動版仍保留主導覽。
 - **可稽核 provenance**：deterministic observation ID、provider/source metadata、觀察與擷取日期、來源 URL 與 lineage。
-- **可擴充技術訊號**：以共同 registry 支援趨勢／移動平均、RSI 動能與布林通道波動度；保留日期、provider 連續性檢查，並只輸出描述性狀態，不產生買賣結論。
+- **可擴充技術訊號**：以共同 registry 支援趨勢／移動平均、RSI 與突破動能，以及布林通道波動度；保留日期、provider 連續性檢查，並只輸出描述性狀態，不產生買賣結論。
 - **持久化歷史**：Node API profile 以 SQLite/WAL 保存不可變觀察值、來源健康狀態、分數快照、情境分析與回測執行紀錄。
 - **情境假設（輔助工作表）**：記錄供電、需求、CAPEX、法規的使用者假設，不將假設當成觀察證據或未校準預測。
-- **回溯價格測試（方法檢查）**：MA5/MA10 交叉後以下一筆交易日及十筆交易日後收盤價評估，揭露待完成結果與禁止前視偏誤規則；它不是對整體建設論點的回測。
+- **回測實驗室**：保留原 MA5/MA10 回溯測試，另提供均線交叉及動能突破的只做多 v2 模擬，包含成本、基準比較與時間順序驗證；兩者均非對整體建設論點的回測。
 - **資料健康**：`#health` 顯示市場快照新鮮度、來源狀態、價格涵蓋及獨立日期的事件審查。
 - **涵蓋例外**：事件頁列出設定來源／候選紀錄的範圍、通過與排除筆數、排除原因，以及各使用中發布者獨立的探索與文章驗證狀態。
 - **Fail-closed ingestion**：空白／無效 provider 回應標為 degraded，不視為成功；保留 last-known-good 歷史。
@@ -44,7 +44,7 @@ Gridline 是雙語、聚焦特定問題的研究流程：**資料中心建設是
 - **選用帳戶**：Supabase 註冊、登入、密碼恢復與偏好設定已完成 React 專案端實作，但不會阻擋公開研究 demo。
 - **工程品質 Gate**：PR／正式部署共用測試、快照驗收、安全快照發布、具阻擋作用的 PR／每週依賴稽核，以及應用程式更新／每週 Lighthouse 檢查。尚無修補版本的工具鏈弱點仍明示。
 
-設計文件：[資料血緣](docs/data-provenance.md) · [技術訊號方法](docs/signal-methods.md) · [快照差異](docs/snapshot-changes.md) · [Demo hardening](docs/demo-hardening.md) · [Scoring](docs/scoring-methodology.md) · [持久化儲存](docs/persistent-storage.md) · [情境分析](docs/scenario-analysis.md) · [回測](docs/backtesting.md) · [PR CI](docs/pr-ci.md)。
+設計文件：[資料血緣](docs/data-provenance.md) · [技術訊號方法](docs/signal-methods.zh-TW.md) · [快照差異](docs/snapshot-changes.md) · [Demo hardening](docs/demo-hardening.md) · [Scoring](docs/scoring-methodology.md) · [持久化儲存](docs/persistent-storage.md) · [情境分析](docs/scenario-analysis.md) · [回測](docs/backtesting.md) · [PR CI](docs/pr-ci.md)。
 
 每日事件探索會檢查 Loudoun County News、Oracle 企業新聞與 Texas Governor 新聞，各自揭露探索／文章驗證狀態、存取錯誤與候選筆數上限。Texas Governor 已通過 GitHub runner 的列表與文章驗證，保留發布者名稱，不將其標示為 ERCOT 聲明。Oracle OCI Blog 與 FERC 在 runner 檢查回傳 403 後，僅保留為需主動啟用的診斷來源，不每日抓取。PJM、ERCOT 及 Oracle 投資人新聞仍暫停抓取；先前已驗證的事件歷史仍保留。使用中的公開來源不需 API key，且不宣稱完整涵蓋。詳見[事件探索與 GitHub runner 檢查](docs/event-discovery.md)。
 
@@ -156,7 +156,7 @@ GET  /api/backtest/runs
 
 ## 市場價格擷取
 
-公開 demo 先使用 Stooq。如果某個 ticker 的歷史為空、過舊、筆數不足或不可用，會改用 Yahoo Finance chart endpoint。`prices` 要標為健康時，每個設定的 ticker 都至少要有 60 筆可用日收盤資料，且包含最新應有的 NYSE 交易日。紐約時間下午 4:15 起要求當日收盤；在此之前、週末或休市日則要求前一交易日。未完成及未來交易日的資料會排除，快照準備度 gate 也使用相同檢查。
+SPY 與 QQQ 作為價格基準，與 20 家公司研究範圍分開擷取。市場背景顯示主題組合的 MA20 參與率，以及對齊交易日的 20／60 期相對報酬，並標示涵蓋與時效。詳見[市場背景](docs/market-context.zh-TW.md)。公開 demo 先使用 Stooq。如果某個 ticker 的歷史為空、過舊、筆數不足或不可用，會改用 Yahoo Finance chart endpoint。`prices` 要標為健康時，每個設定的 ticker 都至少要有 60 筆可用日收盤資料，且包含最新應有的 NYSE 交易日。紐約時間下午 4:15 起要求當日收盤；在此之前、週末或休市日則要求前一交易日。未完成及未來交易日的資料會排除，快照準備度 gate 也使用相同檢查。
 
 HTTP `200` 但 0 筆可用資料會標成 **degraded**，不會標 `ok`。降級更新不會刪掉既有歷史；實際使用的 provider 與 origin URL 會保存到 provenance。若用於商業金融情境，應改成公司核准／授權的市場資料 provider。
 
@@ -164,9 +164,9 @@ HTTP `200` 但 0 筆可用資料會標成 **degraded**，不會標 `ok`。降級
 
 總覽可切換**市場訊號、公司財務、電網需求、專案里程碑**。各視角說明來源、日期、規則及無資料原因，不合成買賣分數。公司財務需具期間資訊與精確連結的 SEC 營收或稀釋 EPS；電網需求需明確類型的 EIA 實際負載及完整可比較日期；專案里程碑需特定一級來源紀錄。詳見 [訊號視角](docs/signal-lenses.md) 與 [市場訊號方法](docs/scoring-methodology.zh-TW.md)。
 
-前端 signal explorer 以同一份結果 contract 支援三種常見技術分析類型：移動平均趨勢、14 期 Wilder RSI 動能，以及 20 期布林通道波動度。使用者在總覽切換方法後，同一選擇會同步驅動「市場訊號」視角、「了解此訊號」抽屜，以及價格圖表上的具日期狀態變化標記；滑過標記可查看事件說明。各方法維持描述性，不把技術狀態變化轉成買進／賣出指示。詳見 [技術訊號方法](docs/signal-methods.md)。
+前端 signal explorer 以同一份結果 contract 支援移動平均趨勢、14 期 Wilder RSI、20 交易觀察值的收盤價突破生命週期，以及 20 期布林通道。使用者在總覽切換方法後，同一選擇會同步驅動「市場訊號」視角、「了解此訊號」抽屜，以及價格圖表上的具日期狀態變化標記；滑過標記可查看事件說明。各方法維持描述性，不把技術狀態變化轉成買進／賣出指示。詳見 [技術訊號方法](docs/signal-methods.zh-TW.md)。
 
-MA5/MA10 回測只用有日期的收盤價，於下一筆觀察交易日收盤價進場，十筆交易日後評估。此為不含交易成本的描述性回溯計算，不證明預測能力。詳見 [回測說明](docs/backtesting.md)。
+原 MA5/MA10 回溯測試使用下一筆觀察收盤價，十筆觀察值後評估，且不含成本。獨立的回測 v2 模擬單一只做多部位，提供持有期間、成本、滑價、對齊基準、權益與回撤。收盤成交是假設，並不可實際執行；兩者均不能證明預測能力。詳見 [回測說明](docs/backtesting.zh-TW.md)。
 
 ## 驗證
 
