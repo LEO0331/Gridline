@@ -1,7 +1,7 @@
 import { evaluateSignalMethod, SIGNAL_METHOD_IDS } from './registry';
 import { momentumBreakoutTimeline } from './momentumBreakoutCore';
 import { signalStateLabel, signalEventLabel, signalMethodSettings } from './presentation';
-import { buildChartSignalMarkers } from '../components/chartSignalMarkers';
+import { buildChartSignalMarkers } from '../Components/chartSignalMarkers';
 
 const rows = values => values.map((value, i) => ({ id: `p${i}`, value, observedAt: new Date(Date.UTC(2026, 0, i + 1)).toISOString(), sourceUrl: 'https://example.com/prices', provider: 'Fixture' }));
 const evaluate = values => evaluateSignalMethod(SIGNAL_METHOD_IDS.MOMENTUM_BREAKOUT, rows(values));
