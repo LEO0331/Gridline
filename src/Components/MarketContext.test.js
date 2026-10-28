@@ -7,4 +7,3 @@ test.each([['en', 'Market context', 'Unavailable'], ['zh-TW', '市場背景', '�
   expect(screen.getByLabelText(section)).toBeTruthy();
   expect(screen.getAllByText(unavailable).length).toBeGreaterThan(0);
 });
-
