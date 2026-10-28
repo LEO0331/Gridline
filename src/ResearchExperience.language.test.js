@@ -10,6 +10,7 @@ beforeEach(() => {
   window.localStorage.setItem('gridline-language', 'zh-TW');
   window.history.pushState({}, '', '#overview');
   global.fetch = jest.fn(() => Promise.resolve({ ok: false }));
+  jest.spyOn(window, 'scrollTo').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -32,11 +33,13 @@ test('Traditional Chinese survives navigation away from and back to the dashboar
   await screen.findByText('無法載入快照。');
   act(() => { window.location.hash = '#overview'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
   expect(screen.getByRole('button', { name: '總覽' })).toBeInTheDocument();
+  await screen.findByText('無法載入儀表板快照');
   expect(window.localStorage.getItem('gridline-language')).toBe('zh-TW');
 });
 
-test('data status stays primary while assumption and backtest tools are grouped', () => {
+test('data status stays primary while assumption and backtest tools are grouped', async () => {
   render(<ResearchExperience />);
+  await screen.findByText('無法載入儀表板快照');
   expect(screen.getByRole('button', { name: '資料狀態' })).toBeInTheDocument();
   expect(screen.getByText('方法與假設')).toBeInTheDocument();
   const methods = screen.getByText('方法與假設').closest('details');
@@ -46,4 +49,6 @@ test('data status stays primary while assumption and backtest tools are grouped'
   expect(screen.getByRole('button', { name: '情境假設 →' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '資料狀態' }));
   expect(window.location.hash).toBe('#health');
+  expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+  await screen.findByText('無法載入快照。');
 });
