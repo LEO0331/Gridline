@@ -1,4 +1,5 @@
 import { companies, trackedCompanies } from './companyRegistry';
+import { benchmarkReadiness } from './benchmarkReadiness';
 const TRACKED_TICKERS = companies.map(company => company.ticker);
 const SOURCE_ORDER = ['prices', 'events', 'sec', 'eia'];
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -48,6 +49,7 @@ export function buildDataHealth(snapshot = {}, now = new Date()) {
       attempts: outcome?.attempts || null,
     };
   });
+  const benchmarkCoverage = benchmarkReadiness(snapshot, now);
 
   const reconstructed = Number(snapshot.backtestCoverage?.reconstructed || 0);
   const recorded = Number(snapshot.backtestCoverage?.recorded || 0);
@@ -60,7 +62,7 @@ export function buildDataHealth(snapshot = {}, now = new Date()) {
   if (ageHours !== null && ageHours > 96) blockers.push('snapshotStale');
 
   return {
-    state: blockers.length ? 'attention' : sources.some(item => ['degraded', 'partial'].includes(item.status)) ? 'ready-with-warnings' : 'ready',
+    state: blockers.length ? 'attention' : benchmarkCoverage.some(item => !item.ready) || sources.some(item => ['degraded', 'partial'].includes(item.status)) ? 'ready-with-warnings' : 'ready',
     blockers,
     schemaVersion: snapshot.schemaVersion ?? null,
     generatedAt: snapshot.generatedAt || null,
@@ -69,6 +71,7 @@ export function buildDataHealth(snapshot = {}, now = new Date()) {
     methodologyVersion: snapshot.methodologies?.companyScore || null,
     sources,
     priceCoverage,
+    benchmarkCoverage,
     backtest: {
       start: snapshot.backtestCoverage?.start || null,
       end: snapshot.backtestCoverage?.end || null,

@@ -2,6 +2,8 @@ const { momentumBreakoutTimeline } = require('./signals/momentumBreakoutCore');
 
 const BACKTEST_V2_VERSION = 'daily-close-long-only-v2.0';
 const METHODS = ['ma5-ma10', 'momentum-breakout'];
+// Display caution only; this threshold does not establish statistical validity.
+const LOW_SAMPLE_TRADE_COUNT = 20;
 
 function priceRows(observations, ticker, asOf) {
   const days = new Map();
@@ -92,7 +94,7 @@ function simulate(rows, signals, settings, start, end) {
 }
 
 function benchmarkReturn(rows, benchmark, start, end) {
-  if (start > end || !rows[start] || !rows[end]) return null;
+  if (start >= end || !rows[start] || !rows[end]) return null;
   const byDate = new Map(benchmark.map(row => [row.date, row]));
   const first = byDate.get(rows[start].date), last = byDate.get(rows[end].date);
   if (!first || !last || !first.provider || first.provider !== rows[start].provider || last.provider !== first.provider) return null;
@@ -106,24 +108,35 @@ function runBacktestV2(input, observations = []) {
   const signals = entrySignals(rows, settings.method), split = Math.floor(rows.length * 0.7);
   const main = simulate(rows, signals, settings, 0, rows.length - 1);
   const minimum = settings.method === 'momentum-breakout' ? 21 : 11;
-  const maskInsufficient = (metrics, end) => end < minimum - 1 ? { ...metrics, portfolioReturn: null, maxDrawdown: null } : metrics;
-  main.metrics = maskInsufficient(main.metrics, rows.length - 1);
+  const qualityFor = (metrics, start, end) => ({
+    status: end < minimum - 1 || end - start + 1 < 2 ? 'insufficient-history'
+      : !metrics.completedTrades ? 'no-completed-trades'
+        : metrics.completedTrades < LOW_SAMPLE_TRADE_COUNT ? 'low-sample' : 'observed-sample',
+    periodObservations: Math.max(0, end - start + 1), minimumHistoryObservations: minimum,
+    completedTrades: metrics.completedTrades, lowSampleTradeThreshold: LOW_SAMPLE_TRADE_COUNT,
+  });
+  const maskInsufficient = (metrics, start, end) => qualityFor(metrics, start, end).status === 'insufficient-history'
+    ? { ...metrics, portfolioReturn: null, maxDrawdown: null } : metrics;
+  const sampleQuality = qualityFor(main.metrics, 0, rows.length - 1);
+  main.metrics = maskInsufficient(main.metrics, 0, rows.length - 1);
+  if (sampleQuality.status === 'insufficient-history') main.equity = [];
   const sections = [['inSample', 0, split - 1], ['outOfSample', split, rows.length - 1]];
   const validation = Object.fromEntries(sections.map(([name, start, end]) => {
     const part = simulate(rows, signals, settings, start, end);
     return [name, { start: rows[start]?.observedAt || null, end: rows[end]?.observedAt || null,
-      ...maskInsufficient(part.metrics, end), benchmark: benchmarkReturn(rows, benchmark, start, end) }];
+      ...maskInsufficient(part.metrics, start, end), sampleQuality: qualityFor(part.metrics, start, end),
+      benchmark: benchmarkReturn(rows, benchmark, start, end) }];
   }));
   const sensitivity = [0, settings.transactionCostBps, Math.min(100, settings.transactionCostBps * 2)].map(cost => ({
     transactionCostBps: cost, slippageBps: settings.slippageBps,
-    portfolioReturn: maskInsufficient(simulate(rows, signals, { ...settings, transactionCostBps: cost }, 0, rows.length - 1).metrics, rows.length - 1).portfolioReturn }));
+    portfolioReturn: maskInsufficient(simulate(rows, signals, { ...settings, transactionCostBps: cost }, 0, rows.length - 1).metrics, 0, rows.length - 1).portfolioReturn }));
   return { backtestVersion: BACKTEST_V2_VERSION, assumptions: settings,
     status: main.metrics.completedTrades ? 'complete' : 'insufficient-data',
     coverage: { start: rows[0]?.observedAt || null, end: rows[rows.length - 1]?.observedAt || null, priceObservations: rows.length,
       sourceUrl: rows[rows.length - 1]?.sourceUrl || null, provider: rows[rows.length - 1]?.provider || null,
       observationIds: rows.map(row => row.id).filter(Boolean),
       unknownRetrievalDates: rows.filter(row => !Number.isFinite(Date.parse(row.retrievedAt || ''))).length },
-    ...main, benchmark: benchmarkReturn(rows, benchmark, 0, rows.length - 1), validation, sensitivity,
+    ...main, sampleQuality, benchmark: benchmarkReturn(rows, benchmark, 0, rows.length - 1), validation, sensitivity,
     warnings: ['Daily close fills are simplified and not executable; actual fills and costs may differ.',
       'Prices may not be consistently adjusted for splits or dividends; benchmark comparison is price-only.',
       'Records retrieved after the cutoff are excluded; missing retrieval dates cannot be verified. Historical provider revisions and survivorship are not reconstructed. Results are descriptive, not advice.',

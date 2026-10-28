@@ -1,11 +1,25 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { evaluateAudit, runRegistryAudit } = require('./security-audit');
-const policy = require('../config/security-exceptions.json');
+// Keep historical approval mechanics covered without retaining an active exception.
+const policy = require('./fixtures/historical-braces-exception.json');
 const identity = policy.exceptions[0];
 const now = new Date('2026-10-12T12:00:00+08:00');
 const fingerprint = { lockfileSha256: 'a'.repeat(64), manifestSha256: 'b'.repeat(64), sourceTreeSha256: 'c'.repeat(64) };
 const copy = value => JSON.parse(JSON.stringify(value));
+
+test('patched qs handles non-callable string conversion in comma arrays', () => {
+  const qs = require('qs');
+  assert.doesNotThrow(() => qs.stringify({ values: [{ toString: 42 }] }, { arrayFormat: 'comma' }));
+});
+
+test('patched serialization escapes an end-of-function script delimiter', () => {
+  const serialize = require('serialize-javascript');
+  const value = function sample() {};
+  value.toString = () => 'function sample(){}//</script';
+  assert.equal(serialize({ value }).toLowerCase().includes('</script'), false);
+});
+
 function fixture() {
   const advisory = { name: 'braces', dependency: 'braces', url: identity.url, range: identity.range, severity: 'high', cwe: identity.cwe, cvss: { vectorString: identity.cvssVector } };
   const audit = { auditReportVersion: 2, vulnerabilities: {
@@ -15,6 +29,20 @@ function fixture() {
   const options = { now, fingerprint, policy: copy(policy), lock: { packages: { 'node_modules/braces': { version: identity.version, integrity: identity.integrity } } }, exposure: { reportVersion: 1, generatedAt: now.toISOString(), ok: true, errors: [], fingerprint: copy(fingerprint), bundle: { javascriptFiles: 1, mappedSources: 1 }, packages: [{ name: 'braces', version: identity.version, integrity: identity.integrity, instances: identity.nodes, toolingPaths: [['react-scripts', 'micromatch', 'braces']] }] } };
   return { audit, options };
 }
+test('active policy has no withdrawn exception and cannot accept a returning high advisory', () => {
+  const activePolicy = require('../config/security-exceptions.json');
+  assert.deepEqual(activePolicy.exceptions, []);
+  const { audit, options } = fixture();
+  const current = { ...options, policy: activePolicy, now: new Date('2026-11-12T00:00:00+08:00') };
+  const result = evaluateAudit(audit, current);
+  assert.equal(result.ok, false);
+  assert.equal(result.accepted.length, 0);
+  assert.equal(result.blocked.length, 2);
+  audit.vulnerabilities = {};
+  audit.metadata.vulnerabilities = { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 };
+  assert.equal(evaluateAudit(audit, current).ok, true);
+});
+
 test('accepts only the approved origin and its propagated high entries with fresh proof', () => {
   const { audit, options } = fixture(); const result = evaluateAudit(audit, options);
   assert.equal(result.ok, true); assert.equal(result.accepted.length, 2); assert.equal(result.counts.high, 2);

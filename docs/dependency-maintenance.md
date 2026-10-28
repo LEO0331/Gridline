@@ -13,7 +13,7 @@ A successful accepted-risk security check is not a clean dependency audit or a p
 
 The parser override crosses a transitive major-version constraint. Its compatibility is established for the exercised Gridline build/tests, rather than assumed for every possible consumer of the parser API. Future changes to the build toolchain must recheck this override.
 
-The isolated [Vite/Vitest evaluation](build-tool-remediation.md) actually removed both affected packages, built successfully and passed all 165 frontend tests. It remains a prototype: production auth/dev-server/browser-target/lint/deployment and full-suite parity must be verified before replacement. The main CRA dependency graph remains vulnerable during temporary acceptance.
+The production toolchain remains Create React App. Outdated local replacement experiments have been removed. See the [current security review](security-exception-policy.md#current-review--2026-10-28) for patched dependencies, retired approvals and remaining advisories.
 
 ## React compatibility repair — 2026-10-13
 

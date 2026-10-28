@@ -1,5 +1,19 @@
 # Dependency security policy
 
+## Current review — 2026-10-28
+
+There are **no active exceptions**. [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) was withdrawn on October 23 as not practically exploitable and is absent from the current registry audit. Its November 11 approval was removed rather than renewed. `braces` remains at the latest published 3.0.3; this is an advisory withdrawal, not a package patch or a claim that parsing untrusted patterns is safe.
+
+The old approval is retained only in `scripts/fixtures/historical-braces-exception.json` to exercise expiry, exact identity and exposure checks. The runtime gate loads only `config/security-exceptions.json`. A regression verifies that a returning high finding blocks with the empty current policy, including after the former expiry date. Exposure verification remains mandatory and unchanged.
+
+Hardening updates the existing overrides to `qs` 6.16.1 and `serialize-javascript` ^7.1.4. The exact qs 6.16.0 override prevented Dependabot from resolving a patched version; serialize-javascript's old transitive toolchain edges led its updater toward a react-scripts downgrade. Explicit patched overrides preserve react-scripts 5.0.1 and the Node 22 CI environment. Behavioral regressions cover comma-array conversion and trailing script delimiters. No forced audit fix or toolchain downgrade is used.
+
+The remaining originating advisory is [deepmerge GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4), reported as low by npm and affecting the latest published 4.3.1 as well as the locked 4.2.2. It remains reported with its propagated tooling entries; no exception or downgrade is added. Recheck registry results on every build. See [the v3 hardening report](v3-hardening.md) for actual validation and operational limitations.
+
+## Historical policy and evidence
+
+The sections below record the original October approval and verification; they do not authorize current risk acceptance.
+
 Implemented with repository-owner authorization on 2026-10-12; verification resumed on 2026-10-13. The security gate remains blocking. It now distinguishes a specific accepted tooling risk from new or changed high/critical findings instead of suppressing the raw audit.
 
 ## Exact temporary exception
@@ -18,19 +32,18 @@ The proof must be successful, no older than six hours, and match SHA-256 fingerp
 
 The originating-advisory graph is checked independently of propagated package counts. Unknown high advisories and all critical findings block. Malformed metadata, understated origin severity, cycles, registry errors, timeouts and invalid JSON fail closed. Current accepted entries and lower-severity findings remain in the job summary; the result says **passed with temporary accepted risk**, not **zero vulnerabilities**.
 
-Source maps and static analysis support review of trusted repository changes; they do not prove safety against deliberately obfuscated code or forged build metadata. Keep untrusted CI runs isolated, avoid privileged credentials in PR checks, and review changes to policy and enforcement. See [exposure evidence](dependency-exposure.md) and [replacement evaluation](build-tool-remediation.md).
+Source maps and static analysis support review of trusted repository changes; they do not prove safety against deliberately obfuscated code or forged build metadata. Keep untrusted CI runs isolated, avoid privileged credentials in PR checks, and review changes to policy and enforcement. See [exposure evidence](dependency-exposure.md).
 
 ## Local check
 
 ```powershell
 npm run verify
-node scripts/dependency-exposure.js > .omx/research/dependency-exposure.json
-npm run security:audit -- .omx/research/dependency-exposure.json
+New-Item -ItemType Directory -Force artifacts | Out-Null
+node scripts/dependency-exposure.js > artifacts/dependency-exposure.json
+npm run security:audit -- artifacts/dependency-exposure.json
 ```
 
-Create the report directory first if it does not exist. Regenerate the report after source, manifest or lockfile changes. The security-gate regressions are included in `npm run verify` and the shared CI action; `npm run test:security-gate` runs them independently.
-
-Permanent remediation is evaluated in an isolated branch. The Vite/Vitest candidate removes both packages and passes its production build and all 165 frontend tests, but requires the documented integration acceptance checks before replacing the stable production toolchain. Its clean candidate audit is not a claim about the current CRA graph.
+Regenerate the report after source, manifest or lockfile changes. The audit prints its verdict to stdout and the GitHub job summary; it does not write hidden workspace state. The security-gate regressions are included in `npm run verify` and the shared CI action; `npm run test:security-gate` runs them independently.
 
 ## Completion verification — 2026-10-13
 

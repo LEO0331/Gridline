@@ -1,5 +1,6 @@
 import { buildDataHealth } from './dataHealthModel';
 import { companies } from './companyRegistry';
+import { latestExpectedPriceSession, easternParts, isNyseTradingDay } from './us-market-calendar';
 
 const makePrices = (ticker, count = 70) => Array.from({ length: count }, (_, index) => ({
   source: 'prices',
@@ -9,6 +10,15 @@ const makePrices = (ticker, count = 70) => Array.from({ length: count }, (_, ind
   observedAt: new Date(Date.UTC(2026, 6, 8 + index)).toISOString(),
   provenance: { provider: 'Fixture', originUrl: 'https://example.com/prices' },
 }));
+const benchmarkPrices = ticker => {
+  const rows = [];
+  const day = new Date(`${latestExpectedPriceSession(new Date('2026-09-16T12:00:00Z'))}T17:00:00Z`);
+  while (rows.length < 70) {
+    if (isNyseTradingDay(easternParts(day))) rows.unshift({ source: 'prices', type: 'close', ticker, value: 100, observedAt: `${day.toISOString().slice(0, 10)}T00:00:00Z`, sourceUrl: 'https://example.com/prices', providerName: 'Fixture' });
+    day.setUTCDate(day.getUTCDate() - 1);
+  }
+  return rows;
+};
 
 const readySnapshot = () => ({
   schemaVersion: 4,
@@ -16,7 +26,7 @@ const readySnapshot = () => ({
   freshness: 'partial',
   methodologies: { companyScore: 'gridline-price-signal-v2.0.0' },
   backtestCoverage: { start: null, end: null, recorded: 0, reconstructed: 0, reconstructionQuality: 'recorded-only' },
-  observations: companies.flatMap(({ ticker }) => makePrices(ticker)),
+  observations: [...companies.flatMap(({ ticker }) => makePrices(ticker)), ...['SPY', 'QQQ'].flatMap(benchmarkPrices)],
   sourceHealth: {
     prices: { status: 'ok', recordCount: 280, lastSuccessAt: '2026-09-16T00:00:00.000Z' },
     eia: { status: 'ok', recordCount: 24 },
@@ -70,4 +80,14 @@ test('Data Status flags retained snapshots older than 96 hours', () => {
   const result = buildDataHealth(readySnapshot(), new Date('2026-09-21T12:00:00Z'));
   expect(result.blockers).toContain('snapshotStale');
   expect(result.state).toBe('attention');
+});
+
+test('benchmark gaps warn without changing company readiness or company counts', () => {
+  const snapshot = readySnapshot();
+  snapshot.observations = snapshot.observations.filter(row => row.ticker !== 'SPY');
+  const result = buildDataHealth(snapshot, new Date('2026-09-16T12:00:00Z'));
+  expect(result.state).toBe('ready-with-warnings');
+  expect(result.blockers).toEqual([]);
+  expect(result.priceCoverage).toHaveLength(20);
+  expect(result.benchmarkCoverage.find(row => row.ticker === 'SPY').reasons).toEqual(['missing']);
 });

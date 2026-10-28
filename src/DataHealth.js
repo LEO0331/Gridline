@@ -78,6 +78,16 @@ function copyFor(language) {
       partial: t('Limited check', '部分來源已檢查'),
     },
     priceHistory: t('MARKET PRICE COVERAGE', '市場價格涵蓋'),
+    benchmarkHistory: t('BENCHMARK COVERAGE', '基準資料涵蓋'),
+    benchmarkNote: t('SPY and QQQ are separate from the tracked company universe. Gaps affect benchmark comparisons only. A 60-session comparison needs 61 continuous same-provider closes through the expected completed NYSE session. Prices may not be consistently adjusted for splits or dividends.', 'SPY 與 QQQ 獨立於追蹤公司清單。缺口只影響基準比較；60 個交易觀察值的比較需要同一連續來源的 61 筆收盤價，並涵蓋預期已完成的紐約證交所交易日。價格可能未一致調整拆股或股息。'),
+    continuousRows: t('Continuous / total rows', '連續／全部筆數'),
+    benchmarkStates: {
+      missing: t('No benchmark observations', '無基準觀察資料'),
+      stale: t('Latest completed session missing', '缺少最近已完成交易日'),
+      provider: t('Provider identity missing', '缺少來源識別'),
+      history: t('Insufficient continuous history', '連續歷史資料不足'),
+      continuity: t('Earlier provider segment excluded', '已排除較早來源區段'),
+    },
     ticker: t('Ticker', '標的'),
     rows: t('Daily rows', '日資料筆數'),
     range: t('Range', '期間'),
@@ -142,6 +152,13 @@ export default function DataHealth({ onBack, language = 'en', onLanguageChange =
         <article className="health-panel source-panel"><h2>{copy.sourceHealth}</h2><div className="health-table source-table"><div className="head"><span>{copy.source}</span><span>{copy.status}</span><span>{copy.records}</span><span>{copy.lastSuccess}</span><span>{copy.detail}</span></div>{health.sources.map(item => <div key={item.source}><b>{sourceLabel(item.source, language)}</b><span className={`status-pill ${item.status}`}>{copy.statusLabels[item.status] || item.status}</span><span>{item.recordCount}</span><span>{dateOnly(item.lastSuccessAt || item.checkedAt)}</span><span>{sourceDetail(item, language)}</span></div>)}</div></article>
 
         <article className="health-panel"><h2>{copy.priceHistory}</h2><div className="health-table price-table"><div className="head"><span>{copy.ticker}</span><span>{copy.rows}</span><span>{copy.range}</span><span>{copy.provider}</span><span>{copy.readiness}</span></div>{health.priceCoverage.map(item => <div key={item.ticker}><b>{item.ticker}</b><span>{item.count}</span><span>{dateOnly(item.firstAt)} → {dateOnly(item.lastAt)}</span><span>{item.provider || '—'}</span><span className={`coverage-state ${item.ready ? 'ready' : 'missing'}`}>{item.ready ? copy.complete : copy.incomplete}</span></div>)}</div></article>
+      </section>
+
+      <section className="health-panel" aria-label={copy.benchmarkHistory}>
+        <h2>{copy.benchmarkHistory}</h2><p>{copy.benchmarkNote}</p>
+        <div className="health-table price-table"><div className="head"><span>{copy.ticker}</span><span>{copy.continuousRows}</span><span>{copy.range}</span><span>{copy.provider}</span><span>{copy.readiness}</span></div>
+          {health.benchmarkCoverage.map(item => <div key={item.ticker}><b>{item.ticker}</b><span>{item.continuousCount} / {item.count}</span><span>{dateOnly(item.firstAt)} → {dateOnly(item.lastAt)}<br/><small>{language === 'zh-TW' ? '預期交易日' : 'Expected session'} {item.expectedSession || '—'}</small></span><span>{item.provider || '—'}{item.sourceUrl && <> <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">↗</a></>}</span><span className={`coverage-state ${item.ready ? 'ready' : 'missing'}`}>{item.ready ? copy.complete : item.reasons.map(reason => copy.benchmarkStates[reason]).join(' · ')}</span></div>)}
+        </div>
       </section>
 
       <section className="health-grid lower">
