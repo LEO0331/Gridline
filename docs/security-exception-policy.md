@@ -32,19 +32,18 @@ The proof must be successful, no older than six hours, and match SHA-256 fingerp
 
 The originating-advisory graph is checked independently of propagated package counts. Unknown high advisories and all critical findings block. Malformed metadata, understated origin severity, cycles, registry errors, timeouts and invalid JSON fail closed. Current accepted entries and lower-severity findings remain in the job summary; the result says **passed with temporary accepted risk**, not **zero vulnerabilities**.
 
-Source maps and static analysis support review of trusted repository changes; they do not prove safety against deliberately obfuscated code or forged build metadata. Keep untrusted CI runs isolated, avoid privileged credentials in PR checks, and review changes to policy and enforcement. See [exposure evidence](dependency-exposure.md) and [replacement evaluation](build-tool-remediation.md).
+Source maps and static analysis support review of trusted repository changes; they do not prove safety against deliberately obfuscated code or forged build metadata. Keep untrusted CI runs isolated, avoid privileged credentials in PR checks, and review changes to policy and enforcement. See [exposure evidence](dependency-exposure.md).
 
 ## Local check
 
 ```powershell
 npm run verify
-node scripts/dependency-exposure.js > .omx/research/dependency-exposure.json
-npm run security:audit -- .omx/research/dependency-exposure.json
+New-Item -ItemType Directory -Force artifacts | Out-Null
+node scripts/dependency-exposure.js > artifacts/dependency-exposure.json
+npm run security:audit -- artifacts/dependency-exposure.json
 ```
 
-Create the report directory first if it does not exist. Regenerate the report after source, manifest or lockfile changes. The security-gate regressions are included in `npm run verify` and the shared CI action; `npm run test:security-gate` runs them independently.
-
-Permanent remediation is evaluated in an isolated branch. The Vite/Vitest candidate removes both packages and passes its production build and all 165 frontend tests, but requires the documented integration acceptance checks before replacing the stable production toolchain. Its clean candidate audit is not a claim about the current CRA graph.
+Regenerate the report after source, manifest or lockfile changes. The audit prints its verdict to stdout and the GitHub job summary; it does not write hidden workspace state. The security-gate regressions are included in `npm run verify` and the shared CI action; `npm run test:security-gate` runs them independently.
 
 ## Completion verification — 2026-10-13
 

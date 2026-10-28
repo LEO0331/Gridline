@@ -6,7 +6,7 @@ The latest main revision inspected was `3c7f84de6354acb4148e62bd6cc5c2af39b19297
 
 Both committed artifacts have publication time `2026-10-27T22:11:17.774Z`, 20 company tickers and **no SPY or QQQ observations**. The full snapshot has 260 closes per company; the compact snapshot has 120. Do not interpret absent benchmark values as zero performance. Benchmark readiness is warning-only, separate from the company universe. It reports current-session, continuous-source and 21/61-observation coverage in snapshot acceptance and bilingual Data Health. Failed updates retain existing observations and their original dates.
 
-A separate real-provider probe through the existing adapter returned 260 Yahoo Finance closes each for SPY and QQQ through October 27 (520 observations total). Evidence remains local under `.omx/research/benchmark-provider-probe.json`; it was not inserted into published artifacts or used to advance publication dates. Existing daily publication and price-retry paths include both benchmarks and can publish actual source results on their next run.
+A separate real-provider probe through the existing adapter returned 260 Yahoo Finance closes each for SPY and QQQ through October 27 (520 observations total). Its measured results are recorded here; observations were not inserted into published artifacts or used to advance publication dates. Existing daily publication and price-retry paths include both benchmarks and can publish actual source results on their next run.
 
 ## Research validation
 
@@ -25,6 +25,8 @@ The UI distinguishes insufficient history, no completed trades and low samples i
 Local validation passed: clean `npm ci --no-audit --no-fund`; `npm run verify` (241 Node tests, 35 frontend suites / 187 tests, optimized production build); `npm run demo:check` (zero blockers, four nonblocking warnings); fresh production dependency exposure verification; and live `npm run security:audit` (14 low entries, zero moderate/high/critical, no accepted exceptions). The draft PR records the current GitHub CI result as well. Dependency deprecations and Node's SQLite/legacy API notices remain visible.
 
 The braces exception is retired because its advisory was withdrawn, not because braces was patched. Exact exception machinery and fresh exposure checks remain tested. The remaining unpatched originating advisory is low-severity deepmerge GHSA-gcqx-w48m-w2h4; its latest published release is also affected. See [security policy](security-exception-policy.md). Deprecation notices in the current build toolchain remain a maintenance limitation.
+
+Obsolete local orchestration files and the replacement-toolchain experiment report have been removed. The audit emits its result through stdout and the CI summary instead of writing hidden state. Explicit local verification reports can be stored in ignored `artifacts/`.
 
 ## Manual review after merge
 

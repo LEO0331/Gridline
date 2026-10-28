@@ -85,8 +85,6 @@ function main(args = process.argv.slice(2), env = process.env) {
     if (args.length !== 1) throw new Error('Usage: node scripts/security-audit.js <fresh-exposure-report.json>');
     const audit = runRegistryAudit();
     const result = evaluateAudit(audit, { policy: read('config/security-exceptions.json'), lock: read('package-lock.json'), exposure: read(args[0]), fingerprint: exposureFingerprint(root) });
-    fs.mkdirSync(path.join(root, '.omx/research'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.omx/research/security-audit-result.json'), `${JSON.stringify({ checkedAt: new Date().toISOString(), ...result }, null, 2)}\n`);
     const verdict = !result.ok ? 'Blocked' : result.accepted.length ? 'Passed with temporary accepted risk' : 'Passed without exceptions';
     summary = `### Dependency security gate\n\nResult: **${verdict}**. Raw audit: ${result.counts.high} high, ${result.counts.critical} critical, ${result.counts.moderate} moderate affected entries.\n\n`;
     if (result.accepted.length) summary += `Accepted ${result.accepted.length} propagated entries under an exact advisory exception, verified against a fresh build and locked tooling-only paths. This is risk acceptance, not a vulnerability fix.\n\n${result.exceptions.map(item => `- ${safe(item.advisory)} expires ${safe(item.expiresAt)}. ${safe(item.reason)}`).join('\n')}\n\n`;
