@@ -75,7 +75,8 @@ async function main() {
   const now = new Date();
   const trackedTickers = config.tickers || companies.map(company => company.ticker);
   const marketSession = isNyseTradingDay(easternParts(now));
-  const pendingPrices = priceRefreshTickers(previous, trackedTickers, now);
+  const benchmarkTickers = config.benchmarkTickers || [];
+  const pendingPrices = priceRefreshTickers(previous, [...new Set([...trackedTickers, ...benchmarkTickers])], now);
   for (const source of config.scheduleSources) {
     if (source === 'prices' && !pendingPrices.length) continue;
     outcomes.push(await refreshWithRetry(service, source, 3, source === 'prices' ? pendingPrices : null));
@@ -106,6 +107,7 @@ async function main() {
     schemaVersion: 4,
     generatedAt,
     trackedTickers,
+    benchmarkTickers,
     freshness: outcomes.every(item => item.status === 'ok') ? 'fresh' : successful.size ? 'partial' : 'stale',
     sourceHealth: health,
     outcomes,

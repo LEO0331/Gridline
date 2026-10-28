@@ -1,0 +1,21 @@
+import React from 'react';
+import { marketContext } from '../marketContext';
+
+export default function MarketContext({ snapshot, tickers, ticker, language }) {
+  const zh = language === 'zh-TW';
+  const t = (en, tw) => zh ? tw : en;
+  const now = new Date().toISOString();
+  const context = marketContext(snapshot, tickers, now);
+  const chosen = context.companies.find(item => item.ticker === ticker);
+  const label = value => value ? `${value.percentagePoints >= 0 ? '+' : ''}${value.percentagePoints.toFixed(2)} pp` : t('Unavailable', '無法提供');
+  const retrieved = row => (snapshot.observations || []).find(item => item.id === row?.id)?.retrievedAt;
+  return <section className="market-context" aria-label={t('Market context', '市場背景')}>
+    <div className="section"><div><p className="eyebrow">{t('MARKET CONTEXT', '市場背景')}</p><h3>{t('Thematic basket and benchmarks', '主題組合與基準')}</h3></div></div>
+    <p className="copy">{t('Participation covers Gridline’s tracked thematic basket, not total US market breadth. Returns compare aligned closing sessions; differences are percentage points, not RSI or investment rankings.', '參與率只涵蓋 Gridline 追蹤的主題組合，並非全美市場廣度。報酬比較對齊的收盤交易日；差異以百分點表示，並非 RSI 或投資排名。')}</p>
+    <div className="drivers">{context.benchmarks.map(item => <article key={item.ticker}><p className="label">{item.ticker}</p><strong>{item.trend === 'above' ? t('Above MA20', '高於 MA20') : item.trend === 'below' ? t('Below MA20', '低於 MA20') : item.trend === 'equal' ? t('At MA20', '等於 MA20') : t('Unavailable', '無法提供')}</strong><small>{item.latest ? <>{item.latest.date} · {item.current ? t('Current session', '最新交易日') : t('Stale', '資料過期')} · {item.latest.provider || '—'} · {t('Retrieved', '取得日期')} {retrieved(item.latest)?.slice(0, 10) || '—'} {item.latest.sourceUrl && <a href={item.latest.sourceUrl} target="_blank" rel="noopener noreferrer">↗</a>}</> : t('No benchmark observations', '無基準觀察資料')}</small></article>)}<article><p className="label">{t('BASKET PARTICIPATION', '組合參與率')}</p><strong>{context.participation === null ? '—' : `${context.participation.toFixed(1)}%`}</strong><small>{context.above} / {context.coverage} {t('covered companies above MA20', '家有資料公司高於 MA20')} · {t('coverage', '涵蓋')} {context.coverage}/{context.total}</small></article></div>
+    <p className="copy">{ticker} {t('relative performance', '相對表現')}: {context.benchmarks.map(item => <span key={item.ticker}> · {item.ticker} 20D {label(chosen?.comparisons[item.ticker][20])}, 60D {label(chosen?.comparisons[item.ticker][60])}</span>)}</p>
+    {context.benchmarks.map(item => [20, 60].map(n => { const comparison = chosen?.comparisons[item.ticker][n]; return comparison && <details key={`${item.ticker}-${n}`}><summary>{ticker} / {item.ticker} {n}D · {comparison.start}–{comparison.end}</summary><p>{comparison.provider} · <a href={comparison.stockSourceUrl} target="_blank" rel="noopener noreferrer">{ticker} ↗</a> ({t('latest retrieved', '最近取得')} {retrieved(chosen.latest)?.slice(0, 10) || '—'}) · <a href={comparison.benchmarkSourceUrl} target="_blank" rel="noopener noreferrer">{item.ticker} ↗</a> ({t('latest retrieved', '最近取得')} {retrieved(item.latest)?.slice(0, 10) || '—'}) · {t('Observation IDs', '觀察資料 ID')}: {comparison.observationIds.join(', ')}</p></details>; }))}
+    {context.benchmarks.map(item => [20, 60].map(n => { const available = context.companies.filter(company => company.comparisons[item.ticker][n]).sort((a, b) => b.comparisons[item.ticker][n].percentagePoints - a.comparisons[item.ticker][n].percentagePoints); return <p className="copy" key={`${item.ticker}-${n}`}>{item.ticker} {n}D · {t('Coverage', '涵蓋')} {available.length}/{context.total} · {t('Leader', '領先')} {available.length ? `${available[0].ticker} ${label(available[0].comparisons[item.ticker][n])}` : '—'} · {t('Laggard', '落後')} {available.length ? `${available[available.length - 1].ticker} ${label(available[available.length - 1].comparisons[item.ticker][n])}` : '—'}</p>; }))}
+    <p className="copy">{t('Windows use overlapping sessions; missing dates can lengthen the calendar interval. Unavailable when histories are stale, insufficient or use different providers. Prices may not be consistently adjusted for splits or dividends; these are price returns, not total returns.', '期間使用重疊交易日；缺失日期可能延長日曆區間。資料過期、不足或來源不同時不提供結果。價格可能未一致調整拆股或股息；此為價格報酬，非總報酬。')}</p>
+  </section>;
+}

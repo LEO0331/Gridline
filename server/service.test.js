@@ -192,3 +192,20 @@ test('complete event discovery degradation preserves diagnostics and prior provi
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+
+test('benchmark tickers enter price ingestion only and failures preserve company data', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'gridline-benchmark-'));
+  const originalPrices = adapters.prices; const originalSec = adapters.sec;
+  const calls = {};
+  const service = createService({ dataDir: directory, cacheMinutes: 1, tickers: ['NBIS'], benchmarkTickers: ['SPY', 'QQQ'] });
+  try {
+    adapters.prices = async config => { calls.prices = config.tickers; return { payload: [], observations: [{ source: 'prices', type: 'close', ticker: 'NBIS', value: 100, observedAt: '2026-10-01T00:00:00Z', sourceUrl: 'https://example.com/NBIS' }], tickerOutcomes: config.tickers.map(ticker => ({ ticker, status: ticker === 'NBIS' ? 'ok' : 'degraded' })) }; };
+    adapters.sec = async config => { calls.sec = config.tickers; return { payload: [], observations: [], tickerOutcomes: config.tickers.map(ticker => ({ ticker, status: 'degraded' })) }; };
+    const result = await service.ingest('prices', true);
+    await service.ingest('sec', true);
+    assert.deepEqual(calls.prices, ['NBIS', 'SPY', 'QQQ']);
+    assert.deepEqual(calls.sec, ['NBIS']);
+    assert.equal(result.status, 'partial');
+    assert.equal((await service.observations({ source: 'prices' }))[0].ticker, 'NBIS');
+  } finally { adapters.prices = originalPrices; adapters.sec = originalSec; service.store.close(); await fs.rm(directory, { recursive: true, force: true }); }
+});

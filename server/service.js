@@ -23,11 +23,13 @@ function createService(config) {
     const previousObservations = [...(config.priorSnapshot?.observations || []).filter(item => item.source === source), ...storedObservations];
     const priorHealth = mergeSnapshotHealth(config.priorSnapshot?.sourceHealth || {}, await store.health(), previousObservations);
     const tickerSource = source === 'prices' || source === 'sec' || source === 'company-research';
-    const enabledTickers = config.tickers || [];
+    const enabledTickers = source === 'prices'
+      ? [...new Set([...(config.tickers || []), ...(config.benchmarkTickers || [])])]
+      : config.tickers || [];
     const coverageFresh = !tickerSource || enabledTickers.every(ticker => priorHealth[source]?.tickers?.[ticker]?.status === 'ok');
     if (!force && coverageFresh && await store.cacheFresh(source)) return { source, status: 'cached', message: 'Fresh cached data retained.' };
     try {
-      const result = await adapters[source]({ ...config, priorHealth: priorHealth[source] || {}, previousObservations, ...(options.tickers ? { tickers: options.tickers.filter(ticker => enabledTickers.includes(ticker)) } : {}) });
+      const result = await adapters[source]({ ...config, tickers: options.tickers ? options.tickers.filter(ticker => enabledTickers.includes(ticker)) : enabledTickers, priorHealth: priorHealth[source] || {}, previousObservations });
       await store.saveRaw(source, result.payload);
       const observations = normalizeObservations(source, result.observations);
       if (!observations.length && source !== 'events' && !result.tickerOutcomes) {

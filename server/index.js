@@ -6,6 +6,7 @@ const { createService } = require('./service');
 const { startScheduler } = require('./scheduler');
 const { runScenario, methodology: SCENARIO_METHODOLOGY } = require('./scenario-engine');
 const { runBacktest, BACKTEST_VERSION } = require('./backtest');
+const { runBacktestV2, BACKTEST_V2_VERSION, assumptions: backtestV2Assumptions } = require('../src/backtestV2');
 const { VERSION: SCORE_VERSION } = require('./scoring/engine');
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -165,13 +166,27 @@ async function handler(request, response) {
     if (request.method === 'GET' && url.pathname === '/api/scenario/runs') return send(request, response, 200, await service.store.scenarioRuns(queryLimit(url.searchParams.get('limit'), 20), SCENARIO_METHODOLOGY.version));
     if (request.method === 'POST' && url.pathname === '/api/backtest') {
       const input = await readJsonBody(request); const ticker = tickerValue(input.ticker, true);
+      if (input.version === 'v2' || input.version === BACKTEST_V2_VERSION) {
+        let settings;
+        try { settings = backtestV2Assumptions({ ...input, ticker, asOf: input.asOf || new Date().toISOString() }); } catch (error) { throw new HttpError(400, error.message); }
+        const observations = await service.observations({ source: 'prices', ticker, type: 'close' });
+        const benchmark = await service.observations({ source: 'prices', ticker: settings.benchmark, type: 'close' });
+        const output = runBacktestV2(settings, [...observations, ...benchmark]);
+        const run = await service.store.saveBacktestRun(settings, output, output.backtestVersion);
+        return send(request, response, 200, { run, ...output });
+      }
+      if (input.version !== undefined && input.version !== BACKTEST_VERSION) throw new HttpError(400, 'Unsupported backtest version');
       if (input.horizonDays !== undefined || (input.horizonSessions !== undefined && Number(input.horizonSessions) !== 10)) throw new HttpError(400, 'Only the 10-session price backtest is supported');
       const observations = await service.observations({ source: 'prices', ticker, type: 'close' });
       const output = runBacktest({ ticker }, observations);
       const run = await service.store.saveBacktestRun({ ticker, horizonSessions: 10 }, output, output.backtestVersion);
       return send(request, response, 200, { run, ...output });
     }
-    if (request.method === 'GET' && url.pathname === '/api/backtest/runs') return send(request, response, 200, await service.store.backtestRuns(queryLimit(url.searchParams.get('limit'), 20), BACKTEST_VERSION));
+    if (request.method === 'GET' && url.pathname === '/api/backtest/runs') {
+      const version = url.searchParams.get('version');
+      if (version && !['v2', BACKTEST_V2_VERSION, BACKTEST_VERSION].includes(version)) throw new HttpError(400, 'Unsupported backtest version');
+      return send(request, response, 200, await service.store.backtestRuns(queryLimit(url.searchParams.get('limit'), 20), version === 'v2' ? BACKTEST_V2_VERSION : version || BACKTEST_VERSION));
+    }
     if (request.method === 'POST' && url.pathname === '/api/ingest') {
       const source = queryText(url.searchParams.get('source'), 'source', 30);
       if (!source || !service.sources().includes(source)) throw new HttpError(400, 'A supported source query parameter is required');

@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ScenarioLab from './ScenarioLab';
 import BacktestLab from './BacktestLab';
@@ -60,7 +60,7 @@ test('historical signal ticker synchronizes after a subset snapshot loads', asyn
 
 test('historical signals offers the expanded grouped universe and keeps missing history unavailable', () => {
   render(<BacktestLab language="en" onBack={() => {}} />);
-  expect(screen.getAllByRole('option')).toHaveLength(20);
+  expect(within(screen.getByRole('combobox', { name: 'Ticker' })).getAllByRole('option')).toHaveLength(20);
   expect(screen.getByRole('group', { name: 'Generation & energy' })).toBeInTheDocument();
   fireEvent.change(screen.getByRole('combobox', { name: 'Ticker' }), { target: { value: 'BE' } });
   expect(screen.getByRole('combobox', { name: 'Ticker' })).toHaveValue('BE');

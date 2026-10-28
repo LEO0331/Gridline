@@ -3,6 +3,7 @@ import { runPriceBacktest } from './backtestModel';
 import { researchLabCopy } from './researchLabI18n';
 import './BacktestLab.css';
 import { groupedCompanies, trackedCompanies } from './companyRegistry';
+import BacktestV2Lab from './BacktestV2Lab';
 
 const pct = value => value === null || value === undefined ? '—' : `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`;
 const dateOnly = value => value ? String(value).slice(0, 10) : '—';
@@ -11,6 +12,7 @@ export default function BacktestLab({ onBack, language = 'en', onLanguageChange 
   const [observations, setObservations] = useState([]);
   const [snapshot, setSnapshot] = useState({});
   const [ticker, setTicker] = useState('NBIS');
+  const [version, setVersion] = useState('v1');
   useEffect(() => {
     const enabled = trackedCompanies(snapshot);
     if (enabled.length && !enabled.some(company => company.ticker === ticker)) setTicker(enabled[0].ticker);
@@ -39,14 +41,19 @@ export default function BacktestLab({ onBack, language = 'en', onLanguageChange 
     </header>
 
     <section className="backtest-hero">
-      <div><p>{b.kicker}</p><h1>{b.title}</h1><span>{b.intro}</span></div>
+      <div><p>{b.kicker}</p><h1>{b.title}</h1><span>{version === 'v1' ? b.intro : language === 'zh-TW' ? '以每日收盤價研究多頭策略的歷史模擬；結果並非交易建議。' : 'Explore historical long-only simulations based on daily closes; results are not trade recommendations.'}</span></div>
       <div className="backtest-selectors">
+        <select aria-label={language === 'zh-TW' ? '回測方法版本' : 'Backtest version'} value={version} onChange={event => setVersion(event.target.value)}>
+          <option value="v1">{language === 'zh-TW' ? '既有方向研究 v1' : 'Existing directional study v1'}</option>
+          <option value="v2">{language === 'zh-TW' ? '多頭模擬 v2' : 'Long-only simulation v2'}</option>
+        </select>
         <select aria-label={language === 'zh-TW' ? '公司代號' : 'Ticker'} value={ticker} onChange={event => setTicker(event.target.value)}>
           {groupedCompanies(trackedCompanies(snapshot)).map(({ category, companies }) => <optgroup key={category.id} label={language === 'zh-TW' ? category.labelZh : category.label}>{companies.map(company => <option key={company.ticker} value={company.ticker}>{company.ticker} · {company.name}</option>)}</optgroup>)}
         </select>
       </div>
     </section>
 
+    {version === 'v2' ? <BacktestV2Lab ticker={ticker} observations={observations} asOf={snapshot.generatedAt} language={language}/> : <>
     <section className="backtest-how">
       <div>
         <p>{b.signalFamilies}</p>
@@ -93,6 +100,7 @@ export default function BacktestLab({ onBack, language = 'en', onLanguageChange 
     </section>
 
     <aside className="backtest-note">{b.note}</aside>
+    </>}
   </main>;
 }
 

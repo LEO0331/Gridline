@@ -131,3 +131,11 @@ test('runtime snapshot retains customer-facing SEC and event fields but omits fu
   assert.equal(event.value.title, 'Verified record');
   assert.equal(event.provenance, undefined);
 });
+
+ test('compact prices preserve benchmark provenance and retrieval time', () => {
+  const snapshot = buildRuntimeSnapshot({ trackedTickers: ['NBIS'], benchmarkTickers: ['SPY', 'QQQ'], observations: [{ id: 'spy-1', source: 'prices', type: 'close', ticker: 'SPY', value: 500, observedAt: '2026-10-01T00:00:00Z', retrievedAt: '2026-10-02T00:00:00Z', providerName: 'Stooq', sourceUrl: 'https://example.com/SPY' }] });
+  assert.deepEqual(snapshot.trackedTickers, ['NBIS']);
+  assert.deepEqual(snapshot.benchmarkTickers, ['SPY', 'QQQ']);
+  assert.equal(snapshot.observations[0].retrievedAt, '2026-10-02T00:00:00Z');
+  assert.equal(snapshot.observations[0].providerName, 'Stooq');
+ });
