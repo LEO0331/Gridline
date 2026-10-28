@@ -1,5 +1,19 @@
 # Dependency security policy
 
+## Current review — 2026-10-28
+
+There are **no active exceptions**. [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) was withdrawn on October 23 as not practically exploitable and is absent from the current registry audit. Its November 11 approval was removed rather than renewed. `braces` remains at the latest published 3.0.3; this is an advisory withdrawal, not a package patch or a claim that parsing untrusted patterns is safe.
+
+The old approval is retained only in `scripts/fixtures/historical-braces-exception.json` to exercise expiry, exact identity and exposure checks. The runtime gate loads only `config/security-exceptions.json`. A regression verifies that a returning high finding blocks with the empty current policy, including after the former expiry date. Exposure verification remains mandatory and unchanged.
+
+Hardening updates the existing overrides to `qs` 6.16.1 and `serialize-javascript` ^7.1.4. The exact qs 6.16.0 override prevented Dependabot from resolving a patched version; serialize-javascript's old transitive toolchain edges led its updater toward a react-scripts downgrade. Explicit patched overrides preserve react-scripts 5.0.1 and the Node 22 CI environment. Behavioral regressions cover comma-array conversion and trailing script delimiters. No forced audit fix or toolchain downgrade is used.
+
+The remaining originating advisory is [deepmerge GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4), reported as low by npm and affecting the latest published 4.3.1 as well as the locked 4.2.2. It remains reported with its propagated tooling entries; no exception or downgrade is added. Recheck registry results on every build. See [the v3 hardening report](v3-hardening.md) for actual validation and operational limitations.
+
+## Historical policy and evidence
+
+The sections below record the original October approval and verification; they do not authorize current risk acceptance.
+
 Implemented with repository-owner authorization on 2026-10-12; verification resumed on 2026-10-13. The security gate remains blocking. It now distinguishes a specific accepted tooling risk from new or changed high/critical findings instead of suppressing the raw audit.
 
 ## Exact temporary exception
