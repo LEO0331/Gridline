@@ -41,6 +41,7 @@ function compactPrices(observations = []) {
         type: 'close',
         value: row.value,
         observedAt: row.observedAt,
+        retrievedAt: row.retrievedAt || null,
         ticker,
         providerName: providerName(row),
         sourceUrl: sourceUrl(row),
@@ -136,6 +137,7 @@ function buildRuntimeSnapshot(snapshot = {}) {
   return {
     schemaVersion: snapshot.schemaVersion || null,
     ...(Array.isArray(snapshot.trackedTickers) ? { trackedTickers: snapshot.trackedTickers } : {}),
+    ...(Array.isArray(snapshot.benchmarkTickers) ? { benchmarkTickers: snapshot.benchmarkTickers } : {}),
     runtimeProfile: RUNTIME_PROFILE,
     generatedAt: snapshot.generatedAt || null,
     freshness: snapshot.freshness || 'unknown',

@@ -23,6 +23,7 @@ module.exports = {
   allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,https://leo0331.github.io').split(',').map(value => value.trim()).filter(Boolean),
   dataDir: process.env.DATA_DIR || path.join(root, 'data'),
   tickers: process.env.TICKERS === undefined ? DEFAULT_TICKERS : normalizeTickers(process.env.TICKERS),
+  benchmarkTickers: ['SPY', 'QQQ'],
   secUserAgent: process.env.SEC_USER_AGENT || '',
   eiaKey: process.env.EIA_API_KEY || '',
   pjmKey: process.env.PJM_API_KEY || '',
