@@ -1,6 +1,7 @@
 const { latestExpectedPriceSession } = require('./us-market-calendar');
 const DAY_MS = 24 * 60 * 60 * 1000;
 const { DEFAULT_TICKERS } = require('./company-universe');
+const { benchmarkReadiness } = require('../src/benchmarkReadiness');
 const MIN_PRICE_ROWS = 60;
 const MAX_PRICE_STALENESS_DAYS = 10;
 
@@ -73,6 +74,12 @@ function evaluateDemoReadiness(snapshot, {
     ));
   }
 
+  const benchmarkCoverage = benchmarkReadiness(snapshot, new Date(reference));
+  for (const benchmark of benchmarkCoverage) {
+    checks.push(check(`benchmark-${benchmark.ticker}`, 'warning', benchmark.ready,
+      `${benchmark.ticker} benchmark requires 61 continuous same-provider daily closes through ${expectedSession} for 20/60-session comparisons; missing benchmark coverage does not block company research.`, benchmark));
+  }
+
   for (const [source, health] of Object.entries(snapshot?.sourceHealth || {})) {
     if (health?.status === 'ok') {
       checks.push(check(
@@ -111,6 +118,7 @@ function evaluateDemoReadiness(snapshot, {
     warningCount: warnings.length,
     checks,
     priceCoverage: coverage,
+    benchmarkCoverage,
   };
 }
 

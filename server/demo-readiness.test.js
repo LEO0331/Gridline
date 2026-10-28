@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { evaluateDemoReadiness, DEFAULT_TICKERS } = require('./demo-readiness');
-const { latestExpectedPriceSession } = require('./us-market-calendar');
+const { latestExpectedPriceSession, easternParts, isNyseTradingDay } = require('./us-market-calendar');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -35,12 +35,22 @@ function readySnapshot() {
   return {
     schemaVersion: 4,
     generatedAt: generatedAt.toISOString(),
-    observations: tickers.flatMap(ticker => priceRows(ticker, lastClose)),
+    observations: [...tickers.flatMap(ticker => priceRows(ticker, lastClose)), ...['SPY', 'QQQ'].flatMap(ticker => benchmarkPrices(ticker, lastClose))],
     companyHistory: [{ ticker: 'NBIS', observedAt: generatedAt.toISOString(), origin: 'recorded' }],
     backtestCoverage: { recorded: 1, reconstructed: 0 },
     methodologies: { companyScore: 'gridline-price-signal-v2.0.0' },
     sourceHealth: { prices: { status: 'ok', recordCount: 280 } },
   };
+}
+
+function benchmarkPrices(ticker, end, count = 70) {
+  const rows = [];
+  const day = new Date(end);
+  while (rows.length < count) {
+    if (isNyseTradingDay(easternParts(new Date(`${day.toISOString().slice(0, 10)}T17:00:00Z`)))) rows.unshift(...priceRows(ticker, day, 1));
+    day.setUTCDate(day.getUTCDate() - 1);
+  }
+  return rows;
 }
 
 test('demo readiness passes a schema-v4 snapshot with recent price coverage', () => {
@@ -131,4 +141,46 @@ test('readiness requires today only after the publication cutoff and rejects fut
   assert.equal(evaluateDemoReadiness(snapshot, { tickers: ['NBIS'] }).ready, false);
   snapshot.observations.push(...priceRows('NBIS', new Date('2026-10-06T00:00:00Z'), 1));
   assert.equal(evaluateDemoReadiness(snapshot, { tickers: ['NBIS'] }).ready, false);
+});
+
+test('missing benchmarks warn without blocking the tracked company universe', () => {
+  const snapshot = readySnapshot();
+  snapshot.observations = snapshot.observations.filter(row => !['SPY', 'QQQ'].includes(row.ticker));
+  const result = evaluateDemoReadiness(snapshot);
+  assert.equal(result.ready, true);
+  assert.equal(Object.keys(result.priceCoverage).length, 20);
+  assert.deepEqual(result.benchmarkCoverage.map(row => [row.ticker, row.count, row.ready]), [['SPY', 0, false], ['QQQ', 0, false]]);
+  assert.equal(result.checks.filter(row => row.id.startsWith('benchmark-') && row.severity === 'warning' && !row.ok).length, 2);
+});
+
+test('benchmark readiness requires current continuous provider history and 61 closes', () => {
+  const snapshot = readySnapshot();
+  const rows = snapshot.observations.filter(row => row.ticker === 'SPY');
+  assert.equal(evaluateDemoReadiness(snapshot).benchmarkCoverage[0].ready, true);
+  rows.slice(-10).forEach(row => { row.provenance = { provider: 'Changed provider', originUrl: 'https://example.com/new-prices' }; });
+  let coverage = evaluateDemoReadiness(snapshot).benchmarkCoverage[0];
+  assert.equal(coverage.count, 70);
+  assert.equal(coverage.continuousCount, 10);
+  assert.equal(coverage.ready, false);
+  assert.ok(coverage.reasons.includes('continuity'));
+  snapshot.observations = snapshot.observations.filter(row => row !== rows.at(-1));
+  coverage = evaluateDemoReadiness(snapshot).benchmarkCoverage[0];
+  assert.equal(coverage.current, false);
+  assert.ok(coverage.reasons.includes('stale'));
+  assert.equal(evaluateDemoReadiness(snapshot).ready, true);
+});
+
+test('benchmark duplicate revisions use the latest known retrieval and exclude future or non-session observations', () => {
+  const snapshot = readySnapshot();
+  const spy = snapshot.observations.filter(row => row.ticker === 'SPY').at(-1);
+  spy.retrievedAt = snapshot.generatedAt;
+  snapshot.observations.push({ ...spy, retrievedAt: new Date(Date.parse(snapshot.generatedAt) - 1000).toISOString(), provenance: { provider: 'Old revision', originUrl: 'https://example.com/old' } });
+  snapshot.observations.push({ ...spy, retrievedAt: new Date(Date.parse(snapshot.generatedAt) + DAY_MS).toISOString(), provenance: { provider: 'Future revision', originUrl: 'https://example.com/future' } });
+  snapshot.observations.push({ ...spy, observedAt: new Date(Date.parse(snapshot.generatedAt) + DAY_MS).toISOString() });
+  const weekend = new Date(snapshot.generatedAt);
+  while (weekend.getUTCDay() !== 6) weekend.setUTCDate(weekend.getUTCDate() - 1);
+  snapshot.observations.push({ ...spy, observedAt: `${weekend.toISOString().slice(0, 10)}T00:00:00Z` });
+  const coverage = evaluateDemoReadiness(snapshot).benchmarkCoverage[0];
+  assert.equal(coverage.provider, 'Fixture market data');
+  assert.equal(coverage.continuousCount, 70);
 });

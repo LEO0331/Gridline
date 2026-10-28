@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import DataHealth from './DataHealth';
+import { latestExpectedPriceSession, easternParts, isNyseTradingDay } from './us-market-calendar';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const priceRows = ticker => Array.from({ length: 70 }, (_, index) => ({
@@ -12,13 +13,22 @@ const priceRows = ticker => Array.from({ length: 70 }, (_, index) => ({
   observedAt: new Date(Date.now() - (69 - index) * DAY_MS).toISOString(),
   provenance: { provider: 'Fixture provider', originUrl: 'https://example.com/prices' },
 }));
+const benchmarkPrices = ticker => {
+  const rows = [];
+  const day = new Date(`${latestExpectedPriceSession(new Date())}T17:00:00Z`);
+  while (rows.length < 70) {
+    if (isNyseTradingDay(easternParts(day))) rows.unshift({ source: 'prices', type: 'close', ticker, value: 100, observedAt: `${day.toISOString().slice(0, 10)}T00:00:00Z`, sourceUrl: 'https://example.com/benchmark', providerName: 'Benchmark fixture' });
+    day.setUTCDate(day.getUTCDate() - 1);
+  }
+  return rows;
+};
 
 const fixture = {
   trackedTickers: ['NBIS', 'CRWV', 'ORCL', 'AVGO'],
   schemaVersion: 4,
   generatedAt: new Date().toISOString(),
   freshness: 'partial',
-  observations: ['NBIS','CRWV','ORCL','AVGO'].flatMap(priceRows),
+  observations: [...['NBIS','CRWV','ORCL','AVGO'].flatMap(priceRows), ...['SPY', 'QQQ'].flatMap(benchmarkPrices)],
   companyHistory: [],
   methodologies: { companyScore: 'gridline-price-signal-v2.0.0' },
   backtestCoverage: { start: null, end: null, recorded: 0, reconstructed: 0, reconstructionQuality: 'recorded-only' },
@@ -72,6 +82,16 @@ test('data health renders Traditional Chinese labels', async () => {
   expect(screen.getByText('市場價格')).toBeInTheDocument();
   expect(screen.queryByText('公司投資人關係')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'EN' })).toBeInTheDocument();
+  expect(screen.getByText('基準資料涵蓋')).toBeInTheDocument();
+});
+
+test('missing benchmarks remain visible without making company research unavailable', async () => {
+  global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ...fixture, observations: fixture.observations.filter(row => !['SPY', 'QQQ'].includes(row.ticker)) }) }));
+  render(<DataHealth language="en" onBack={() => {}} />);
+  expect(await screen.findByText('PRICE DATA AVAILABLE · SOURCE GAPS')).toBeVisible();
+  const benchmarkPanel = screen.getByRole('region', { name: 'BENCHMARK COVERAGE' });
+  expect(within(benchmarkPanel).getAllByText('No benchmark observations')).toHaveLength(2);
+  expect(screen.getByRole('group', { name: 'Price coverage' })).toHaveTextContent('4/4');
 });
 
 test('missing runtime metadata is identified without blaming price coverage', async () => {
