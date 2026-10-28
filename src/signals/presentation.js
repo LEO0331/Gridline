@@ -1,6 +1,14 @@
 import { SIGNAL_METHOD_IDS } from './registry';
 
 const stateCopy = {
+  [SIGNAL_METHOD_IDS.MOMENTUM_BREAKOUT]: {
+    watch: ['Watching for breakout', '觀察突破'],
+    breakout: ['Closing-price breakout', '收盤價突破'],
+    pullback: ['Breakout pullback', '突破後回檔'],
+    reconfirmed: ['Breakout reconfirmed', '突破再確認'],
+    invalidated: ['Setup invalidated or expired', '型態失效或到期'],
+    unavailable: ['Breakout signal unavailable', '突破訊號無資料'],
+  },
   [SIGNAL_METHOD_IDS.TREND_MOVING_AVERAGE]: {
     upward: ['Short-term price trend: upward', '短期價格趨勢向上'],
     downward: ['Short-term price trend: downward', '短期價格趨勢向下'],
@@ -22,6 +30,13 @@ const stateCopy = {
 };
 
 const eventCopy = {
+  [SIGNAL_METHOD_IDS.MOMENTUM_BREAKOUT]: {
+    watch: ['Returned to watch', '回到觀察'],
+    breakout: ['Close exceeded prior 20-session high', '收盤價突破前 20 筆最高收盤價'],
+    pullback: ['Setup entered pullback', '型態進入回檔'],
+    reconfirmed: ['Setup reconfirmed', '型態再確認'],
+    invalidated: ['Setup invalidated or expired', '型態失效或到期'],
+  },
   [SIGNAL_METHOD_IDS.TREND_MOVING_AVERAGE]: {
     upward: ['Trend changed upward', '趨勢轉為向上'],
     downward: ['Trend changed downward', '趨勢轉為向下'],
@@ -39,6 +54,13 @@ const eventCopy = {
 };
 
 const summaryCopy = {
+  [SIGNAL_METHOD_IDS.MOMENTUM_BREAKOUT]: {
+    watch: ['No active breakout setup is present.', '目前沒有進行中的突破型態。'],
+    breakout: ['The close exceeded the highest close in the preceding 20 sessions.', '收盤價高於前 20 個交易觀察值的最高收盤價。'],
+    pullback: ['The close fell below the breakout close while the setup remains valid.', '收盤價低於突破當日收盤價，型態仍有效。'],
+    reconfirmed: ['After a pullback, the close exceeded the breakout close.', '回檔後收盤價再次高於突破當日收盤價。'],
+    invalidated: ['The setup expired or the close fell below its invalidation level.', '型態已到期，或收盤價跌破失效水準。'],
+  },
   [SIGNAL_METHOD_IDS.TREND_MOVING_AVERAGE]: {
     upward: ['Recent sourced closes are classified as an upward short-term trend under this method.', '依此方法，近期具來源的收盤價目前分類為短期向上趨勢。'],
     downward: ['Recent sourced closes are classified as a downward short-term trend under this method.', '依此方法，近期具來源的收盤價目前分類為短期向下趨勢。'],
@@ -57,6 +79,10 @@ const summaryCopy = {
 };
 
 const methodSettings = {
+  [SIGNAL_METHOD_IDS.MOMENTUM_BREAKOUT]: [
+    'Breakout above the preceding 20 closes; pullback below the breakout close, reconfirmation above it; invalidate below 95% of the reference or after 20 sessions.',
+    '突破前 20 筆收盤價最高值；低於突破收盤價為回檔，其後高於該價為再確認；跌破參考價 95% 或經過 20 個交易觀察值則失效。',
+  ],
   [SIGNAL_METHOD_IDS.TREND_MOVING_AVERAGE]: [
     'Shorter- versus longer-horizon closing-price averages; evaluated after the daily close.',
     '比較較短期與較長期的收盤價平均，並於每日收盤後判定。',

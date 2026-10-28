@@ -23,11 +23,12 @@ const observations = (values, sourceUrl = 'https://example.com/prices') => value
 
 const rows = values => normalizePriceObservations(observations(values), 'NBIS');
 
-test('registry exposes three descriptive signal families without buy/sell verdicts', () => {
+test('registry exposes descriptive signal methods without buy/sell verdicts', () => {
   expect(DEFAULT_SIGNAL_METHOD_ID).toBe('trend-moving-average');
   expect(SIGNAL_METHODS.map(method => [method.id, method.family])).toEqual([
     ['trend-moving-average', 'trend'],
     ['momentum-rsi', 'momentum'],
+    ['momentum-breakout', 'momentum'],
     ['volatility-bollinger', 'volatility'],
   ]);
   const copy = JSON.stringify(SIGNAL_METHODS);

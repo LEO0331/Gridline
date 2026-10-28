@@ -1,4 +1,5 @@
 import { momentumRsiMethod } from './momentumRsi';
+import { momentumBreakoutMethod } from './momentumBreakout';
 import { normalizePriceObservations } from './series';
 import { trendMovingAverageMethod } from './trendMovingAverage';
 import { volatilityBollingerMethod } from './volatilityBollinger';
@@ -6,6 +7,7 @@ import { volatilityBollingerMethod } from './volatilityBollinger';
 export const SIGNAL_METHOD_IDS = {
   TREND_MOVING_AVERAGE: 'trend-moving-average',
   MOMENTUM_RSI: 'momentum-rsi',
+  MOMENTUM_BREAKOUT: 'momentum-breakout',
   VOLATILITY_BOLLINGER: 'volatility-bollinger',
 };
 
@@ -14,6 +16,7 @@ export const DEFAULT_SIGNAL_METHOD_ID = SIGNAL_METHOD_IDS.TREND_MOVING_AVERAGE;
 const methods = [
   trendMovingAverageMethod,
   momentumRsiMethod,
+  momentumBreakoutMethod,
   volatilityBollingerMethod,
 ];
 
