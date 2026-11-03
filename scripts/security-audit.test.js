@@ -77,9 +77,71 @@ test('missing, failed, stale or mismatched exposure proof blocks', () => {
     const { audit, options } = fixture(); change(options); assert.equal(evaluateAudit(audit, options).ok, false);
   }
 });
-test('malformed audit counts, missing origins and cycles fail closed', () => {
+test('malformed audit counts, missing origins and originless cycles fail closed', () => {
   for (const change of [audit => { audit.error = {}; }, audit => { audit.metadata.vulnerabilities.high = 0; }, audit => { audit.vulnerabilities.micromatch.via = ['unknown']; }, audit => { audit.vulnerabilities.braces.via = ['micromatch']; }]) {
     const { audit, options } = fixture(); change(audit); assert.throws(() => evaluateAudit(audit, options));
+  }
+});
+
+test('self-references and mutual cycles retain their reachable approved advisory', () => {
+  for (const reverse of [false, true]) {
+    for (const cycle of ['braces', 'micromatch']) {
+      const { audit, options } = fixture();
+      audit.vulnerabilities.braces.via.unshift(cycle);
+      if (reverse) audit.vulnerabilities = Object.fromEntries(Object.entries(audit.vulnerabilities).reverse());
+      const result = evaluateAudit(audit, options);
+      assert.equal(result.ok, true);
+      assert.deepEqual(result.accepted.map(item => item.package).sort(), ['braces', 'micromatch']);
+      for (const item of result.accepted) assert.deepEqual(item.advisories, [identity.url]);
+    }
+  }
+});
+
+test('cycles collect every origin regardless of package and via order', () => {
+  for (const reversePackages of [false, true]) {
+    for (const reverseVia of [false, true]) {
+      const { audit, options } = fixture();
+      audit.vulnerabilities.braces.via.unshift('micromatch');
+      audit.vulnerabilities.micromatch.via.push({ name: 'micromatch', dependency: 'micromatch', severity: 'high', url: 'https://github.com/advisories/GHSA-aaaa-bbbb-cccc', range: '*' });
+      if (reversePackages) audit.vulnerabilities = Object.fromEntries(Object.entries(audit.vulnerabilities).reverse());
+      if (reverseVia) for (const item of Object.values(audit.vulnerabilities)) item.via.reverse();
+      const result = evaluateAudit(audit, options);
+      assert.equal(result.ok, false);
+      assert.equal(result.accepted.length, 0);
+      assert.deepEqual(result.blocked.map(item => item.package).sort(), ['braces', 'micromatch']);
+    }
+  }
+});
+
+test('critical origins reached through cycles cannot be excepted or understate severity', () => {
+  const { audit, options } = fixture();
+  audit.vulnerabilities.braces.via.unshift('micromatch');
+  audit.vulnerabilities.micromatch.via.push({ name: 'micromatch', dependency: 'micromatch', severity: 'critical', url: 'https://github.com/advisories/GHSA-aaaa-bbbb-cccc', range: '*' });
+  assert.throws(() => evaluateAudit(audit, options), /understates/);
+  for (const item of Object.values(audit.vulnerabilities)) item.severity = 'critical';
+  audit.metadata.vulnerabilities.high = 0;
+  audit.metadata.vulnerabilities.critical = 2;
+  const result = evaluateAudit(audit, options);
+  assert.equal(result.ok, false);
+  assert.equal(result.accepted.length, 0);
+  assert.equal(result.blocked.length, 2);
+});
+
+test('originless cycles fail closed even for lower-severity findings', () => {
+  const { audit, options } = fixture();
+  audit.vulnerabilities.braces.via = ['micromatch'];
+  for (const item of Object.values(audit.vulnerabilities)) item.severity = 'moderate';
+  audit.metadata.vulnerabilities.high = 0;
+  audit.metadata.vulnerabilities.moderate = 2;
+  assert.throws(() => evaluateAudit(audit, options), /origin/i);
+});
+
+test('cycles do not conceal unknown references or malformed originating advisories', () => {
+  for (const via of ['unknown', { name: 'micromatch', dependency: 'micromatch', severity: 'high', range: '*' }]) {
+    const { audit, options } = fixture();
+    audit.vulnerabilities.braces.via.unshift('micromatch');
+    audit.vulnerabilities.micromatch.via.push(via);
+    assert.throws(() => evaluateAudit(audit, options), typeof via === 'string' ? /unknown package/ : /metadata is invalid/);
   }
 });
 test('lower-severity findings stay reported without needing a high exception', () => {
@@ -88,6 +150,21 @@ test('lower-severity findings stay reported without needing a high exception', (
   audit.vulnerabilities.micromatch.via.push('formatter'); audit.metadata.vulnerabilities.moderate++; audit.metadata.vulnerabilities.total++;
   const result = evaluateAudit(audit, options); assert.equal(result.ok, true); assert.equal(result.notices.length, 1);
   assert.deepEqual(result.accepted[1].advisories, [identity.url]);
+});
+
+test('npm low entries with moderate transitive origins remain non-blocking notices', () => {
+  const { audit, options } = fixture();
+  audit.vulnerabilities.braces.severity = 'moderate';
+  audit.vulnerabilities.braces.via[0].severity = 'moderate';
+  audit.vulnerabilities.micromatch.severity = 'low';
+  audit.vulnerabilities.braces.via.push('micromatch');
+  audit.metadata.vulnerabilities.high = 0;
+  audit.metadata.vulnerabilities.moderate = 1;
+  audit.metadata.vulnerabilities.low = 1;
+  const result = evaluateAudit(audit, options);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.accepted, []);
+  assert.deepEqual(result.notices, [{ package: 'braces', severity: 'moderate' }, { package: 'micromatch', severity: 'low' }]);
 });
 test('registry errors, timeouts, nonstandard exit codes and invalid JSON never pass', () => {
   for (const response of [{ status: 2, stdout: '{}' }, { status: 0, stdout: 'invalid' }, { status: 0, stdout: '{"error":{}}' }, { error: new Error('Timeout'), status: null, stdout: '' }]) {

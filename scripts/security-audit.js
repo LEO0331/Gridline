@@ -29,20 +29,25 @@ function evaluateAudit(audit, { policy, lock, exposure, fingerprint, now = new D
     if (identities.has(exception.advisory)) fail('Duplicate advisory exceptions are not allowed.');
     identities.add(exception.advisory);
   }
-  const memo = new Map();
-  const origins = (name, stack = new Set()) => {
-    if (memo.has(name)) return memo.get(name);
-    if (stack.has(name)) fail('Audit advisory graph contains a cycle.');
-    const item = audit.vulnerabilities[name];
-    if (!item) fail('Audit advisory graph refers to an unknown package.');
-    const next = new Set([...stack, name]);
-    const result = item.via.flatMap(via => {
-      if (typeof via === 'string') return origins(via, next);
-      if (!via || via.name !== name || via.dependency !== name || !LEVELS.includes(via.severity) || typeof via.url !== 'string' || typeof via.range !== 'string') fail('Originating advisory metadata is invalid.');
-      return [{ package: name, advisory: via, finding: item }];
-    });
+  const origins = name => {
+    // npm metavulnerability links can cycle. Resolve each root completely;
+    // caching partial results while skipping backedges can lose advisories.
+    const pending = [name]; const visited = new Set(); const result = [];
+    while (pending.length) {
+      const current = pending.pop();
+      if (visited.has(current)) continue;
+      visited.add(current);
+      if (!Object.hasOwn(audit.vulnerabilities, current)) fail('Audit advisory graph refers to an unknown package.');
+      const item = audit.vulnerabilities[current];
+      for (const via of item.via) {
+        if (typeof via === 'string') { pending.push(via); continue; }
+        if (!via || via.name !== current || via.dependency !== current || !LEVELS.includes(via.severity) || typeof via.url !== 'string' || typeof via.range !== 'string') fail('Originating advisory metadata is invalid.');
+        result.push({ package: current, advisory: via, finding: item });
+      }
+    }
+    if (!result.length) fail('Audit advisory graph has no reachable originating advisory.');
     const unique = [...new Map(result.map(item => [JSON.stringify([item.package, item.advisory.url, item.advisory.range, item.advisory.severity, item.advisory.cwe, item.advisory.cvss?.vectorString]), item])).values()];
-    memo.set(name, unique); return unique;
+    return unique;
   };
   const proofValid = () => fingerprint && ['lockfileSha256', 'manifestSha256', 'sourceTreeSha256'].every(key => /^[a-f0-9]{64}$/.test(fingerprint[key] || '')) && exposure?.reportVersion === 1 && exposure.ok === true && Array.isArray(exposure.errors) && !exposure.errors.length && exposure.bundle?.javascriptFiles > 0 && exposure.bundle?.mappedSources > 0 && same(exposure.fingerprint, fingerprint) &&
     Number.isFinite(Date.parse(exposure.generatedAt)) && Date.parse(exposure.generatedAt) <= nowMs + 60000 && nowMs - Date.parse(exposure.generatedAt) <= 6 * 3600000;
@@ -57,7 +62,9 @@ function evaluateAudit(audit, { policy, lock, exposure, fingerprint, now = new D
   };
   for (const [name, finding] of entries) {
     const causes = origins(name);
-    if (causes.some(origin => LEVELS.indexOf(origin.advisory.severity) > LEVELS.indexOf(finding.severity))) fail('Audit finding understates its originating advisory severity.');
+    // npm can assign low severity to entries with moderate transitive origins.
+    // Only understatement across the blocking threshold affects this policy.
+    if (causes.some(origin => ['high', 'critical'].includes(origin.advisory.severity) && LEVELS.indexOf(origin.advisory.severity) > LEVELS.indexOf(finding.severity))) fail('Audit finding understates its originating advisory severity.');
     if (finding.severity === 'critical') { blocked.push({ package: name, reason: 'Critical findings cannot be excepted.' }); continue; }
     if (finding.severity !== 'high') { notices.push({ package: name, severity: finding.severity }); continue; }
     const blockingCauses = causes.filter(origin => ['high', 'critical'].includes(origin.advisory.severity));
