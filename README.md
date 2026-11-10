@@ -22,6 +22,8 @@ Documentation reviewed against the current implementation on **2026-10-12**. Bro
 
 Start in Overview with the After-Market Research Brief. Check the latest available market session, changes between snapshot publications and source coverage. Narrow the company cards by theme, category or search, then select a company and inspect its four evidence lanes. Open the original records and use Data Health to investigate gaps. [Overview workflow and brief rules](docs/research-overview.md)
 
+Upcoming Research Catalysts previews the next seven calendar days. Open Research Calendar for the week, month or agenda and inspect the official sources behind its manually reviewed schedules. [Calendar guide and coverage](docs/research-calendar.md)
+
 ## What the demo demonstrates
 
 - **Infrastructure intelligence** — region navigation and verified primary-source milestones; unsourced regional capacity/stage figures are withheld.
