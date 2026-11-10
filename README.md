@@ -24,6 +24,8 @@ Start in Overview with the After-Market Research Brief. Check the latest availab
 
 Upcoming Research Catalysts previews the next seven calendar days. Open Research Calendar for the week, month or agenda and inspect the official sources behind its manually reviewed schedules. [Calendar guide and coverage](docs/research-calendar.md)
 
+Thematic Research compares two to four companies within a reviewed theme. Inspect dated closes, qualified benchmark comparisons, reported financial facts, and the evidence behind research questions. [Thematic research guide](docs/thematic-research.md)
+
 ## What the demo demonstrates
 
 - **Infrastructure intelligence** — region navigation and verified primary-source milestones; unsourced regional capacity/stage figures are withheld.

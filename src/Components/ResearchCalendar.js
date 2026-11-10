@@ -5,7 +5,7 @@ import { RESEARCH_THEMES } from '../researchThemes';
 import {
   CALENDAR_CATEGORIES, CALENDAR_REVIEW_DAYS, CALENDAR_TIME_ZONES, DEFAULT_CALENDAR_TIME_ZONE,
   calendarCoverage, calendarDate, calendarPeriod, calendarWeekday, catalystStatus,
-  filterCatalysts, projectCatalysts, shiftCalendarPeriod, upcomingCatalysts, validateCatalysts,
+  filterCatalysts, projectCatalysts, selectThemeCatalysts, shiftCalendarPeriod, upcomingCatalysts, validateCatalysts,
 } from '../researchCalendarModel';
 import './ResearchCalendar.css';
 
@@ -95,34 +95,43 @@ function EventDetails({ event, language, timeZone, now, onCompanyResearch, showS
   </details>;
 }
 
-export function UpcomingCatalysts({ language = 'en', now = new Date() }) {
+export function UpcomingCatalysts({ language = 'en', now = new Date(), themeId, tickers = [] }) {
   const t = (en, zh) => localized([en, zh], language);
   const timeZone = DEFAULT_CALENDAR_TIME_ZONE;
   const projected = projectCatalysts(records.events, timeZone);
-  const upcoming = upcomingCatalysts(projected, { now, timeZone });
+  const upcoming = themeId
+    ? selectThemeCatalysts(projected, { themeId, tickers, now, timeZone })
+    : upcomingCatalysts(projected, { now, timeZone });
   const coverage = calendarCoverage(records.events, { now, timeZone });
+  const calendarHref = themeId ? `#calendar?${new URLSearchParams({ theme: themeId })}` : '#calendar';
   return <section className="upcoming-catalysts" aria-labelledby="upcoming-catalysts-title">
     <div className="calendar-heading">
       <h2 id="upcoming-catalysts-title">{t('Upcoming Research Catalysts', '近期研究催化事件')}</h2>
-      <a href="#calendar">{t('Open Research Calendar →', '開啟研究日曆 →')}</a>
+      <a href={calendarHref}>{t('Open Research Calendar →', '開啟研究日曆 →')}</a>
     </div>
     <p>{t('Seven calendar days including today · New York', '含今天的七個日曆日 · 紐約時間')}</p>
     {upcoming.length > 0 ? <ul>{upcoming.slice(0, 3).map(event => <li key={event.id}>
       <strong>{titleFor(event, language)}</strong>
       <span>{localized(categoryCopy[event.category], language)} · {scheduleLabel(event, language, timeZone)}
-        {event.tickers?.length > 0 && ` · ${event.tickers.join(', ')}`} · {localized(statusCopy[event.status], language)} · <SourceLink event={event} language={language} /></span>
-    </li>)}</ul> : <p>{t('No verified upcoming events in the current calendar coverage.', '目前日曆涵蓋範圍內沒有已驗證的近期事件。')}</p>}
+        {event.tickers?.length > 0 ? ` · ${event.tickers.join(', ')}` : themeId && ` · ${t('Theme context', '主題背景')}`}
+        {' · '}{localized(statusCopy[event.status], language)} · <SourceLink event={event} language={language} /></span>
+    </li>)}</ul> : <p>{themeId
+      ? t('No verified upcoming events for this selection in the current calendar coverage.', '目前日曆涵蓋範圍內沒有符合所選條件的已驗證近期事件。')
+      : t('No verified upcoming events in the current calendar coverage.', '目前日曆涵蓋範圍內沒有已驗證的近期事件。')}</p>}
     <Coverage coverage={coverage} rejected={records.rejected} language={language} />
   </section>;
 }
 
-export default function ResearchCalendar({ language = 'en', now = new Date(), onCompanyResearch, data = records }) {
+export default function ResearchCalendar({ language = 'en', now = new Date(), onCompanyResearch, data = records, query = '' }) {
   const t = (en, zh) => localized([en, zh], language);
   const [timeZone, setTimeZone] = useState(DEFAULT_CALENDAR_TIME_ZONE);
   const today = calendarDate(now, timeZone);
   const [date, setDate] = useState(() => today);
   const [view, setView] = useState('week');
-  const [filters, setFilters] = useState(emptyFilters);
+  const [filters, setFilters] = useState(() => {
+    const theme = new URLSearchParams(query).get('theme');
+    return RESEARCH_THEMES.some(item => item.id === theme) ? { ...emptyFilters, theme } : emptyFilters;
+  });
   const period = calendarPeriod(date, view);
   const projected = useMemo(() => projectCatalysts(data.events, timeZone), [data.events, timeZone]);
   const events = filterCatalysts(projected, { ...period, ...filters });

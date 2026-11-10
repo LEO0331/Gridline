@@ -43,3 +43,9 @@
   .overview-shell>header nav{flex-wrap:wrap;gap:0 12px;overflow:visible}
   .overview-shell>header nav button{min-height:44px}
 }
+.overview-theme-link{display:inline-flex;align-items:center;min-height:40px}
+@media(max-width:540px){
+  .overview-theme-link{min-height:44px}
+  .themes-shell>header nav{flex-wrap:wrap;gap:0 12px;overflow:visible}
+  .themes-shell>header nav button{min-height:44px}
+}

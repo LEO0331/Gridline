@@ -1,6 +1,6 @@
 import {
   addCalendarDays, calendarCoverage, calendarDate, calendarPeriod, calendarWeekday, catalystStatus,
-  filterCatalysts, projectCatalysts, shiftCalendarPeriod, upcomingCatalysts, validateCatalysts,
+  filterCatalysts, projectCatalysts, selectThemeCatalysts, shiftCalendarPeriod, upcomingCatalysts, validateCatalysts,
 } from './researchCalendarModel';
 import registry from './data/researchCatalysts.json';
 
@@ -34,6 +34,24 @@ const earnings = event({
 test('the checked-in calendar contains admissible records with unique IDs', () => {
   expect(registry.length).toBeGreaterThan(0);
   expect(validateCatalysts(registry)).toEqual({ events: registry, rejected: [] });
+});
+
+test('thematic previews retain selected ticker or explicit theme-only active schedules', () => {
+  const records = [
+    earnings,
+    event({ id: 'theme-only', themeIds: ['neocloud'], status: 'tentative' }),
+    event({ id: 'other-company', tickers: ['CRWV'], themeIds: ['neocloud'] }),
+    event({ id: 'unassociated' }),
+    event({ id: 'canceled-company', tickers: ['NBIS'], status: 'canceled' }),
+    event({ id: 'past-company', tickers: ['NBIS'], start: '2026-11-09' }),
+    event({ id: 'unavailable-company', tickers: ['NBIS'], sourceUnavailable: true }),
+  ];
+  const { events, rejected } = validateCatalysts(records);
+  expect(rejected).toEqual([]);
+  const projected = projectCatalysts(events);
+  expect(selectThemeCatalysts(projected, { themeId: 'neocloud', tickers: ['NBIS'], now }).map(item => item.id)).toEqual(['theme-only', earnings.id]);
+  expect(selectThemeCatalysts(projected, { themeId: 'unsupported', tickers: [], now })).toEqual([]);
+  expect(events).toEqual(records);
 });
 
 test('accepts date-only, exact timestamps, multi-day and explicit status records', () => {

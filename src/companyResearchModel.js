@@ -1,7 +1,7 @@
 import { companies } from './companyRegistry';
 import profiles from './data/companyResearch.json';
 
-const METRICS = [
+export const FINANCIAL_METRICS = [
   ['revenue', 'Revenue', '營收'], ['dilutedEps', 'Diluted EPS', '稀釋每股盈餘'],
   ['capex', 'Capital expenditure', '資本支出'], ['currentDebt', 'Current debt', '流動負債借款'],
   ['longTermDebt', 'Long-term debt', '長期負債借款'],
@@ -10,7 +10,7 @@ const dayMs = 86400000;
 const httpsUrl = value => { try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password; } catch { return false; } };
 const secUrl = value => { try { return httpsUrl(value) && ['www.sec.gov', 'data.sec.gov'].includes(new URL(value).hostname); } catch { return false; } };
 const fieldLabels = (id, detail = {}) => {
-  const metric = METRICS.find(item => item[0] === id);
+  const metric = FINANCIAL_METRICS.find(item => item[0] === id);
   return { id, label: detail.conceptLabel || metric?.[1] || 'Other reported metric', labelZh: detail.conceptLabelZh || metric?.[2] || '其他申報指標', ...detail };
 };
 function officialDevelopment(snapshot, profile, item) {
@@ -53,7 +53,7 @@ export function buildCompanyResearch(snapshot = {}, ticker, now = new Date()) {
   const cutoff = Math.min(Date.parse(snapshot.generatedAt || ''), new Date(now).getTime());
   const rows = (snapshot.observations || []).filter(row => row.source === 'sec' && row.ticker === ticker);
   const state = snapshot.sourceHealth?.sec?.tickers?.[ticker];
-  const financials = METRICS.flatMap(([type, label, labelZh]) => {
+  const financials = FINANCIAL_METRICS.flatMap(([type]) => {
     const fact = rows.filter(row => row.type === type && row.value !== null && row.value !== '' && Number.isFinite(Number(row.value)) &&
       /^(?:[A-Z]{3})(?:\/shares)?$/.test(row.unit || '') && secUrl(row.sourceUrl || row.provenance?.originUrl) &&
       Number.isFinite(Date.parse(row.periodEnd)) && Number.isFinite(Date.parse(row.filedAt)) && Date.parse(row.periodEnd) <= cutoff && Date.parse(row.filedAt) <= cutoff)

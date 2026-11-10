@@ -179,6 +179,12 @@ export function upcomingCatalysts(events, { now = new Date(), timeZone = DEFAULT
     .filter(event => !event.sourceUnavailable && ['scheduled', 'tentative', 'rescheduled'].includes(catalystStatus(event, { now })));
 }
 
+export function selectThemeCatalysts(events, { themeId, tickers = [], now, timeZone } = {}) {
+  return upcomingCatalysts(events, { now, timeZone }).filter(event => event.tickers?.length
+    ? event.tickers.some(ticker => tickers.includes(ticker))
+    : themeIds.has(themeId) && event.themeIds?.includes(themeId));
+}
+
 export function calendarCoverage(events, { now = new Date(), timeZone = DEFAULT_CALENDAR_TIME_ZONE } = {}) {
   const today = calendarDate(now, timeZone);
   const latestReview = events.reduce((latest, event) => !latest || event.reviewedAt > latest ? event.reviewedAt : latest, null);

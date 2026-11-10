@@ -9,6 +9,7 @@ import EventSourceCoverage from '../Components/EventSourceCoverage';
 import ResearchBrief from '../Components/ResearchBrief';
 import DailyResearchBrief from '../Components/DailyResearchBrief';
 import ResearchCalendar, { UpcomingCatalysts } from '../Components/ResearchCalendar';
+import ThematicResearch from '../Components/ThematicResearch';
 import CompanyResearch from '../Components/CompanyResearch';
 import MarketContext from '../Components/MarketContext';
 import { companies, COMPANY_CATEGORIES, categoryLabel as companyCategoryLabel, groupedCompanies, trackedCompanies } from '../companyRegistry';
@@ -31,12 +32,21 @@ const ALL = 'All regions';
 const ALL_EVIDENCE = 'All evidence';
 const categoryLabel = (type, zh) => zh ? CATEGORY_ZH[type] || type : type;
 const regionLabel = (region, zh) => zh ? REGION_ZH[region] || region : region;
-const routes = { overview: 'Overview', calendar: 'Calendar', infrastructure: 'Infrastructure', events: 'Events', methodology: 'Methodology' };
+const routes = { overview: 'Overview', themes: 'Themes', calendar: 'Calendar', infrastructure: 'Infrastructure', events: 'Events', methodology: 'Methodology' };
+const routeLabels = {
+  Overview: ['Overview', '總覽'],
+  Themes: ['Thematic Research', '主題研究'],
+  Calendar: ['Research Calendar', '研究日曆'],
+  Infrastructure: ['Infrastructure', '基礎設施'],
+  Events: ['Events', '事件'],
+  Methodology: ['Methodology', '方法論'],
+};
 const readRoute = () => {
   const [view, query = ''] = window.location.hash.replace(/^#/, '').split('?');
   const params = new URLSearchParams(query);
   return {
     view: routes[view] || 'Overview',
+    calendarQuery: view === 'calendar' ? query : '',
     requestedTicker: view === 'overview' && companies.some(company => company.ticker === params.get('ticker')) ? params.get('ticker') : null,
     region: [ALL, ...REGIONS.map(item => item.name)].includes(params.get('region')) ? params.get('region') : ALL,
     filter: EVENT_TYPES.includes(params.get('filter')) ? params.get('filter') : ALL_EVIDENCE,
@@ -54,6 +64,7 @@ const trendLabel = (trend, zh) => ({
 
 export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySnapshot = () => {}, language = 'en', onLanguageChange = () => {} }) {
   const [route, setRoute] = useState(readRoute);
+  const [themeSelection, setThemeSelection] = useState({ themeId: 'neocloud' });
   const focusedCompanyRoute = useRef(null);
   const companyList = useMemo(() => trackedCompanies(snapshot), [snapshot]);
   const [ticker, setTicker] = useState(() => companyList.find(company => company.ticker === route.requestedTicker)?.ticker || companyList[0]?.ticker || 'NBIS');
@@ -81,7 +92,8 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
     }
   }, [route, ticker, snapshotState, hasObservations]);
   useEffect(() => {
-    if (route.view === 'Calendar') focusOverviewSection('calendar-title');
+    const heading = { Calendar: 'calendar-title', Themes: 'themes-title' }[route.view];
+    if (heading) focusOverviewSection(heading);
   }, [route.view]);
   const currentEvents = events.filter(item => !item.archived);
   const market = useMemo(() => Object.fromEntries(companyList.map(company => [company.ticker, marketSignals(snapshot, company.ticker)])), [snapshot, companyList]);
@@ -121,8 +133,9 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
     if (requestedTicker) params.set('ticker', requestedTicker);
     const query = params.toString();
     window.history.pushState({}, '', `${window.location.pathname}${window.location.search}#${view.toLowerCase()}${query ? `?${query}` : ''}`);
-    setRoute({ view, region, filter, requestedTicker });
+    setRoute({ view, region, filter, requestedTicker, calendarQuery: '' });
   };
+  const openCompanyResearch = symbol => navigate('Overview', { ticker: symbol });
   useEffect(() => {
     const sync = () => setRoute(readRoute());
     window.addEventListener('popstate', sync);
@@ -135,7 +148,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
       : eventHealth.status === 'partial' ? t('Partial source coverage', '部分來源涵蓋')
         : eventHealth.status === 'ok' ? t('Configured event sources checked', '已檢查設定的事件來源')
           : t('Event source check needed', '事件來源需檢查');
-  const routeClass = { Overview: 'overview-shell', Calendar: 'calendar-shell' }[route.view];
+  const routeClass = { Overview: 'overview-shell', Calendar: 'calendar-shell', Themes: 'themes-shell' }[route.view];
   return <main className={routeClass ? `shell ${routeClass}` : 'shell'} lang={language}>
     <a className="skip-link" href="#dashboard-content" onClick={event => {
       event.preventDefault();
@@ -143,7 +156,13 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
     }}>{t('Skip to dashboard content', '跳至儀表板內容')}</a>
     <header>
       <button className="brand" onClick={() => navigate('Overview')} aria-label={t('Return to overview', '返回總覽')}><i>◫</i><span><b>GRIDLINE</b><small>{t('INFRASTRUCTURE INTELLIGENCE', '基礎設施情報')}</small></span></button>
-      <nav aria-label={t('Primary navigation', '主要導覽')}>{Object.values(routes).map(view => <button key={view} onClick={() => navigate(view)} className={route.view === view ? 'current' : ''} aria-current={route.view === view ? 'page' : undefined}>{t(view === 'Calendar' ? 'Research Calendar' : view, { Overview: '總覽', Calendar: '研究日曆', Infrastructure: '基礎設施', Events: '事件', Methodology: '方法論' }[view])}</button>)}<button onClick={() => { window.location.hash = 'health'; window.scrollTo(0, 0); }}>{t('Data status', '資料狀態')}</button></nav>
+      <nav aria-label={t('Primary navigation', '主要導覽')}>
+        {Object.values(routes).map(view => <button key={view} onClick={() => navigate(view)}
+          className={route.view === view ? 'current' : ''} aria-current={route.view === view ? 'page' : undefined}>
+          {t(...routeLabels[view])}
+        </button>)}
+        <button onClick={() => { window.location.hash = 'health'; window.scrollTo(0, 0); }}>{t('Data status', '資料狀態')}</button>
+      </nav>
       <div className="head-actions"><button className="language" aria-label={t('Switch language', '切換語言')} onClick={() => onLanguageChange(zh ? 'en' : 'zh-TW')}>{zh ? 'EN' : '繁中'}</button><span className={`live ${route.view === 'Events' ? eventHealth?.status || 'pending' : snapshotMeta.generatedAt && !snapshotMeta.retainedSnapshot ? 'live' : 'pending'}`}>{route.view === 'Events' ? eventStatus : snapshotMeta.generatedAt ? t(`Published ${dateLabel(snapshotMeta.generatedAt)}`, `已發布快照 ${dateLabel(snapshotMeta.generatedAt)}`) : snapshotState === 'error' ? t('Snapshot unavailable', '快照無法取得') : t('Snapshot loading', '快照載入中')}</span><AccountGate language={language} weight={100} onPreferences={prefs => { if (shouldApplyAccountLanguage(prefs.language)) onLanguageChange(prefs.language); }} /></div>
     </header>
     <div id="dashboard-content" tabIndex="-1">
@@ -186,6 +205,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
         <div className="overview-filter-actions">
           <span>{t('Selected company', '所選公司')} · {ticker}</span>
           {visibleCompanies.length > 0 && <button type="button" className="text overview-jump" onClick={() => focusOverviewSection('overview-company-results')}>{t('View matching company cards ↓', '查看符合條件的公司卡片 ↓')}</button>}
+          <a className="text overview-theme-link" href="#themes">{t('Open Thematic Research →', '開啟主題研究 →')}</a>
         </div>
         {!visibleCompanies.length && <p className="company-empty">{t('No companies match these filters.', '沒有符合篩選條件的公司。')} <button onClick={resetCompanyFilters}>{t('Reset filters', '重設篩選')}</button></p>}
       </section>
@@ -214,7 +234,10 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
       </>}
     </>}
 
-    {route.view === 'Calendar' && <ResearchCalendar language={language} now={overviewNow} onCompanyResearch={symbol => navigate('Overview', { ticker: symbol })} />}
+    {route.view === 'Themes' && <ThematicResearch snapshot={snapshot} snapshotState={snapshotState} language={language}
+      now={overviewNow} selection={themeSelection} onSelectionChange={setThemeSelection} onCompanyResearch={openCompanyResearch} />}
+    {route.view === 'Calendar' && <ResearchCalendar key={route.calendarQuery} language={language} now={overviewNow}
+      query={route.calendarQuery} onCompanyResearch={openCompanyResearch} />}
     {route.view === 'Infrastructure' && <InfrastructureView region={route.region} events={events} navigate={navigate} zh={zh} />}
     {route.view === 'Events' && <EventsView events={events} health={eventHealth} region={route.region} filter={route.filter} navigate={navigate} zh={zh} />}
     {route.view === 'Methodology' && <MethodologyView zh={zh} />}
