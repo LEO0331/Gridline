@@ -44,7 +44,7 @@ jobs:
         id: price-retry
         if: github.event_name == 'schedule' && github.event.schedule != '17 12 * * *'
         run: node scripts/price-retry-plan.js
-      - name: Refresh, validate and publish with bounded concurrency recovery
+      - name: Refresh, validate and publish snapshots and research history
         if: steps.price-retry.outputs.needed != 'false'
         id: publish-snapshot
         run: |

@@ -29,6 +29,8 @@ Successful non-news sources replace corresponding rows, per ticker where support
 
 The exporter also creates `public/data/dashboard-overview.json`, a compact runtime projection for the UI. Both artifacts are generated and validated together; the publisher safely regenerates against the latest remote snapshot when a concurrent push occurs. See [demo hardening](demo-hardening.md) and [Actions operation](actions-maintenance.md).
 
+The static publisher retains a separate, bounded `public/data/research-reports.json` history of eligible snapshot editions. GitHub Pages serves it on the Reports route. Its archive and weekly views use the evidence captured with those editions. [Research Reports](research-reports.md)
+
 Supabase is separate from both research profiles: it holds optional accounts and user preferences plus a constant-response health RPC. It is not the storage backend for market, SEC, events or research observations, and new research coverage does not require a Supabase migration.
 
 The separately dated `public/data/event-review.json` records a scoped manual check of curated event sources. The frontend merges it with the market snapshot without changing the latter's generation time; newer automated event checks take precedence. Historical v1 score and reconstruction rows are omitted from new exports.

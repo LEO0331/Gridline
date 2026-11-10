@@ -39,6 +39,8 @@ test('weekly Lighthouse skips publication and snapshot audits do not skip verifi
   assert.ok(workflow.jobs.lighthouse.if.includes("needs.deploy.result == 'success'"));
   assert.ok(workflow.jobs.lighthouse.if.includes('always()'));
   assert.equal(workflow.concurrency['cancel-in-progress'], false);
+  const changes = workflow.jobs.plan.steps.find(step => step.id === 'changes');
+  assert.ok(changes.run.includes('research-reports'));
 });
 
 test('data refresh avoids frontend installs and uses safe bounded publishing', () => {

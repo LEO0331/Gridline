@@ -1,0 +1,43 @@
+.research-reports {
+  min-width: 0;
+  padding-top: 24px;
+  overflow-wrap: anywhere;
+}
+
+.report-intro h1 { margin: 0; font-size: clamp(25px, 4vw, 38px); }
+.report-intro .eyebrow { margin-bottom: 6px; }
+.research-reports p { margin: 6px 0; color: #aabbd0; font-size: 13px; line-height: 1.55; }
+.report-panel { min-width: 0; margin: 12px 0; padding: clamp(12px, 2vw, 18px); border: 1px solid var(--line); background: var(--panel); }
+.report-panel h2 { margin: 0 0 8px; font-size: 19px; }
+.report-panel h3 { margin: 12px 0 8px; font-size: 15px; }
+.report-controls, .report-view-picker, .report-links { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; }
+.report-controls { margin: 14px 0; }
+.report-controls label { display: grid; min-width: 0; max-width: 100%; gap: 5px; color: #aabbd0; font-size: 13px; }
+.research-reports select, .research-reports button {
+  min-height: 44px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid #39516c;
+  background: #0c1725;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  color-scheme: dark;
+}
+.report-view-picker button[aria-pressed=true] { background: #253a52; border-color: var(--amber); }
+.research-reports details > summary { display: list-item; min-height: 34px; padding: 6px 0; cursor: pointer; color: var(--amber); font-size: 14px; }
+.research-reports details details { padding-inline-start: 9px; border-inline-start: 1px solid var(--line); margin-top: 8px; }
+.research-reports a { color: var(--amber); }
+.research-reports summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.report-list { margin: 8px 0; padding: 0; list-style: none; }
+.report-list > li { padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.report-list > li a, .report-links a { display: inline-flex; align-items: center; min-height: 36px; font-size: 13px; }
+.research-reports nav.report-links { margin-top: 16px; }
+.report-links button { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 540px) {
+  .research-reports { padding-top: 16px; }
+  .report-controls label { flex: 1 1 100%; }
+  .research-reports details > summary, .report-list > li a, .report-links a { min-height: 44px; }
+}

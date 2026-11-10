@@ -22,6 +22,8 @@ Do not overwrite `observedAt` with ingestion time. Historical prices and grid re
 
 This distinction is required for lookback calculations and no-look-ahead validation.
 
+Historical research editions use the snapshot generation timestamp as the evidence cutoff and store market-session dates separately. The report archive retains original evidence dates, availability, and source links after subsequent refreshes. [Research Reports](research-reports.md)
+
 ## Market-provider provenance
 
 The public demo can use more than one market-data endpoint. Price observations therefore record the **provider actually used for that ticker/history fetch** and its origin URL. If Stooq is unusable and the Yahoo Finance demo fallback is selected, the normalized observation identifies Yahoo Finance rather than inheriting a generic/stale Stooq label.
