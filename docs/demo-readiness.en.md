@@ -4,6 +4,8 @@
 
 A source labelled `ok` cannot report zero usable records, except the event source: zero verified events is a valid result. Degraded/partial optional sources are warnings. A snapshot older than 96 hours is flagged. A dated event-review artifact, when present, must also pass its scope, publication-date and HTTPS-link checks.
 
+The same gate checks the versioned research report archive against the full snapshot. The empty bootstrap is valid. Malformed or inconsistent editions block publication. [Research Reports](research-reports.md)
+
 New company signals are MA5/MA10 calculations over ten cited closes. Fundamental, exposure, emotion, confidence and expectations-gap scores, inferred valuation and regional capacity estimates remain unavailable until a sourced method exists. This does not hide reported SEC financial facts: each company has revenue/EPS research and available debt/capex with period, filing, currency, tag and classification. Five reviewed debt fields remain explicitly not separately reported; no missing field becomes zero. Historical v1 reconstructions are not required or published. The price-only backtest is a separate retrospective analysis and does not make the demo investment-ready.
 
 The event feed has separate status. A curated review file may show a partial check with its actual `checkedAt`, scope, and `coverageThrough`; this is not a claim that every possible event source was searched. Later automated event checks replace the displayed status when newer, while older verified event observations remain available.

@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { evaluateDemoReadiness } = require('../server/demo-readiness');
 const { runtimeSnapshotMatches } = require('../server/snapshot-artifacts');
+const { validateArchiveAgainstSnapshot } = require('../server/research-report-archive');
+const { MAX_ARCHIVE_BYTES } = require('../src/researchReportArchive');
 
 const target = process.argv[2] || path.resolve(__dirname, '..', 'public', 'data', 'dashboard-snapshot.json');
 let snapshot;
@@ -35,12 +37,22 @@ if (fs.existsSync(reviewFile)) {
   } catch { reviewValid = false; }
 }
 const mark = item => item.ok ? 'PASS' : item.severity === 'warning' ? 'WARN' : 'FAIL';
-console.log(`Gridline demo readiness: ${result.status.toUpperCase()}`);
+const archiveFile = path.join(path.dirname(target), 'research-reports.json');
+let archiveError = null;
+try {
+  if (fs.statSync(archiveFile).size > MAX_ARCHIVE_BYTES + 2) throw new Error('Research archive exceeds its file-size limit.');
+  validateArchiveAgainstSnapshot(JSON.parse(fs.readFileSync(archiveFile, 'utf8')), snapshot);
+} catch (error) { archiveError = error.message; }
+const blockerCount = result.blockerCount + [reviewValid, runtimeValid, archiveError === null].filter(ok => !ok).length;
+console.log(`Gridline demo readiness: ${blockerCount ? 'BLOCKED' : result.status.toUpperCase()}`);
 for (const item of result.checks) {
   const detail = item.detail ? ` ${JSON.stringify(item.detail)}` : '';
   console.log(`${mark(item).padEnd(4)}  ${item.id.padEnd(28)} ${item.message}${detail}`);
 }
-console.log(`\nBlockers: ${result.blockerCount} | Warnings: ${result.warningCount}`);
+console.log(`\nBlockers: ${blockerCount} | Warnings: ${result.warningCount}`);
 console.log(`${reviewValid ? 'PASS' : 'FAIL'}  dated-event-review             Manual event review has dated scope and HTTPS primary URLs.`);
 console.log(`${runtimeValid ? 'PASS' : 'FAIL'}  runtime-snapshot-match         Compact dashboard matches the full snapshot.`);
-if (!result.ready || !reviewValid || !runtimeValid) process.exit(1);
+console.log(archiveError
+  ? `FAIL  research-report-archive        ${archiveError}`
+  : 'PASS  research-report-archive        Versioned research history is valid for the published snapshot.');
+if (blockerCount) process.exit(1);

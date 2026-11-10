@@ -10,7 +10,7 @@ Gridline 將**資料更新**與**網站部署**分開處理。
 4. 成功 ticker 的結果會取代其對應來源的觀察值；降級 ticker／來源保留上次成功資料，避免空結果把歷史洗掉。逐次發現的基礎設施事件及公司公告即使檢查成功仍會累積保留，來源游標與先前驗證日期也會保留。
 5. 產生器寫入 **schemaVersion 4** 的 `public/data/dashboard-snapshot.json`，內容包含來源健康狀態、更新結果、觀察值、版本化分數、`companyHistory`、`backtestCoverage`，以及精簡的 `demoReadiness` 摘要，並同步產生相符的執行期精簡版 `dashboard-overview.json`。
 6. 在提交檔案前，workflow 會執行 `npm run demo:check` 驗證示範關鍵條件。若存在 blocker，更新 workflow 會失敗，現有公開快照維持不變。
-7. 產生的快照 artifact 有變更且通過 gate 後，發布程式才提交到 `main`。它要求乾淨的已追蹤工作目錄且無未發布 commit。最多三次發布嘗試會偵測同時發生的 `main` 更新，只捨棄產生的快照變更、快轉並重新產生；push 被拒絕時只可撤銷程式自身已驗證、僅含快照的 commit。權限、驗證或歷史衝突會中止，不會 force-push。
+7. 快照通過驗證後，發布程式依已提交的基準產生並驗證有保留上限的 `research-reports.json`，再一併提交變更的快照與報告檔案。程式要求乾淨的已追蹤工作目錄且無未發布 commit。最多三次發布嘗試會偵測同時發生的 `main` 更新，只捨棄自身產生的檔案變更，快轉後重新產生。推送被拒絕時只可撤銷程式自身已驗證且僅包含這些檔案的 commit。權限、驗證或歷史衝突會中止。[研究報告指南](research-reports.md#繁體中文)
 8. 接著由 refresh workflow **明確 dispatch** `Deploy to GitHub Pages` 的 `workflow_dispatch`。這一步是必要的，因為使用 repository `GITHUB_TOKEN` 產生的 push 不會自動觸發另一個 push-based workflow。
 9. Pages workflow 從更新後的 `main` 依 lockfile 安裝，執行共用回歸測試與快照準備度檢查，再建置 React 及部署 Pages artifact。僅更新快照的部署跳過 Lighthouse，應用程式部署則執行。僅修改文件／已追蹤 build 輸出的 push 不部署。每週一台北時間 10:37 的 Pages 排程只以 Lighthouse 檢查已部署網站，不重新建置或發布。
 

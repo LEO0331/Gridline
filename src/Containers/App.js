@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import AccountGate from '../Components/AccountGate';
 import SignalExplainer from '../Components/SignalExplainer';
@@ -22,6 +22,8 @@ import { DEFAULT_SIGNAL_METHOD_ID } from '../signals/registry';
 import { filterResearchCompanies, RESEARCH_THEMES } from '../researchThemes';
 import { marketContext } from '../marketContext';
 
+const ResearchReports = lazy(() => import('../Components/ResearchReports'));
+
 const REGIONS = [
   { name: 'Northern Virginia', grid: 'PJM', x: 63, y: 31 },
   { name: 'Texas', grid: 'ERCOT', x: 34, y: 64 },
@@ -32,11 +34,12 @@ const ALL = 'All regions';
 const ALL_EVIDENCE = 'All evidence';
 const categoryLabel = (type, zh) => zh ? CATEGORY_ZH[type] || type : type;
 const regionLabel = (region, zh) => zh ? REGION_ZH[region] || region : region;
-const routes = { overview: 'Overview', themes: 'Themes', calendar: 'Calendar', infrastructure: 'Infrastructure', events: 'Events', methodology: 'Methodology' };
+const routes = { overview: 'Overview', themes: 'Themes', calendar: 'Calendar', reports: 'Reports', infrastructure: 'Infrastructure', events: 'Events', methodology: 'Methodology' };
 const routeLabels = {
   Overview: ['Overview', '總覽'],
   Themes: ['Thematic Research', '主題研究'],
   Calendar: ['Research Calendar', '研究日曆'],
+  Reports: ['Research Reports', '研究報告'],
   Infrastructure: ['Infrastructure', '基礎設施'],
   Events: ['Events', '事件'],
   Methodology: ['Methodology', '方法論'],
@@ -148,7 +151,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
       : eventHealth.status === 'partial' ? t('Partial source coverage', '部分來源涵蓋')
         : eventHealth.status === 'ok' ? t('Configured event sources checked', '已檢查設定的事件來源')
           : t('Event source check needed', '事件來源需檢查');
-  const routeClass = { Overview: 'overview-shell', Calendar: 'calendar-shell', Themes: 'themes-shell' }[route.view];
+  const routeClass = { Overview: 'overview-shell', Calendar: 'calendar-shell', Themes: 'themes-shell', Reports: 'reports-shell' }[route.view];
   return <main className={routeClass ? `shell ${routeClass}` : 'shell'} lang={language}>
     <a className="skip-link" href="#dashboard-content" onClick={event => {
       event.preventDefault();
@@ -166,7 +169,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
       <div className="head-actions"><button className="language" aria-label={t('Switch language', '切換語言')} onClick={() => onLanguageChange(zh ? 'en' : 'zh-TW')}>{zh ? 'EN' : '繁中'}</button><span className={`live ${route.view === 'Events' ? eventHealth?.status || 'pending' : snapshotMeta.generatedAt && !snapshotMeta.retainedSnapshot ? 'live' : 'pending'}`}>{route.view === 'Events' ? eventStatus : snapshotMeta.generatedAt ? t(`Published ${dateLabel(snapshotMeta.generatedAt)}`, `已發布快照 ${dateLabel(snapshotMeta.generatedAt)}`) : snapshotState === 'error' ? t('Snapshot unavailable', '快照無法取得') : t('Snapshot loading', '快照載入中')}</span><AccountGate language={language} weight={100} onPreferences={prefs => { if (shouldApplyAccountLanguage(prefs.language)) onLanguageChange(prefs.language); }} /></div>
     </header>
     <div id="dashboard-content" tabIndex="-1">
-      {route.view !== 'Calendar' && <SnapshotLoadState
+      {route.view !== 'Calendar' && route.view !== 'Reports' && <SnapshotLoadState
         state={snapshotState}
         hasObservations={hasObservations}
         language={language}
@@ -238,6 +241,9 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
       now={overviewNow} selection={themeSelection} onSelectionChange={setThemeSelection} onCompanyResearch={openCompanyResearch} />}
     {route.view === 'Calendar' && <ResearchCalendar key={route.calendarQuery} language={language} now={overviewNow}
       query={route.calendarQuery} onCompanyResearch={openCompanyResearch} />}
+    {route.view === 'Reports' && <Suspense fallback={<p className="copy" role="status">{t('Loading research reports…', '正在載入研究報告…')}</p>}>
+      <ResearchReports language={language} now={overviewNow} onCompanyResearch={openCompanyResearch} />
+    </Suspense>}
     {route.view === 'Infrastructure' && <InfrastructureView region={route.region} events={events} navigate={navigate} zh={zh} />}
     {route.view === 'Events' && <EventsView events={events} health={eventHealth} region={route.region} filter={route.filter} navigate={navigate} zh={zh} />}
     {route.view === 'Methodology' && <MethodologyView zh={zh} />}

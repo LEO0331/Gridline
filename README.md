@@ -26,6 +26,8 @@ Upcoming Research Catalysts previews the next seven calendar days. Open Research
 
 Thematic Research compares two to four companies within a reviewed theme. Inspect dated closes, qualified benchmark comparisons, reported financial facts, and the evidence behind research questions. [Thematic research guide](docs/thematic-research.md)
 
+Research Reports browses retained point-in-time daily editions and weekly reviews with explicit gaps. The public archive starts empty and grows through validated snapshot publications. [Research reports guide](docs/research-reports.md)
+
 ## What the demo demonstrates
 
 - **Infrastructure intelligence** — region navigation and verified primary-source milestones; unsourced regional capacity/stage figures are withheld.
