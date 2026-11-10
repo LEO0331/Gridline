@@ -1,0 +1,104 @@
+.daily-brief {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: clamp(14px, 2vw, 24px);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.daily-brief h2 {
+  font-size: clamp(18px, 2.2vw, 24px);
+  line-height: 1.25;
+  margin: 0;
+}
+
+.daily-brief-meta,
+.daily-brief p,
+.daily-brief li {
+  color: #aabbd0;
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.daily-brief strong,
+.daily-brief time {
+  color: var(--text);
+}
+
+.daily-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.daily-brief-grid > div {
+  background: #0c1725;
+  border: 1px solid var(--line);
+  padding: 12px;
+}
+
+.daily-brief h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.daily-brief ul {
+  margin: 6px 0;
+  padding-left: 16px;
+}
+
+.daily-brief a,
+.daily-brief button,
+.daily-brief summary {
+  color: var(--amber);
+}
+
+.daily-brief button,
+.daily-brief summary,
+.daily-brief-details > a {
+  font-size: 13px;
+  min-height: 44px;
+  padding: 11px 2px;
+}
+
+.daily-brief button {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-align: start;
+}
+
+.daily-brief-details {
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: start;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.daily-brief summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.daily-brief summary:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .daily-brief-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .daily-brief-details {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .daily-brief-details > a {
+    justify-self: start;
+  }
+}

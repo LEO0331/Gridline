@@ -7,6 +7,7 @@ import SnapshotChanges from '../Components/SnapshotChanges';
 import SnapshotLoadState from '../Components/SnapshotLoadState';
 import EventSourceCoverage from '../Components/EventSourceCoverage';
 import ResearchBrief from '../Components/ResearchBrief';
+import DailyResearchBrief from '../Components/DailyResearchBrief';
 import CompanyResearch from '../Components/CompanyResearch';
 import MarketContext from '../Components/MarketContext';
 import { companies, COMPANY_CATEGORIES, categoryLabel as companyCategoryLabel, groupedCompanies, trackedCompanies } from '../companyRegistry';
@@ -16,6 +17,8 @@ import { formatUsd, marketSignals } from '../marketSignals';
 import { SIGNAL_LENSES, signalLens } from '../signalLenses';
 import { shouldApplyAccountLanguage } from '../i18n';
 import { DEFAULT_SIGNAL_METHOD_ID } from '../signals/registry';
+import { filterResearchCompanies, RESEARCH_THEMES } from '../researchThemes';
+import { marketContext } from '../marketContext';
 
 const REGIONS = [
   { name: 'Northern Virginia', grid: 'PJM', x: 63, y: 31 },
@@ -38,6 +41,7 @@ const readRoute = () => {
   };
 };
 const dateLabel = value => value ? String(value).slice(0, 10) : '—';
+const focusOverviewSection = id => document.getElementById(id)?.focus();
 const percent = value => Number.isFinite(value) ? `${value >= 0 ? '+' : ''}${value.toFixed(2)}%` : '—';
 const trendLabel = (trend, zh) => ({
   above: zh ? '短期價格趨勢向上' : 'Short-term price trend: upward',
@@ -54,6 +58,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
     if (companyList.length && !companyList.some(company => company.ticker === ticker)) setTicker(companyList[0].ticker);
   }, [companyList, ticker]);
   const [companyCategory, setCompanyCategory] = useState('all');
+  const [companyTheme, setCompanyTheme] = useState('all');
   const [companySearch, setCompanySearch] = useState('');
   const [briefRegion, setBriefRegion] = useState(ALL);
   const [lensId, setLensId] = useState('momentum');
@@ -64,12 +69,22 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
   const hasObservations = Boolean(snapshot.observations?.length);
   const currentEvents = events.filter(item => !item.archived);
   const market = useMemo(() => Object.fromEntries(companyList.map(company => [company.ticker, marketSignals(snapshot, company.ticker)])), [snapshot, companyList]);
-  const visibleCompanies = companyList.filter(company => (companyCategory === 'all' || company.category === companyCategory)
-    && `${company.ticker} ${company.name} ${company.nameZh || ''}`.toLowerCase().includes(companySearch.trim().toLowerCase()));
+  const tickers = companyList.map(company => company.ticker);
+  const overviewNow = new Date();
+  const overviewMarketContext = route.view === 'Overview' && snapshotState === 'ready'
+    ? marketContext(snapshot, tickers, overviewNow)
+    : null;
+  const visibleCompanies = filterResearchCompanies(companyList, { theme: companyTheme, category: companyCategory, search: companySearch });
+  const resetCompanyFilters = () => {
+    setCompanyTheme('all');
+    setCompanyCategory('all');
+    setCompanySearch('');
+    focusOverviewSection('company-search');
+  };
   const companyGroups = groupedCompanies(companyList);
   const selectedCompany = companyList.find(company => company.ticker === ticker);
   const lens = signalLens(snapshot, ticker, lensId, new Date(), signalMethodId);
-  const snapshotMeta = summarizeSnapshot(snapshot, language);
+  const snapshotMeta = summarizeSnapshot(snapshot, language, undefined, overviewNow);
   const snapshotDisplayLabel = snapshotState === 'error'
     ? t('SNAPSHOT UNAVAILABLE', '快照無法取得')
     : snapshotMeta.generatedLabel;
@@ -101,7 +116,7 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
       : eventHealth.status === 'partial' ? t('Partial source coverage', '部分來源涵蓋')
         : eventHealth.status === 'ok' ? t('Configured event sources checked', '已檢查設定的事件來源')
           : t('Event source check needed', '事件來源需檢查');
-  return <main className="shell" lang={language}>
+  return <main className={route.view === 'Overview' ? 'shell overview-shell' : 'shell'} lang={language}>
     <a className="skip-link" href="#dashboard-content">{t('Skip to dashboard content', '跳至儀表板內容')}</a>
     <header>
       <button className="brand" onClick={() => navigate('Overview')} aria-label={t('Return to overview', '返回總覽')}><i>◫</i><span><b>GRIDLINE</b><small>{t('INFRASTRUCTURE INTELLIGENCE', '基礎設施情報')}</small></span></button>
@@ -117,30 +132,58 @@ export default function App({ snapshot = {}, snapshotState = 'ready', onRetrySna
       />
 
     {route.view === 'Overview' && <>
-      <section className="hero"><div><p className="eyebrow">{t('DATA-CENTER BUILDOUT RESEARCH', '資料中心建設研究')}</p><h1>{t('Follow the buildout,', '追蹤資料中心建設，')}<br/><em>{t('from grid to market.', '從電網到市場。')}</em></h1><p className="copy">{t('Compare dated grid demand, project decisions, company disclosures and market prices. Inspect each original source and the gaps between them.', '並列具日期的電網需求、專案決策、公司揭露與市場價格，檢視原始來源及證據缺口。')}</p></div><div className="asof"><span>{t('MARKET SNAPSHOT · LOCAL TIME', '市場快照 · 本地時間')}</span><b>{snapshotDisplayLabel}</b><small>{snapshotMeta.totalSources ? t(`${snapshotMeta.healthySources}/${snapshotMeta.totalSources} sources refreshed · ${snapshotMeta.freshness === 'fresh' ? 'current as of publication' : snapshotMeta.freshness === 'partial' ? 'Partial source coverage' : snapshotMeta.publicationFreshness === 'partial' ? 'Last published data retained; refresh delayed · Partial source coverage' : 'Last published data retained; refresh delayed'}`, `${snapshotMeta.healthySources}/${snapshotMeta.totalSources} 個來源已更新 · ${snapshotMeta.freshness === 'fresh' ? '發布時已更新' : snapshotMeta.freshness === 'partial' ? '部分來源涵蓋' : snapshotMeta.publicationFreshness === 'partial' ? '保留上次發布資料；更新延遲 · 部分來源涵蓋' : '保留上次發布資料；更新延遲'}`) : t('Provider status unavailable', '來源狀態未提供')}</small></div></section>
+      <section className="hero overview-intro"><div><p className="eyebrow">{t('DATA-CENTER BUILDOUT RESEARCH', '資料中心建設研究')}</p><h1>{t('Follow the buildout,', '追蹤資料中心建設，')} <em>{t('from grid to market.', '從電網到市場。')}</em></h1><p className="copy">{t('Compare dated grid demand, project decisions, company disclosures and market prices. Inspect each original source and the gaps between them.', '並列具日期的電網需求、專案決策、公司揭露與市場價格，檢視原始來源及證據缺口。')}</p></div><div className="asof"><span>{t('SNAPSHOT PUBLICATION · LOCAL TIME', '快照發布 · 本地時間')}</span><b>{snapshotDisplayLabel}</b><small>{snapshotMeta.totalSources ? t(`${snapshotMeta.healthySources}/${snapshotMeta.totalSources} sources refreshed · ${snapshotMeta.freshness === 'fresh' ? 'current as of publication' : snapshotMeta.freshness === 'partial' ? 'Partial source coverage' : snapshotMeta.publicationFreshness === 'partial' ? 'Last published data retained; refresh delayed · Partial source coverage' : 'Last published data retained; refresh delayed'}`, `${snapshotMeta.healthySources}/${snapshotMeta.totalSources} 個來源已更新 · ${snapshotMeta.freshness === 'fresh' ? '發布時已更新' : snapshotMeta.freshness === 'partial' ? '部分來源涵蓋' : snapshotMeta.publicationFreshness === 'partial' ? '保留上次發布資料；更新延遲 · 部分來源涵蓋' : '保留上次發布資料；更新延遲'}`) : t('Provider status unavailable', '來源狀態未提供')}</small></div></section>
+      {snapshotState === 'ready' && <DailyResearchBrief
+        snapshot={snapshot}
+        ticker={ticker}
+        tickers={tickers}
+        context={overviewMarketContext}
+        now={overviewNow}
+        language={language}
+        onTickerChange={setTicker}
+      />}
       {snapshotState === 'ready' && hasObservations && <>
+      <section className="company-browser overview-company-filters" aria-labelledby="overview-filters-title">
+        <h2 id="overview-filters-title" tabIndex="-1">{t('Explore research themes', '探索研究主題')}</h2>
+        <div className="company-theme">
+          <label htmlFor="company-theme">{t('Research theme', '研究主題')}</label>
+          <select id="company-theme" value={companyTheme} onChange={event => setCompanyTheme(event.target.value)}>
+            <option value="all">{t('All Companies', '所有公司')}</option>
+            {RESEARCH_THEMES.map(theme => <option key={theme.id} value={theme.id}>{zh ? theme.labelZh : theme.label}</option>)}
+          </select>
+        </div>
+        <div className="company-filters" role="group" aria-label={t('Company categories', '公司類別')}>
+          <button onClick={() => setCompanyCategory('all')} aria-pressed={companyCategory === 'all'} className={companyCategory === 'all' ? 'active-filter' : ''}>{t('All', '全部')} <span>{companyList.length}</span></button>
+          {COMPANY_CATEGORIES.map(category => <button key={category.id} onClick={() => setCompanyCategory(category.id)} aria-pressed={companyCategory === category.id} className={companyCategory === category.id ? 'active-filter' : ''}>{zh ? category.labelZh : category.label} <span>{companyList.filter(company => company.category === category.id).length}</span></button>)}
+        </div>
+        <div className="company-search"><label htmlFor="company-search">{t('Search companies', '搜尋公司')}</label><input id="company-search" type="search" value={companySearch} onChange={event => setCompanySearch(event.target.value)} placeholder={t('Ticker or company name', '公司代號或名稱')} /><span role="status">{t('Showing', '顯示')} {visibleCompanies.length} / {companyList.length} {t('companies', '家公司')}</span></div>
+        <div className="overview-filter-actions">
+          <span>{t('Selected company', '所選公司')} · {ticker}</span>
+          {visibleCompanies.length > 0 && <button type="button" className="text overview-jump" onClick={() => focusOverviewSection('overview-company-results')}>{t('View matching company cards ↓', '查看符合條件的公司卡片 ↓')}</button>}
+        </div>
+        {!visibleCompanies.length && <p className="company-empty">{t('No companies match these filters.', '沒有符合篩選條件的公司。')} <button onClick={resetCompanyFilters}>{t('Reset filters', '重設篩選')}</button></p>}
+      </section>
       <ResearchBrief snapshot={snapshot} ticker={ticker} region={briefRegion} regions={[ALL, ...REGIONS.map(item => item.name)]} language={language} onTickerChange={setTicker} onRegionChange={setBriefRegion} />
-      <MarketContext snapshot={snapshot} tickers={companyList.map(company => company.ticker)} ticker={ticker} language={language} />
-      <CompanyResearch snapshot={snapshot} ticker={ticker} language={language} />
+      <div id="overview-market-context" className="overview-evidence-target" tabIndex="-1">
+        <MarketContext snapshot={snapshot} tickers={tickers} context={overviewMarketContext} ticker={ticker} language={language} />
+      </div>
+      <div id="overview-company-research" className="overview-evidence-target" tabIndex="-1">
+        <CompanyResearch snapshot={snapshot} ticker={ticker} language={language} />
+      </div>
       <section className="lens-picker" aria-label={t('Select signal lens', '選擇訊號視角')}>
         {SIGNAL_LENSES.map(option => <button key={option.id} onClick={() => setLensId(option.id)} className={lensId === option.id ? 'active-filter' : ''} aria-pressed={lensId === option.id}>{zh ? option.nameZh : option.name}</button>)}
       </section>
       <section className="regime"><div className="regime-name"><div><p className="eyebrow">{t('SELECTED RESEARCH LENS', '所選研究視角')}</p><h2>{zh ? lens.labelZh || lens.label : lens.label}</h2><p>{zh ? lens.methodZh || lens.method : lens.method}</p>{zh && lens.originalTitle && <small>{t('Original title', '原始標題')}：{lens.originalTitle}</small>}<small>{t('Scope', '範圍')}: {zh ? lens.scopeZh || regionLabel(lens.scope, true) : lens.scope} · {t('Source date', '來源日期')}: {dateLabel(lens.observedAt)}</small></div></div><div className="regime-buttons"><select aria-label={t('Company', '公司')} value={ticker} onChange={event => setTicker(event.target.value)}>{companyGroups.map(({ category, companies: group }) => <optgroup key={category.id} label={zh ? category.labelZh : category.label}>{group.map(company => <option key={company.ticker} value={company.ticker}>{company.ticker} · {company.name}</option>)}</optgroup>)}</select>{lens.sourceUrl ? <a className="primary" href={lens.sourceUrl} target="_blank" rel="noopener noreferrer">{lens.sourceLabel ? `${zh ? lens.sourceLabelZh || lens.sourceLabel : lens.sourceLabel} ↗` : t('View source ↗', '查看來源 ↗')}</a> : <span>{t('Source unavailable', '來源未提供')}</span>}{lens.additionalSourceUrl && <a className="text" href={lens.additionalSourceUrl} target="_blank" rel="noopener noreferrer">{t('Comparison source ↗', '比較期來源 ↗')}</a>}</div></section>
       <section className="section"><div><p className="eyebrow">{t('VERIFIED EVENT RECORDS', '已驗證事件紀錄')}</p><h3>{t('Verified developments by category', '各類別已驗證進展')}</h3></div><button className="text" onClick={() => navigate('Events')}>{t('View events →', '查看事件 →')}</button></section>
       <section className="drivers">{EVENT_TYPES.map(type => <article key={type}><p className="label">{categoryLabel(type, zh)}</p><strong>{currentEvents.filter(item => item.category === type).length}</strong><small>{t('current verified records', '筆近期已驗證紀錄')}</small></article>)}</section>
-      <section className="section company-title"><div><p className="eyebrow">{t('TRACKED MARKET PRICES', '追蹤市場價格')}</p><h3>{t('Latest dated closes', '最近有日期的收盤價')}</h3></div></section>
-      <section className="company-browser" aria-label={t('Browse companies', '瀏覽公司')}>
-        <div className="company-filters" aria-label={t('Company categories', '公司類別')}>
-          <button onClick={() => setCompanyCategory('all')} aria-pressed={companyCategory === 'all'} className={companyCategory === 'all' ? 'active-filter' : ''}>{t('All', '全部')} <span>{companyList.length}</span></button>
-          {COMPANY_CATEGORIES.map(category => <button key={category.id} onClick={() => setCompanyCategory(category.id)} aria-pressed={companyCategory === category.id} className={companyCategory === category.id ? 'active-filter' : ''}>{zh ? category.labelZh : category.label} <span>{companyList.filter(company => company.category === category.id).length}</span></button>)}
-        </div>
-        <div className="company-search"><label htmlFor="company-search">{t('Search companies', '搜尋公司')}</label><input id="company-search" type="search" value={companySearch} onChange={event => setCompanySearch(event.target.value)} placeholder={t('Ticker or company name', '公司代號或名稱')} /><span role="status">{t('Showing', '顯示')} {visibleCompanies.length} / {companyList.length} {t('companies', '家公司')}</span></div>
-      </section>
-      {!visibleCompanies.length && <p className="company-empty">{t('No companies match these filters.', '沒有符合篩選條件的公司。')} <button onClick={() => { setCompanyCategory('all'); setCompanySearch(''); }}>{t('Reset filters', '重設篩選')}</button></p>}
+      <section className="section company-title"><div><p className="eyebrow">{t('TRACKED MARKET PRICES', '追蹤市場價格')}</p><h2 id="overview-company-results" tabIndex="-1">{t('Latest dated closes', '最近有日期的收盤價')}</h2></div><button type="button" className="text overview-jump" onClick={() => focusOverviewSection('overview-filters-title')}>{t('Company filters ↑', '公司篩選 ↑')}</button></section>
+      {visibleCompanies.length === 0 && <p className="copy">{t('Adjust the company filters to see matching cards.', '調整公司篩選條件以查看符合的公司卡片。')}</p>}
       <section className="companies" aria-label={t('Tracked companies', '追蹤公司')}>{visibleCompanies.map(company => { const data = market[company.ticker]; return <button key={company.ticker} className={`company ${ticker === company.ticker ? 'selected-card' : ''}`} onClick={() => setTicker(company.ticker)} aria-pressed={ticker === company.ticker} aria-label={t(`Select ${company.ticker} ${company.name}`, `選擇 ${company.ticker} ${company.name}`)}><div className="company-top"><div><b>{company.ticker}</b><small>{company.name}</small></div><span className={data?.changePercent < 0 ? 'negative' : 'positive'}>{percent(data?.changePercent)}</span></div><p className="company-role">{companyCategoryLabel(company, language)}</p><p className="company-description">{zh ? company.descriptionZh || company.description : company.description}</p><strong className="price">{formatUsd(data?.close)}</strong><div className="stat"><span>{t('OBSERVED', '觀察日期')}<b>{dateLabel(data?.observedAt)}</b></span><span>{t('TREND', '趨勢')}<b>{trendLabel(data?.trend, zh)}</b></span></div><div className="gap"><span>{t('SOURCE', '來源')}</span><b>{data?.provider || t('Unavailable', '未提供')}</b></div></button>; })}</section>
       {selectedCompany && <p className="copy company-context">{selectedCompany.ticker} · {zh ? selectedCompany.subcategoryZh : selectedCompany.subcategory} · <a className="text" href={selectedCompany.sourceUrl} target="_blank" rel="noopener noreferrer">{t('Business description source ↗', '業務描述來源 ↗')}</a></p>}
       <PriceChart snapshot={snapshot} ticker={ticker} language={language} methodId={signalMethodId} />
-      <SnapshotChanges snapshot={snapshot} ticker={ticker} language={language} />
+      <div id="overview-snapshot-changes" className="overview-evidence-target" tabIndex="-1">
+        <SnapshotChanges snapshot={snapshot} ticker={ticker} language={language} />
+      </div>
       <section className="bottom"><SignalExplainer snapshot={snapshot} ticker={ticker} language={language} methodId={signalMethodId} onMethodChange={setSignalMethodId} /><article className="ledger"><div className="panel-title"><div><p className="eyebrow">{t('EVENT LEDGER', '事件帳本')}</p><h3>{t('Recent verified records', '近期已驗證紀錄')}</h3></div></div>{currentEvents.length ? currentEvents.slice(0, 4).map(item => <div className="event" key={item.id}><span className="impact neutral">•</span><div><p><b>{categoryLabel(item.category, zh)}</b> · {dateLabel(item.publishedAt)}</p><h4>{eventTitle(item, language)}</h4><small>{regionLabel(item.region, zh)} · {item.source} · {t('Last verified', '最近驗證')} {dateLabel(item.retrievedAt)}</small></div><a className="quality" href={item.url} target="_blank" rel="noopener noreferrer">{t('RECORD ↗', '紀錄 ↗')}</a></div>) : <p className="event-empty">{t('No verified current events in this snapshot.', '此快照沒有近期已驗證事件。')}</p>}</article></section>
       </>}
     </>}
