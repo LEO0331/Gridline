@@ -168,6 +168,45 @@ test('company browser localizes category, empty state and counts and honors snap
   expect(within(cards).getAllByRole('button')).toHaveLength(2);
 });
 
+test('theme, category and search intersect without changing the active research company', () => {
+  render(<App snapshot={richSnapshot} />);
+  const theme = screen.getByRole('combobox', { name: 'Research theme' });
+  const search = screen.getByRole('searchbox', { name: 'Search companies' });
+  const cards = screen.getByRole('region', { name: 'Tracked companies' });
+  expect(theme).toHaveValue('all');
+  fireEvent.change(theme, { target: { value: 'hardware' } });
+  expect(within(cards).getAllByRole('button')).toHaveLength(2);
+  fireEvent.click(screen.getByRole('button', { name: /Infrastructure suppliers/ }));
+  fireEvent.change(search, { target: { value: 'broadcom' } });
+  expect(within(cards).getAllByRole('button')).toHaveLength(1);
+  screen.getAllByRole('combobox', { name: 'Company' }).forEach(select => expect(select).toHaveValue('NBIS'));
+
+  fireEvent.click(screen.getByRole('button', { name: 'View matching company cards ↓' }));
+  expect(screen.getByRole('heading', { name: 'Latest dated closes' })).toHaveFocus();
+  expect(window.location.hash).toBe('#overview');
+  fireEvent.click(within(cards).getByRole('button', { name: /Select AVGO/ }));
+  screen.getAllByRole('combobox', { name: 'Company' }).forEach(select => expect(select).toHaveValue('AVGO'));
+
+  fireEvent.change(theme, { target: { value: 'neocloud' } });
+  expect(screen.getByText('No companies match these filters.')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
+  expect(theme).toHaveValue('all');
+  expect(search).toHaveFocus();
+  expect(within(cards).getAllByRole('button')).toHaveLength(20);
+  screen.getAllByRole('combobox', { name: 'Company' }).forEach(select => expect(select).toHaveValue('AVGO'));
+});
+
+test('Traditional Chinese theme labels filter the tracked subset', () => {
+  render(<App snapshot={{ ...richSnapshot, trackedTickers: ['NBIS', 'ANET', 'BE'] }} language="zh-TW" />);
+  const theme = screen.getByRole('combobox', { name: '研究主題' });
+  expect(within(theme).getByRole('option', { name: '電力、冷卻與電網基礎設施' })).toHaveValue('power');
+  fireEvent.change(theme, { target: { value: 'power' } });
+  const cards = screen.getByRole('region', { name: '追蹤公司' });
+  expect(within(cards).getAllByRole('button')).toHaveLength(1);
+  expect(within(cards).getByRole('button', { name: /選擇 BE/ })).toBeVisible();
+  expect(within(cards).getByText('發電與能源')).toBeVisible();
+});
+
 test('Chinese milestone shows a translated headline, translated region and original title', () => {
   const title = 'Loudoun Board Opposes Valley North Transmission Line, Denies Substation Near Dulles Airport';
   const url = 'https://www.loudoun.gov/m/newsflash/Home/Detail/10876';

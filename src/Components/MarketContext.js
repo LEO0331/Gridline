@@ -1,11 +1,9 @@
 import React from 'react';
 import { marketContext } from '../marketContext';
 
-export default function MarketContext({ snapshot, tickers, ticker, language }) {
+export default function MarketContext({ snapshot, tickers, ticker, language, context = marketContext(snapshot, tickers) }) {
   const zh = language === 'zh-TW';
   const t = (en, tw) => zh ? tw : en;
-  const now = new Date().toISOString();
-  const context = marketContext(snapshot, tickers, now);
   const chosen = context.companies.find(item => item.ticker === ticker);
   const label = value => value ? `${value.percentagePoints >= 0 ? '+' : ''}${value.percentagePoints.toFixed(2)} pp` : t('Unavailable', '無法提供');
   const unavailableReason = reason => ({

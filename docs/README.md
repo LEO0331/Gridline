@@ -25,6 +25,7 @@ Reviewed against the repository implementation on **2026-10-12**. Guides describ
 | Topic | Guide |
 | --- | --- |
 | Expansion to 20 tracked companies | [Company coverage](data-center-expansion.md) |
+| Overview, After-Market Research Brief and thematic browsing | [Research workflow](research-overview.md) |
 | Financial definitions, legitimate gaps and issuer news | [Company research](company-research-coverage.md) |
 | Active sources and remaining connector work | [Data-source plan](data-source-plan.md) |
 | Bounded primary-source infrastructure discovery | [Event discovery](event-discovery.md) |

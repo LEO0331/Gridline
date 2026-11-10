@@ -20,7 +20,7 @@ Documentation reviewed against the current implementation on **2026-10-12**. Bro
 | What did companies disclose? | Period-aware SEC revenue, diluted EPS, available capex/debt, filings and dated official announcements for 20 companies. | Definitions and reporting periods differ; these records do not establish earnings quality, valuation or buildout attribution. |
 | How have market prices behaved? | Dated closes, descriptive trend/momentum/volatility methods and a separate retrospective price test. | Price behavior does not explain its cause or prove future returns. |
 
-Start with a company or region, inspect the four evidence views, open the underlying records, and check source dates and gaps in Data Health. The researcher makes the synthesis; the dashboard does not combine these views into a buy/sell score. A new feature belongs in the primary workflow only if it answers one of these questions with a dated source, an explicit rule and a clear evidence boundary.
+Start in Overview with the After-Market Research Brief. Check the latest available market session, changes between snapshot publications and source coverage. Narrow the company cards by theme, category or search, then select a company and inspect its four evidence lanes. Open the original records and use Data Health to investigate gaps. [Overview workflow and brief rules](docs/research-overview.md)
 
 ## What the demo demonstrates
 

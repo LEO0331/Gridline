@@ -57,7 +57,7 @@ export function marketContext(snapshot, tickers, now = new Date().toISOString())
     const eligible = recent(latest, now) && window.length === 20;
     const comparisonCoverage = Object.fromEntries(benchmarks.map(benchmark => [benchmark.ticker,
       Object.fromEntries([20, 60].map(n => [n, relativePerformanceCoverage(rows, benchmark.rows, n, now)]))]));
-    return { ticker, latest, above: eligible ? latest.value > window.reduce((sum, row) => sum + row.value, 0) / 20 : null,
+    return { ticker, rows, latest, above: eligible ? latest.value > window.reduce((sum, row) => sum + row.value, 0) / 20 : null,
       comparisonCoverage,
       comparisons: Object.fromEntries(benchmarks.map(benchmark => [benchmark.ticker, Object.fromEntries([20, 60].map(n => [n, comparisonCoverage[benchmark.ticker][n].comparison]))])) };
   });
