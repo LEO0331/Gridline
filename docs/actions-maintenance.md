@@ -1,6 +1,6 @@
 # GitHub Actions operation
 
-The six repository workflows have separate purposes. The ten visible Actions sidebar entries also include three historical workflows whose files were removed (auth-test capture and two temporary lockfile generators) and GitHub-managed Dependabot Updates. Historical entries do not represent active scheduled jobs. Dependabot's weekly configuration is `.github/dependabot.yml`.
+The seven repository workflows have separate purposes. The Actions sidebar can also show historical workflows and GitHub-managed Dependabot Updates. Dependabot's weekly configuration is `.github/dependabot.yml`.
 
 | Workflow | Trigger / purpose |
 | --- | --- |
@@ -10,6 +10,7 @@ The six repository workflows have separate purposes. The ten visible Actions sid
 | Check Supabase database health | Daily 14:43 Asia/Taipei; manual heartbeat. |
 | Check official event source access | Manual diagnostic with optional inactive-source/article probes. |
 | Audit SEC issuer fact tags | Manual diagnostic for one ticker, a comma-separated list, or `ALL`. |
+| Sync Research Calendar | Tuesday 03:17 UTC / 11:17 Asia/Taipei, with manual dry-run, review, and verified modes. |
 
 ## Verification and publication
 
