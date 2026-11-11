@@ -1,6 +1,6 @@
 # Documentation index
 
-Reviewed against the repository implementation on **2026-10-12**. Guides describe the current 20-company application and six repository workflow files. Dated verification and security reports retain their original evidence dates; a documentation update is not a new financial-source review or security audit.
+The navigation, Research Calendar, Research Reports, and workflow descriptions were checked against `main` on **2026-11-11**. The repository currently defines **seven** workflow files, including weekly calendar synchronization. Other guides retain their own dated verification histories; documentation updates do not constitute new financial-source or security audits.
 
 ## Setup and operations
 
