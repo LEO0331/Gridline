@@ -9,7 +9,7 @@ Gridline 是雙語、聚焦特定問題的研究流程：**資料中心建設是
 示範準備度：[繁體中文](docs/demo-readiness.zh-TW.md) · [English](docs/demo-readiness.en.md)  
 帳戶設定（選用 Supabase）：[繁體中文](docs/accounts.zh-TW.md) · [English](docs/accounts.en.md)
 
-文件已於 **2026-10-12** 依目前實作審閱。[文件索引](docs/README.md) 收錄目前操作指南與具日期的歷史報告。
+研究日曆、研究報告與自動化相關章節已於 **2026-11-11** 對照 `main` 確認；其他指南保留各自的歷史驗證日期。詳見[文件索引](docs/README.md)。
 
 ## 研究流程
 
@@ -22,11 +22,11 @@ Gridline 是雙語、聚焦特定問題的研究流程：**資料中心建設是
 
 從總覽的「盤後研究簡報」開始，查看最近可用的交易日、兩次快照發布之間的變化，以及來源涵蓋情況。可依主題、類別或搜尋縮小公司卡片範圍，再選擇公司查看四個證據面向。開啟原始紀錄，並到「資料狀態」查找缺口。[總覽流程與簡報規則](docs/research-overview.md#繁體中文)
 
-「近期研究催化事件」預覽含今天在內的七個日曆日。開啟「研究日曆」即可切換週、月或議程檢視，並查看人工審閱時程的官方來源。[日曆指南與涵蓋範圍](docs/research-calendar.md#繁體中文)
+「近期研究催化事件」預覽含今天在內的七個日曆日。「研究日曆」提供週、月、議程檢視，保留人工審閱紀錄，也能納入每週自動掃描、嚴格驗證通過的官方時程變更；證據不足者需審閱，來源失效不代表事件取消。[日曆指南](docs/research-calendar.md#繁體中文) · [每週自動同步](docs/calendar-automation.md#繁體中文)
 
 「主題研究」可在同一個已審閱主題內比較二至四家公司，查閱具日期的收盤價、符合條件的基準比較、財務申報數值及研究問題的證據。[主題研究指南](docs/thematic-research.md#繁體中文)
 
-「研究報告」可瀏覽保留的日報版次及標示資料缺口的週報。公開封存從空白開始，由通過驗證的快照發布逐步累積。[研究報告指南](docs/research-reports.md#繁體中文)
+「研究報告」可瀏覽保留的時間點日報版次，以及明確標示資料缺口的週報。第一份真實封存已從 **2026-11-10 NYSE 交易日**開始累積，沒有人工補造歷史；週報主要內容至少需要兩個不同交易日的保留報告，後續符合條件的快照發布將自動新增版次。[研究報告指南](docs/research-reports.md#繁體中文)
 
 ## 這個 Demo 展示什麼
 
@@ -37,6 +37,8 @@ Gridline 是雙語、聚焦特定問題的研究流程：**資料中心建設是
 - **價格回溯**：30D / 90D / 1Y 已觀察收盤價；資料不足時明確顯示 unavailable。
 - **輕量價格圖表**：原生 SVG 提供 30 / 60 / 90 個交易觀察值區間，使用同一份具日期收盤價、維持單一連續 provider 區段並連回價格來源，同時疊加目前所選技術方法的具日期狀態變化標記。
 - **前後快照差異**：每次更新都與前一份已提交快照比較重要的使用者可見變化，包括最新收盤價、已記錄趨勢訊號狀態、已驗證事件新增／更新／封存轉換，以及來源健康狀態。
+- **歷史研究報告**：通過驗證的快照可產生當時版本日報；週報只整合真正保存的不同交易日資料，明示缺漏，不用今日資料倒填過去。
+- **研究日曆維運**：獨立每週檢查官方時程，僅自動發布嚴格驗證通過的變更；來源或日期不明時保留候選審閱，正式更新經 Pages 重建後呈現。
 - **Demo hardening**：明確區分 snapshot 載入／錯誤／空資料狀態與 retry；顯示觀察資料時效；SVG 圖表可用鍵盤逐筆查看；drawer 具焦點管理；提供清楚 focus 狀態、skip navigation，且行動版仍保留主導覽。
 - **可稽核 provenance**：deterministic observation ID、provider/source metadata、觀察與擷取日期、來源 URL 與 lineage。
 - **可擴充技術訊號**：以共同 registry 支援趨勢／移動平均、RSI 與突破動能，以及布林通道波動度；保留日期、provider 連續性檢查，並只輸出描述性狀態，不產生買賣結論。
@@ -109,10 +111,13 @@ Provider 設定請參考 [.env.example](.env.example) 與 [資料擷取 API 說�
                      React UI
 
 GitHub Pages profile：
-provider refresh → 完整版及精簡版快照 → 一致性與準備度 gate
-                → 安全發布兩份檔案至 main → 明確 dispatch Pages
-                → 共用測試 + 快照驗收 + build → Pages deploy
-                → 應用程式更新 Lighthouse；每週網站稽核
+每日來源更新 → 完整版＋精簡版快照＋研究報告封存
+             → 一致性／準備度及封存驗證 → 安全發布至 main
+             → 明確 dispatch Pages
+每週官方時程掃描 → 日曆提案或人工審閱 PR
+                 → 已驗證日曆資料單獨發布 → Pages 重建
+Pages → 共用測試＋資料驗收＋安全檢查＋build → 部署
+      → 應用程式更新 Lighthouse；每週網站稽核
 ```
 
 主要模組：
@@ -120,7 +125,9 @@ provider refresh → 完整版及精簡版快照 → 一致性與準備度 gate
 - `server/sources.js`：公開示範使用 SEC、EIA、事件及市場價格 adapter；PJM Data Miner、FERC 與公司投資人關係 adapter 只屬選用 API 實驗，目前不供應主要研究視角。
 - `server/financial-policy.js` / `server/inline-sec-facts.js`：已審閱的公司財務定義與驗證過的 inline XBRL 備援。
 - `server/company-research.js` / `server/company-source-discovery.js`：官方／SEC 公告、來源驗證、發布者冷卻期及持續保存的探索進度。
-- `scripts/publish-snapshot.js` / `scripts/workflow-summary.js`：有次數上限的快照發布復原及來源／健康檢查摘要。
+- `scripts/publish-snapshot.js` / `scripts/workflow-summary.js`：有次數上限的快照與報告同步發布、來源及健康檢查摘要。
+- `server/research-report-archive.js` / `src/researchReportsModel.js`：時間點日報封存與根據真實歷史生成的週報。
+- `scripts/sync-research-calendar.js` / `scripts/publish-research-calendar.js`：每週有界限的官方來源掃描、日曆獨立發布與候選審閱。
 - `server/price-history.js`：驗證 Stooq 歷史資料，失敗時使用 Yahoo Finance demo fallback。
 - `server/service.js`：cache/source health 與 zero-row fail-closed 行為。
 - `server/provenance.js`：deterministic observation identity 與 audit metadata。
@@ -210,9 +217,11 @@ npm run verify:demo
 
 ## 靜態每日 Snapshot 與 Pages 部署
 
-`Refresh daily dashboard snapshot` 預定每日 **台北時間 06:17**（**前一天 22:17 UTC**）執行，也支援手動 `all`／`company-coverage` 範圍；GitHub 排程可能延遲。前次快照缺少最新應有的 NYSE 收盤日或筆數不足時才補抓價格，涵蓋完整時略過週末／休市日的重複請求。SEC、EIA、事件及公司研究可每日更新。擷取工作只用 Node 內建模組，不安裝前端依賴；保留上次成功資料、產生 schemaVersion 4 完整／精簡快照並通過快照驗收。
+`Refresh daily dashboard snapshot` 的主要排程是每日 **12:17 UTC／台北時間 20:17**；如收盤資料仍不足，於 **15:17 UTC／23:17** 與 **18:17 UTC／隔日 02:17** 有條件補抓價格。另支援手動 `all`／`company-coverage` 範圍；GitHub 排程可能延遲。補抓已滿足 NYSE 應有交易日涵蓋的資料時會略過，SEC、EIA、基礎設施事件及公司研究僅納入主要更新，而非價格補抓。擷取工作使用 Node 內建模組、不安裝前端依賴，保留上次成功資料、產生 schemaVersion 4 完整／精簡快照，並執行資料驗收。
 
-兩份快照須一致並通過驗收才可發布。同時有 `main` 更新時，發布器會快轉後重新產生快照，最多三次，不強制推送。更新工作明確以 `reason=snapshot` dispatch Pages；每次部署仍執行共用測試、快照驗收及 build。快照更新略過 Lighthouse，應用程式更新在發布後稽核，週一台北時間 10:37 只稽核網站、不重新部署。純文件 push 不部署。明確 dispatch 是必要的，因為 `GITHUB_TOKEN` 的快照 push 不會觸發另一個 push workflow。
+兩份快照須互相一致，且**版本化的 `public/data/research-reports.json`** 必須與完整快照通過對照驗證，發布器才會一起提交這三個所屬產物。封存最多保留 60 個報告版次；無合格實質變更時不會產生虛構報告。同時有 `main` 更新時，發布器會快轉後重新產生、最多重試三次、不強制推送。更新工作以 `reason=snapshot` 明確 dispatch Pages；每次部署仍執行共用測試、快照驗收、安全檢查及 build。快照更新略過 Lighthouse；應用程式更新在發布後稽核，週一台北時間 10:37 只稽核網站、不重新部署。純文件 push 不部署。需要明確 dispatch，因為 `GITHUB_TOKEN` push 不會觸發另一個 push workflow。
+
+獨立的 `Sync Research Calendar` 在**每週二 03:17 UTC／台北時間 11:17**執行，預設檢查紐約時間前 30 天及後 90 天。`dry-run` 只產生審閱產物；`review` 可提出候選 PR；`verified` 在 `ENABLE_CALENDAR_AUTO_PUBLISH=true` 且來源證據通過嚴格驗證時，才會更新 `src/data/researchCatalysts.json`，並以 `reason=application` 要求 Pages 重新部署。日期／來源不明的候選留待審閱；這個流程不會修改每日快照或歷史研究報告，且有別於既有每日基礎設施新聞探索。[日曆自動同步說明](docs/calendar-automation.md#繁體中文)
 
 Gate 要求每個啟用的 ticker（預設 20 個）均有至少 60 筆具來源的每日收盤價，且涵蓋預期已完成的美國交易日。舊版 v1 歷史重建不再公布或要求；選用來源降級會顯示警示，並在新的部分涵蓋快照中保留舊證據。關鍵驗收失敗時，已發布的快照檔案維持原樣。
 
