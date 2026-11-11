@@ -9,7 +9,7 @@ Public demo: [Gridline](https://leo0331.github.io/Gridline/)
 Demo readiness: [English](docs/demo-readiness.en.md) · [繁體中文](docs/demo-readiness.zh-TW.md)  
 Account setup (optional Supabase): [English](docs/accounts.en.md) · [繁體中文](docs/accounts.zh-TW.md)
 
-Documentation reviewed against the current implementation on **2026-10-12**. Browse the [documentation index](docs/README.md) for current guides and dated historical reports.
+The Research Calendar, Research Reports, and automation sections were checked against `main` on **2026-11-11**. Other guides retain their own dated verification histories; see the [documentation index](docs/README.md).
 
 ## The research workflow
 
@@ -22,11 +22,11 @@ Documentation reviewed against the current implementation on **2026-10-12**. Bro
 
 Start in Overview with the After-Market Research Brief. Check the latest available market session, changes between snapshot publications and source coverage. Narrow the company cards by theme, category or search, then select a company and inspect its four evidence lanes. Open the original records and use Data Health to investigate gaps. [Overview workflow and brief rules](docs/research-overview.md)
 
-Upcoming Research Catalysts previews the next seven calendar days. Open Research Calendar for the week, month or agenda and inspect the official sources behind its manually reviewed schedules. [Calendar guide and coverage](docs/research-calendar.md)
+Upcoming Research Catalysts previews the next seven calendar days. Open Research Calendar for week, month or agenda views. Its registry preserves manually reviewed schedules and can accept strictly verified official-source updates from a weekly calendar scan; uncertain candidates require review, and unavailable sources do not imply cancellation. [Calendar guide and coverage](docs/research-calendar.md) · [Weekly automation](docs/calendar-automation.md)
 
 Thematic Research compares two to four companies within a reviewed theme. Inspect dated closes, qualified benchmark comparisons, reported financial facts, and the evidence behind research questions. [Thematic research guide](docs/thematic-research.md)
 
-Research Reports browses retained point-in-time daily editions and weekly reviews with explicit gaps. The public archive starts empty and grows through validated snapshot publications. [Research reports guide](docs/research-reports.md)
+Research Reports browses retained point-in-time daily editions and weekly reviews with explicit gaps. Genuine archival editions started accumulating with the **2026-11-10 NYSE session**, without synthetic backfill. A weekly synthesis needs at least two distinct retained sessions; later validated snapshots can add editions automatically. [Research reports guide](docs/research-reports.md)
 
 ## What the demo demonstrates
 
@@ -37,6 +37,8 @@ Research Reports browses retained point-in-time daily editions and weekly review
 - **Price lookback** — 30D / 90D / 1Y observed closes with explicit insufficient-history states.
 - **Lightweight price chart** — native SVG 30 / 60 / 90-session views use the same dated close observations, keep one continuous provider segment, link back to the price source, and overlay dated state-change markers from the currently selected technical method.
 - **Previous-snapshot diff** — each refresh compares material customer-facing changes against the immediately preceding committed snapshot: latest closes, recorded trend-signal state, verified event additions/updates/archive transitions, and source-health status.
+- **Historical research reports** — validated snapshot publications can retain point-in-time Daily editions; Weekly views aggregate actual retained sessions and disclose gaps rather than reconstructing prior days.
+- **Research calendar maintenance** — a separate weekly official-source scan proposes upcoming catalysts, strictly verifies eligible changes, and routes uncertain evidence to review; successful accepted registry changes require a Pages rebuild.
 - **Demo hardening** — explicit snapshot loading/error/empty states, retry, observation-recency labels, keyboard-inspectable SVG charts, modal focus handling, visible focus states, skip navigation, and mobile navigation that remains available below desktop widths.
 - **Auditable provenance** — deterministic observation IDs, provider/source metadata, observation and retrieval dates, origin URLs and lineage.
 - **Extensible technical signals** — a common registry covers trend/moving averages, RSI and breakout momentum, and Bollinger volatility with dated evidence, provider continuity checks and descriptive states rather than buy/sell verdicts.
@@ -109,10 +111,13 @@ Provider configuration is documented in [.env.example](.env.example) and the [in
                      React UI
 
 GitHub Pages profile:
-provider refresh → full + compact snapshots → consistency/readiness gate
-                → safely publish both to main → explicit Pages dispatch
-                → shared tests + acceptance + build → Pages deploy
-                → Lighthouse for application changes; weekly site audit
+daily provider refresh → full + compact snapshots + research-report archive
+                → snapshot consistency/readiness + archive validation
+                → bounded publication to main → explicit Pages dispatch
+weekly official-source scan → calendar registry proposal or review PR
+                → verified calendar-only publication → Pages app rebuild
+Pages → shared tests + acceptance + security + build → deployment
+      → Lighthouse for application changes; weekly site audit
 ```
 
 Key modules:
@@ -120,7 +125,9 @@ Key modules:
 - `server/sources.js` — SEC, EIA, event and market-price adapters used by the public demo; PJM Data Miner, FERC and company IR adapters are optional API experiments and do not feed its current lenses.
 - `server/financial-policy.js` / `server/inline-sec-facts.js` — audited issuer financial definitions and validated inline XBRL fallback.
 - `server/company-research.js` / `server/company-source-discovery.js` — official/SEC announcements, source verification, publisher cooldowns and persistent discovery cursors.
-- `scripts/publish-snapshot.js` / `scripts/workflow-summary.js` — bounded snapshot publication recovery and coverage/heartbeat reports.
+- `scripts/publish-snapshot.js` / `scripts/workflow-summary.js` — bounded snapshot-and-report publication recovery and coverage/heartbeat reports.
+- `server/research-report-archive.js` / `src/researchReportsModel.js` — point-in-time research editions and retained-history weekly reviews.
+- `scripts/sync-research-calendar.js` / `scripts/publish-research-calendar.js` — bounded weekly source discovery, calendar-only verification/publication, and candidate review.
 - `server/price-history.js` — validated Stooq history plus Yahoo Finance demo fallback.
 - `server/service.js` — cache/source health and zero-row fail-closed behavior.
 - `server/provenance.js` — deterministic observation identity and audit metadata.
@@ -210,9 +217,11 @@ npm run verify:demo
 
 ## Static daily snapshot and Pages deployment
 
-`Refresh daily dashboard snapshot` targets **06:17 Asia/Taipei** daily (**22:17 UTC on the previous day**) and supports manual `all` or `company-coverage` scopes. GitHub may delay schedules. Market prices refresh when the previous snapshot lacks sufficient history through the latest expected NYSE close; complete coverage skips redundant weekend/holiday requests. SEC, EIA, events and company research can refresh daily. The collector uses Node built-ins without installing the frontend dependencies, retains last-known-good data, generates schemaVersion 4 full/compact snapshots and runs snapshot acceptance.
+`Refresh daily dashboard snapshot` targets **12:17 UTC / 20:17 Asia/Taipei** for the full scheduled refresh, with **15:17 UTC / 23:17 Asia/Taipei** and **18:17 UTC / 02:17 Asia/Taipei on the following day** as conditional price-only recovery runs. It also supports manual `all` or `company-coverage` scopes. GitHub may delay schedules. Recovery runs skip when the expected NYSE close is already covered; SEC, EIA, infrastructure events and company research are included in the main refresh, not the price-only recoveries. The collector uses Node built-ins without installing frontend dependencies, retains last-known-good data, generates schemaVersion 4 full/compact snapshots, and validates the published data.
 
-Both snapshot files must agree and pass acceptance before publication. The publisher recovers from concurrent `main` updates by fast-forwarding and regenerating, with at most three attempts and no force-push. The refresh explicitly dispatches Pages with `reason=snapshot`; all deployments still run shared regression checks, acceptance and build. Snapshot deployments skip Lighthouse, application changes run it after publication, and Monday 10:37 Asia/Taipei runs a site audit without deployment. Documentation-only pushes skip deployment. Explicit dispatch is necessary because `GITHUB_TOKEN` snapshot pushes do not start push-triggered workflows.
+The two snapshot files must agree, and the **versioned `public/data/research-reports.json` archive** must validate against the full snapshot, before the publisher commits its three owned artifacts together. The archive retains up to 60 editions and adds only qualifying changes; an unchanged refresh does not create a synthetic report. The publisher recovers from concurrent `main` updates by fast-forwarding and regenerating, with at most three attempts and no force-push. The refresh explicitly dispatches Pages with `reason=snapshot`; every deployment still runs shared regression checks, acceptance, security policy and build. Snapshot deployments skip Lighthouse, application changes run it after publication, and Monday 10:37 Asia/Taipei runs a site audit without deployment. Documentation-only pushes skip deployment. Explicit dispatch is necessary because `GITHUB_TOKEN` pushes do not start push-triggered workflows.
+
+`Sync Research Calendar` runs **Tuesdays at 03:17 UTC / 11:17 Asia/Taipei**, checking the preceding 30 and upcoming 90 New York calendar days by default. `dry-run` creates review artifacts without publication; `review` can also propose a PR, while accepted `verified` changes can update only `src/data/researchCatalysts.json` when `ENABLE_CALENDAR_AUTO_PUBLISH=true`. The automated publisher dispatches Pages with `reason=application` after a successful change. Unsupported official sources and ambiguous schedule revisions stay in review; the scan does not rewrite snapshots or historical reports. This workflow is separate from daily infrastructure-news ingestion. [Calendar automation runbook](docs/calendar-automation.md)
 
 The gate requires at least 60 sourced daily closes through the expected US market session for every enabled ticker (20 by default). Historical v1 reconstructions are no longer published or required. Optional degraded providers remain visible as warnings and retain their prior evidence in a new mixed-coverage snapshot. A failed critical acceptance check leaves the last published artifacts intact.
 
