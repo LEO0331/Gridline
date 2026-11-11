@@ -76,3 +76,24 @@ test('reports stale review and an empty seven-day Overview preview honestly', ()
   expect(screen.getByText(/來源審閱已超過 30 天/)).toBeVisible();
   expect(screen.getByRole('link', { name: '開啟研究日曆 →' })).toHaveAttribute('href', '#calendar');
 });
+
+test('shows canceled schedules, retained rescheduling evidence, and separate automated provenance in Traditional Chinese', () => {
+  const official = 'https://www.bls.gov/schedule/news_release/bls.ics';
+  const fixture = validateCatalysts([{
+    ...base, id: 'bls-cpi-2026-10', category: 'macro', title: 'Fixture original title',
+    publisher: 'U.S. Bureau of Labor Statistics', originalLanguage: true, precision: 'date',
+    start: '2026-11-13', previousStart: '2026-11-12', status: 'canceled',
+    sourceUrl: official, verificationSourceUrl: official,
+    verificationMethod: 'bls-ics', verifiedAt: '2026-11-10T10:00:00Z',
+  }]);
+  expect(fixture.rejected).toEqual([]);
+  render(<ResearchCalendar now={now} data={fixture} language="zh-TW" />);
+  const summary = screen.getByText('Fixture original title').closest('summary');
+  expect(summary).toHaveTextContent('已取消 · 原文標題');
+  fireEvent.click(summary);
+  const details = within(summary.parentElement);
+  expect(details.getByText(/人工來源審閱/)).toHaveTextContent('2026-11-10');
+  expect(details.getByText(/自動驗證/)).toHaveTextContent('2026-11-10T10:00:00Z');
+  expect(details.getByText(/原排定開始時間/)).toHaveTextContent('2026-11-12');
+  expect(details.getByRole('link', { name: '官方驗證證據 ↗' })).toHaveAttribute('href', official);
+});

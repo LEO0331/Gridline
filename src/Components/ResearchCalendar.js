@@ -28,8 +28,12 @@ const statusCopy = {
 };
 const localized = (pair, language) => pair[language === 'zh-TW' ? 1 : 0];
 const zoneLabel = (zone, language) => localized(zone === 'Asia/Taipei' ? ['Taipei', '台北'] : ['New York', '紐約'], language);
-const titleFor = (event, language) => language === 'zh-TW' ? event.titleZh : event.title;
+const titleFor = (event, language) => language === 'zh-TW' ? event.titleZh || event.title : event.title;
 const civilInstant = day => new Date(`${day}T12:00:00Z`);
+
+function OriginalTitleLabel({ event, language }) {
+  return event.originalLanguage && !event.titleZh ? <> · {localized(['Original-language title', '原文標題'], language)}</> : null;
+}
 
 function dateLabel(day, language, options = { dateStyle: 'medium' }) {
   return new Intl.DateTimeFormat(language, { ...options, timeZone: 'UTC' }).format(civilInstant(day));
@@ -58,10 +62,12 @@ function SourceLink({ event, language }) {
 function Coverage({ coverage, rejected, language }) {
   const t = (en, zh) => localized([en, zh], language);
   return <p className="calendar-coverage">
-    {coverage.latestReview
-      ? <>{t('Latest manual source review', '最近人工來源審閱')} <time dateTime={coverage.latestReview}>{coverage.latestReview}</time></>
-      : t('Reviewed schedule coverage unavailable.', '目前無可用的已審閱時程。')}
-    {coverage.stale && <> · {t(`Source review is older than ${CALENDAR_REVIEW_DAYS} days. Check the publisher for updates.`, `來源審閱已超過 ${CALENDAR_REVIEW_DAYS} 天，請向發布者確認更新。`)}</>}
+    {coverage.latestReview && <>{t('Latest manual source review', '最近人工來源審閱')} <time dateTime={coverage.latestReview}>{coverage.latestReview}</time></>}
+    {coverage.latestVerification && <>{coverage.latestReview && ' · '}{t('Latest automated event verification', '最近自動事件驗證')} <time dateTime={coverage.latestVerification}>{coverage.latestVerification}</time></>}
+    {!coverage.latestReview && !coverage.latestVerification && t('Schedule verification unavailable.', '目前無可用的時程驗證資料。')}
+    {coverage.stale && <> · {coverage.latestVerification
+      ? t(`Latest recorded verification is older than ${CALENDAR_REVIEW_DAYS} days. Check the publisher for updates.`, `最近的驗證紀錄已超過 ${CALENDAR_REVIEW_DAYS} 天，請向發布者確認更新。`)
+      : t(`Source review is older than ${CALENDAR_REVIEW_DAYS} days. Check the publisher for updates.`, `來源審閱已超過 ${CALENDAR_REVIEW_DAYS} 天，請向發布者確認更新。`)}</>}
     {rejected.length > 0 && <> · {t('Some registry records failed validation.', '部分登錄紀錄未通過驗證。')}</>}
   </p>;
 }
@@ -73,14 +79,24 @@ function EventDetails({ event, language, timeZone, now, onCompanyResearch, showS
   return <details className="calendar-event" data-category={event.category}>
     <summary>
       <strong>{titleFor(event, language)}</strong>
-      <span>{localized(categoryCopy[event.category], language)} · {localized(statusCopy[status] || statusCopy[event.status], language)}</span>
+      <span>{localized(categoryCopy[event.category], language)} · {localized(statusCopy[status] || statusCopy[event.status], language)}<OriginalTitleLabel {...{ event, language }} /></span>
       <span>{scheduleLabel(event, language, timeZone)}{event.tickers?.length > 0 && ` · ${event.tickers.join(', ')}`}</span>
     </summary>
     <div className="calendar-event-details">
-      <p>{t('Source timezone', '來源時區')} · {event.timeZone} · {t('Reviewed', '已審閱')} <time dateTime={event.reviewedAt}>{event.reviewedAt}</time></p>
+      <p>{t('Source timezone', '來源時區')} · {event.timeZone}
+        {event.reviewedAt && <> · {t('Manual source review', '人工來源審閱')} <time dateTime={event.reviewedAt}>{event.reviewedAt}</time>
+          {event.manualReviewSourceUrl && <> · <a href={event.manualReviewSourceUrl} target="_blank" rel="noopener noreferrer">
+            {t('Manually reviewed source ↗', '人工審閱來源 ↗')}
+          </a></>}</>}
+      </p>
+      {event.verifiedAt && <p>{t('Automatically verified', '自動驗證')} <time dateTime={event.verifiedAt}>{event.verifiedAt}</time> · {' '}
+        <a href={event.verificationSourceUrl} target="_blank" rel="noopener noreferrer">
+          {t('Official verification evidence ↗', '官方驗證證據 ↗')}
+        </a>
+      </p>}
       {status === 'past-unverified' && event.status !== 'scheduled' && <p>{t('Published schedule status', '原發布時程狀態')} · {localized(statusCopy[event.status], language)}</p>}
       {event.previousStart && <p>{t('Previous scheduled start', '原排定開始時間')} · <time dateTime={event.previousStart}>{event.previousStart}</time></p>}
-      {event.sourceUnavailable && <p>{t('Source currently unavailable. The previous reviewed schedule is retained.', '來源目前無法取得，保留前次已審閱時程。')}</p>}
+      {event.sourceUnavailable && <p>{t('Source currently unavailable. The previous verified schedule is retained.', '來源目前無法取得，保留前次已驗證時程。')}</p>}
       {note && <p>{note}</p>}
       {event.themeIds?.length > 0 && <p>{t('Research themes', '研究主題')} · {event.themeIds.map(id => {
         const theme = RESEARCH_THEMES.find(item => item.id === id);
@@ -112,7 +128,7 @@ export function UpcomingCatalysts({ language = 'en', now = new Date(), themeId, 
     <p>{t('Seven calendar days including today · New York', '含今天的七個日曆日 · 紐約時間')}</p>
     {upcoming.length > 0 ? <ul>{upcoming.slice(0, 3).map(event => <li key={event.id}>
       <strong>{titleFor(event, language)}</strong>
-      <span>{localized(categoryCopy[event.category], language)} · {scheduleLabel(event, language, timeZone)}
+      <span>{localized(categoryCopy[event.category], language)}<OriginalTitleLabel {...{ event, language }} /> · {scheduleLabel(event, language, timeZone)}
         {event.tickers?.length > 0 ? ` · ${event.tickers.join(', ')}` : themeId && ` · ${t('Theme context', '主題背景')}`}
         {' · '}{localized(statusCopy[event.status], language)} · <SourceLink event={event} language={language} /></span>
     </li>)}</ul> : <p>{themeId
@@ -145,7 +161,7 @@ export default function ResearchCalendar({ language = 'en', now = new Date(), on
 
   return <section className="research-calendar" aria-labelledby="calendar-title">
     <div className="calendar-heading">
-      <div><p className="eyebrow">{t('CURATED OFFICIAL SCHEDULES', '人工審閱的官方時程')}</p>
+      <div><p className="eyebrow">{t('VERIFIED OFFICIAL SCHEDULES', '已驗證的官方時程')}</p>
         <h1 id="calendar-title" tabIndex="-1">{t('Research Catalyst Calendar', '研究催化事件日曆')}</h1>
         <p>{t('Explore scheduled releases, hearings, and company events that could provide new research evidence.', '查看可能提供新研究證據的發布、聽證及公司活動時程。')}</p>
       </div>
@@ -156,7 +172,7 @@ export default function ResearchCalendar({ language = 'en', now = new Date(), on
       </label>
     </div>
     <Coverage coverage={coverage} rejected={data.rejected} language={language} />
-    <p>{t(`${data.events.length} curated schedule records · Partial coverage`, `${data.events.length} 筆人工審閱時程 · 部分涵蓋`)}</p>
+    <p>{t(`${data.events.length} verified schedule records · Partial coverage`, `${data.events.length} 筆已驗證時程 · 部分涵蓋`)}</p>
 
     <div className="calendar-toolbar">
       <div role="group" aria-label={t('Calendar view', '日曆檢視')}>
@@ -235,8 +251,8 @@ export default function ResearchCalendar({ language = 'en', now = new Date(), on
       </li>)}
     </ol>}
     <p className="calendar-note">{t(
-      'This manually curated calendar covers selected official schedules. A date passing does not verify that an event took place or establish its outcome. Published developments remain in the existing evidence views.',
-      '此日曆僅涵蓋人工審閱的部分官方時程。排定日期已過不代表活動已舉行，也無法證明結果。已發布的進展可在既有證據頁面查閱。',
+      'Coverage is limited to selected official schedules with manual review or automated event verification. Verification dates apply to individual records. A date passing does not verify that an event took place or establish its outcome.',
+      '日曆僅涵蓋經人工審閱或自動事件驗證的部分官方時程。驗證日期適用於個別紀錄。排定日期已過不代表活動已舉行，也無法證明結果。',
     )}</p>
   </section>;
 }

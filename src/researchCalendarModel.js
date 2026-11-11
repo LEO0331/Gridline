@@ -1,10 +1,11 @@
-import { companies } from './companyRegistry';
-import { RESEARCH_THEMES } from './researchThemes';
+const companies = require('./data/companyExposure.json');
+const { RESEARCH_THEMES } = require('./researchThemes');
+const { automatedSourceAllowed } = require('./calendarSourcePolicy');
 
-export const CALENDAR_CATEGORIES = ['earnings', 'macro', 'infrastructure', 'company'];
-export const DEFAULT_CALENDAR_TIME_ZONE = 'America/New_York';
-export const CALENDAR_TIME_ZONES = [DEFAULT_CALENDAR_TIME_ZONE, 'Asia/Taipei'];
-export const CALENDAR_REVIEW_DAYS = 30;
+const CALENDAR_CATEGORIES = ['earnings', 'macro', 'infrastructure', 'company'];
+const DEFAULT_CALENDAR_TIME_ZONE = 'America/New_York';
+const CALENDAR_TIME_ZONES = [DEFAULT_CALENDAR_TIME_ZONE, 'Asia/Taipei'];
+const CALENDAR_REVIEW_DAYS = 30;
 
 const DAY_MS = 86_400_000;
 const SCHEDULE_STATUSES = ['scheduled', 'tentative', 'rescheduled', 'canceled', 'completed'];
@@ -73,11 +74,20 @@ const supportedList = (value, supported) => value === undefined || (
 function eventIssue(event) {
   if (!event || typeof event.id !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(event.id)) return 'invalid-id';
   if (!CALENDAR_CATEGORIES.includes(event.category)) return 'invalid-category';
-  if (![event.title, event.titleZh].every(nonempty)) return 'missing-title';
+  const automated = ['verifiedAt', 'verificationMethod', 'verificationSourceUrl'].some(key => Object.hasOwn(event, key));
+  if (event.originalLanguage !== undefined && typeof event.originalLanguage !== 'boolean') return 'invalid-original-language';
+  if (!nonempty(event.title) || (event.titleZh !== undefined && !nonempty(event.titleZh)) ||
+    (!nonempty(event.titleZh) && !(automated && event.originalLanguage))) return 'missing-title';
   if (!SCHEDULE_STATUSES.includes(event.status)) return 'invalid-status';
   if (!validTimeZone(event.timeZone)) return 'invalid-time-zone';
-  if (!officialSource(event.sourceUrl, event.category)) return 'invalid-source';
-  if (!nonempty(event.publisher) || !validDate(event.reviewedAt)) return 'missing-provenance';
+  if (!automated && !officialSource(event.sourceUrl, event.category)) return 'invalid-source';
+  if (!nonempty(event.publisher) || (event.reviewedAt !== undefined && !validDate(event.reviewedAt)) ||
+    (!automated && !validDate(event.reviewedAt))) return 'missing-provenance';
+  if (event.manualReviewSourceUrl !== undefined && (!event.reviewedAt || !officialSource(event.manualReviewSourceUrl, event.category))) {
+    return 'invalid-manual-review-source';
+  }
+  if (automated && (!validTimestamp(event.verifiedAt) || !nonempty(event.verificationMethod) ||
+    !automatedSourceAllowed(event))) return 'invalid-automated-verification';
   if (event.sourceUnavailable !== undefined && typeof event.sourceUnavailable !== 'boolean') return 'invalid-source-status';
   if ([event.note, event.noteZh, event.region].some(value => value !== undefined && !nonempty(value))) return 'invalid-description';
   if (!supportedList(event.tickers, trackedTickers) || (event.category === 'earnings' && !event.tickers?.length)) return 'invalid-ticker';
@@ -87,15 +97,16 @@ function eventIssue(event) {
   const valid = event.precision === 'date' ? validDate : validTimestamp;
   if (!valid(event.start) || (event.end !== undefined && !valid(event.end))) return 'invalid-date';
   if (event.end && Date.parse(event.end) < Date.parse(event.start)) return 'invalid-range';
-  if (event.previousStart !== undefined && (event.status !== 'rescheduled' || !valid(event.previousStart) ||
-    Date.parse(event.previousStart) === Date.parse(event.start))) return 'invalid-previous-start';
+  if (event.previousStart !== undefined && (!['rescheduled', 'canceled', 'completed'].includes(event.status) ||
+    (!validDate(event.previousStart) && !validTimestamp(event.previousStart)) ||
+    (valid(event.previousStart) && Date.parse(event.previousStart) === Date.parse(event.start)))) return 'invalid-previous-start';
   if (event.status === 'completed' && (!officialSource(event.outcomeUrl, event.category) ||
     event.outcomeUrl === event.sourceUrl || !validDate(event.outcomeReviewedAt) ||
     event.outcomeReviewedAt < (event.precision === 'date' ? event.end || event.start : calendarDate(event.end || event.start, event.timeZone)))) return 'missing-outcome';
   return null;
 }
 
-export function validateCatalysts(records) {
+function validateCatalysts(records) {
   if (!Array.isArray(records)) return { events: [], rejected: [{ id: null, reason: 'invalid-registry' }] };
   const counts = new Map();
   records.forEach(event => counts.set(event?.id, (counts.get(event?.id) || 0) + 1));
@@ -110,17 +121,17 @@ export function validateCatalysts(records) {
   return { events, rejected };
 }
 
-export function calendarDate(now = new Date(), timeZone = DEFAULT_CALENDAR_TIME_ZONE) {
+function calendarDate(now = new Date(), timeZone = DEFAULT_CALENDAR_TIME_ZONE) {
   const fields = dateFormatter(timeZone).formatToParts(new Date(now));
   const part = name => fields.find(field => field.type === name).value;
   return `${part('year').padStart(4, '0')}-${part('month')}-${part('day')}`;
 }
 
-export function addCalendarDays(date, days) {
+function addCalendarDays(date, days) {
   return isoDate(new Date(dateValue(date) + days * DAY_MS));
 }
 
-export function calendarWeekday(date) {
+function calendarWeekday(date) {
   return new Date(dateValue(date)).getUTCDay();
 }
 
@@ -130,7 +141,7 @@ function monthBoundary(date, offset) {
   return isoDate(first);
 }
 
-export function calendarPeriod(date, view) {
+function calendarPeriod(date, view) {
   const month = view === 'month';
   const start = month ? monthBoundary(date, 0) : addCalendarDays(date, -((calendarWeekday(date) + 6) % 7));
   const end = month ? addCalendarDays(monthBoundary(date, 1), -1) : addCalendarDays(start, 6);
@@ -138,14 +149,14 @@ export function calendarPeriod(date, view) {
   return { start, end, days: Array.from({ length }, (_, index) => addCalendarDays(start, index)) };
 }
 
-export function shiftCalendarPeriod(date, view, amount) {
+function shiftCalendarPeriod(date, view, amount) {
   if (view !== 'month') return addCalendarDays(date, amount * 7);
   const start = monthBoundary(date, amount);
   const end = addCalendarDays(monthBoundary(date, amount + 1), -1);
   return addCalendarDays(start, Math.min(Number(date.slice(8)), Number(end.slice(8))) - 1);
 }
 
-export function projectCatalysts(events, timeZone = DEFAULT_CALENDAR_TIME_ZONE) {
+function projectCatalysts(events, timeZone = DEFAULT_CALENDAR_TIME_ZONE) {
   return events.map(event => {
     const eventDate = value => event.precision === 'date' ? value : calendarDate(value, timeZone);
     return { ...event, startDate: eventDate(event.start), endDate: eventDate(event.end || event.start) };
@@ -154,14 +165,14 @@ export function projectCatalysts(events, timeZone = DEFAULT_CALENDAR_TIME_ZONE) 
       : a.precision === 'date' ? -1 : 1) || a.id.localeCompare(b.id));
 }
 
-export function filterCatalysts(events, { start, end, category = 'all', theme = 'all', ticker = 'all' } = {}) {
+function filterCatalysts(events, { start, end, category = 'all', theme = 'all', ticker = 'all' } = {}) {
   return events.filter(event => (!start || event.endDate >= start) && (!end || event.startDate <= end) &&
     (category === 'all' || event.category === category) &&
     (theme === 'all' || event.themeIds?.includes(theme)) &&
     (ticker === 'all' || event.tickers?.includes(ticker)));
 }
 
-export function catalystStatus(event, { now = new Date() } = {}) {
+function catalystStatus(event, { now = new Date() } = {}) {
   if (event.status === 'canceled') return 'canceled';
   const clock = new Date(now);
   const sourceDay = calendarDate(clock, event.timeZone);
@@ -173,20 +184,35 @@ export function catalystStatus(event, { now = new Date() } = {}) {
   return elapsed ? 'past-unverified' : event.status === 'completed' ? 'scheduled' : event.status;
 }
 
-export function upcomingCatalysts(events, { now = new Date(), timeZone = DEFAULT_CALENDAR_TIME_ZONE } = {}) {
+function upcomingCatalysts(events, { now = new Date(), timeZone = DEFAULT_CALENDAR_TIME_ZONE } = {}) {
   const start = calendarDate(now, timeZone);
   return filterCatalysts(events, { start, end: addCalendarDays(start, 6) })
     .filter(event => !event.sourceUnavailable && ['scheduled', 'tentative', 'rescheduled'].includes(catalystStatus(event, { now })));
 }
 
-export function selectThemeCatalysts(events, { themeId, tickers = [], now, timeZone } = {}) {
+function selectThemeCatalysts(events, { themeId, tickers = [], now, timeZone } = {}) {
   return upcomingCatalysts(events, { now, timeZone }).filter(event => event.tickers?.length
     ? event.tickers.some(ticker => tickers.includes(ticker))
     : themeIds.has(themeId) && event.themeIds?.includes(themeId));
 }
 
-export function calendarCoverage(events, { now = new Date(), timeZone = DEFAULT_CALENDAR_TIME_ZONE } = {}) {
+function calendarCoverage(events, { now = new Date(), timeZone = DEFAULT_CALENDAR_TIME_ZONE } = {}) {
   const today = calendarDate(now, timeZone);
-  const latestReview = events.reduce((latest, event) => !latest || event.reviewedAt > latest ? event.reviewedAt : latest, null);
-  return { latestReview, stale: Boolean(latestReview && latestReview < addCalendarDays(today, -CALENDAR_REVIEW_DAYS)) };
+  let latestReview = null;
+  let latestVerification = null;
+  for (const event of events) {
+    if (event.reviewedAt && (!latestReview || event.reviewedAt > latestReview)) latestReview = event.reviewedAt;
+    if (event.verifiedAt && (!latestVerification || Date.parse(event.verifiedAt) > Date.parse(latestVerification))) {
+      latestVerification = event.verifiedAt;
+    }
+  }
+  const verificationDay = latestVerification && calendarDate(latestVerification, timeZone);
+  const latest = verificationDay && (!latestReview || verificationDay > latestReview) ? verificationDay : latestReview;
+  return { latestReview, latestVerification, stale: Boolean(latest && latest < addCalendarDays(today, -CALENDAR_REVIEW_DAYS)) };
 }
+
+module.exports = {
+  CALENDAR_CATEGORIES, CALENDAR_REVIEW_DAYS, CALENDAR_TIME_ZONES, DEFAULT_CALENDAR_TIME_ZONE,
+  addCalendarDays, calendarCoverage, calendarDate, calendarPeriod, calendarWeekday, catalystStatus,
+  filterCatalysts, projectCatalysts, selectThemeCatalysts, shiftCalendarPeriod, upcomingCatalysts, validateCatalysts,
+};

@@ -196,8 +196,54 @@ test('separates explicit completion evidence from passage of time and source-loc
 
 test('exposes the original manual review and flags reviews older than thirty calendar days', () => {
   const records = [event({ reviewedAt: '2026-10-01' }), earnings];
-  expect(calendarCoverage(records, { now })).toEqual({ latestReview: '2026-11-10', stale: false });
-  expect(calendarCoverage(records, { now: '2026-12-10T18:00:00Z' })).toEqual({ latestReview: '2026-11-10', stale: false });
-  expect(calendarCoverage(records, { now: '2026-12-11T18:00:00Z' })).toEqual({ latestReview: '2026-11-10', stale: true });
-  expect(calendarCoverage([], { now })).toEqual({ latestReview: null, stale: false });
+  expect(calendarCoverage(records, { now })).toEqual({ latestReview: '2026-11-10', latestVerification: null, stale: false });
+  expect(calendarCoverage(records, { now: '2026-12-10T18:00:00Z' })).toEqual({ latestReview: '2026-11-10', latestVerification: null, stale: false });
+  expect(calendarCoverage(records, { now: '2026-12-11T18:00:00Z' })).toEqual({ latestReview: '2026-11-10', latestVerification: null, stale: true });
+  expect(calendarCoverage([], { now })).toEqual({ latestReview: null, latestVerification: null, stale: false });
+});
+
+const blsFeed = 'https://www.bls.gov/schedule/news_release/bls.ics';
+const automatedEvent = (overrides = {}) => event({
+  id: 'bls-cpi-2026-10',
+  publisher: 'U.S. Bureau of Labor Statistics',
+  reviewedAt: undefined,
+  titleZh: undefined,
+  originalLanguage: true,
+  sourceUrl: blsFeed,
+  verificationSourceUrl: blsFeed,
+  verificationMethod: 'bls-ics',
+  verifiedAt: '2026-11-10T12:00:00Z',
+  ...overrides,
+});
+
+test('accepts approved automated provenance separately from a manual review and preserves a canceled revision', () => {
+  const original = automatedEvent();
+  const revised = automatedEvent({
+    id: 'bls-cpi-2026-11', reviewedAt: '2026-10-01', status: 'canceled',
+    precision: 'timestamp', start: '2026-11-12T08:30:00-05:00', previousStart: '2026-11-11',
+  });
+  expect(validateCatalysts([original, revised])).toEqual({ events: [original, revised], rejected: [] });
+  expect(calendarCoverage([original, revised], { now })).toEqual({
+    latestReview: '2026-10-01', latestVerification: '2026-11-10T12:00:00Z', stale: false,
+  });
+  expect(upcomingCatalysts(projectCatalysts([original, revised]), { now }).map(item => item.id)).toEqual([original.id]);
+});
+
+test.each([
+  { verifiedAt: '2026-11-10' },
+  { verificationSourceUrl: undefined },
+  { verificationSourceUrl: 'https://www.bls.gov/elsewhere' },
+  { verificationSourceUrl: 'https://www.bls.gov.example.com/schedule/news_release/bls.ics' },
+  { sourceUrl: 'https://example.com/schedule' },
+  { verificationMethod: 'unsupported' },
+])('rejects unauthorized automated evidence even when manual provenance is also supplied (%j)', overrides => {
+  const candidate = automatedEvent({ reviewedAt: '2026-11-09', ...overrides });
+  expect(validateCatalysts([candidate])).toEqual({
+    events: [], rejected: [{ id: candidate.id, reason: 'invalid-automated-verification' }],
+  });
+});
+
+test('requires an explicit original-language indicator when an automated event lacks a reviewed translation', () => {
+  const candidate = automatedEvent({ originalLanguage: false });
+  expect(validateCatalysts([candidate]).rejected).toEqual([{ id: candidate.id, reason: 'missing-title' }]);
 });

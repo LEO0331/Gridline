@@ -7,6 +7,20 @@ const YAML = require('yaml');
 const { easternParts, latestExpectedPriceSession } = require('../server/us-market-calendar');
 const load = name => YAML.parse(fs.readFileSync(path.join(__dirname, '..', '.github', name), 'utf8'));
 
+test('calendar discovery uses read-only credentials and dispatches Pages only after a verified push', () => {
+  const workflow = load('workflows/research-calendar-sync.yml');
+  assert.deepEqual(workflow.on.workflow_dispatch.inputs.mode.options, ['dry-run', 'review', 'verified']);
+  assert.equal(workflow.on.schedule[0].cron, '17 3 * * 2');
+  assert.equal(workflow.permissions.contents, 'read');
+  assert.equal(workflow.jobs.discover.permissions, undefined);
+  assert.match(workflow.jobs.review.if, /inputs.mode != 'dry-run'/);
+  assert.match(workflow.jobs.publish.if, /inputs.mode == 'verified'/);
+  const dispatch = workflow.jobs.publish.steps.find(step => step.run?.includes('gh workflow run'));
+  assert.equal(dispatch.if, "steps.publish-calendar.outputs.changed == 'true'");
+  assert.match(dispatch.run, /-f reason=application/);
+  assert.match(dispatch.run, /Pages dispatch failed/);
+});
+
 test('pull requests and deployments use the same regression gate', () => {
   for (const [name, job] of [['pr-ci.yml', 'verify'], ['deploy-pages.yml', 'build']]) {
     const steps = load(`workflows/${name}`).jobs[job].steps;

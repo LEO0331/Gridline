@@ -1,5 +1,7 @@
 # Research Catalyst Calendar
 
+Weekly discovery can verify and propose updates from approved official sources. The calendar labels manual source reviews and accepted automated verification separately. The original-language label identifies titles without a reviewed translation. [Calendar automation](calendar-automation.md)
+
 Open **Research Calendar** at `#calendar` to inspect selected official schedules that could provide new evidence about company finances, infrastructure, or economic conditions. Week starts on Monday. Month lets you select a date and inspect that day’s events. Agenda lists the selected week’s events chronologically. Switching views keeps the selected date and filters. Use category, theme, and company together to narrow the results, or clear filters to restore all events in the period.
 
 The Overview preview shows up to three active catalysts within seven calendar days including today in New York. The registry is bundled with the app and remains available independently of the market snapshot. An empty period describes the limits of the curated registry. A company action opens the existing Company Research section with the associated ticker, subject to snapshot availability and the enabled universe. Use the publisher link in each record to confirm its current schedule.
@@ -34,7 +36,7 @@ Coverage is selective. The three earnings rows are calls at published times. A b
 4. Add `tickers` only for an explicit issuer association. Add `themeIds` using the [Phase 1 definitions](../src/researchThemes.js) only when the association is supported. Macroeconomic releases stay unassociated. A utility or grid event can have a subject theme without having any company association.
 5. Run `npm run test:unit -- researchCalendarModel` after a registry edit. The model checks supported source hosts, provenance, identity, dates, timezone, status, tickers, and themes. An automated test or build validates the record structure. Renew `reviewedAt` only after reviewing the source again.
 
-The calendar uses manual curation. Recheck relevant sources before relying on a date, and review upcoming records routinely for corrections or cancellations. The model supports empty categories and periods. It has no live calendar-provider dependency.
+The calendar uses manual review and accepted weekly automation. Recheck the linked publisher for the latest schedule. The bundled registry supports empty categories and periods. [Calendar automation](calendar-automation.md)
 
 ## 繁體中文
 
@@ -44,7 +46,7 @@ The calendar uses manual curation. Recheck relevant sources before relying on a 
 
 初始資料於 **2026-11-10** 人工查閱，共 11 筆。上表列出公司財報電話會議、美國總體經濟資料與聯準會會議、PJM 共址用電規則研討會，以及 Broadcom 的公部門私有雲技術活動。2027 年 1 月聯準會會議日期為暫定。公司研究連結會帶入來源明確相關的公司；總體經濟資料不會自動歸入個別公司。
 
-預定日已過時，仍需另外查證結果。已排程、暫定、改期、取消及有證據的完成狀態各自標示。原始來源最近一次人工查閱的日期與市場快照的產生時間不同。日曆資料以人工維護，超過 30 天未查閱會標示涵蓋資料可能過舊。空白日期只表示目前日曆涵蓋範圍內沒有符合條件的事件。
+預定日已過時，仍需另外查證結果。已排程、暫定、改期、取消及有證據的完成狀態各自標示。人工審閱、自動驗證與市場快照各有獨立日期。最新驗證紀錄超過 30 天時會顯示提醒。空白日期只表示目前日曆涵蓋範圍內沒有符合條件的事件。
 
 ## Phase 2 verification on 2026-11-10
 

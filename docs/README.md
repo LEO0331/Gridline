@@ -27,6 +27,7 @@ Reviewed against the repository implementation on **2026-10-12**. Guides describ
 | Expansion to 20 tracked companies | [Company coverage](data-center-expansion.md) |
 | Overview, After-Market Research Brief and thematic browsing | [Research workflow](research-overview.md) |
 | Official schedules, review dates and calendar navigation | [Research Catalyst Calendar](research-calendar.md) |
+| Weekly calendar synchronization and source review | [Calendar automation](calendar-automation.md) |
 | Theme selection, market comparisons and reported financial evidence | [Thematic Research](thematic-research.md) |
 | Point-in-time editions, weekly reviews and report retention | [Research Reports](research-reports.md) |
 | Financial definitions, legitimate gaps and issuer news | [Company research](company-research-coverage.md) |
