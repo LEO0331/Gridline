@@ -69,7 +69,14 @@ function evaluateAudit(audit, { policy, lock, exposure, fingerprint, now = new D
     if (finding.severity !== 'high') { notices.push({ package: name, severity: finding.severity }); continue; }
     const blockingCauses = causes.filter(origin => ['high', 'critical'].includes(origin.advisory.severity));
     if (!blockingCauses.length || !blockingCauses.every(origin => origin.advisory.severity !== 'critical' && matches(origin))) {
-      blocked.push({ package: name, reason: 'Unapproved high advisory, changed dependency identity, or missing/current exposure proof.' });
+      blocked.push({
+        package: name,
+        reason: 'Unapproved high advisory, changed dependency identity, or missing/current exposure proof.',
+        origins: [...new Map(blockingCauses.map(({ package: originPackage, advisory }) => [
+          `${originPackage}|${advisory.url}|${advisory.range}|${advisory.severity}`,
+          { package: originPackage, advisory: advisory.url, range: advisory.range, severity: advisory.severity }
+        ])).values()]
+      });
     } else accepted.push({ package: name, advisories: [...new Set(blockingCauses.map(origin => origin.advisory.url))] });
   }
   return { ok: blocked.length === 0, counts, blocked, accepted, notices, exceptions: policy.exceptions.map(({ advisory, expiresAt, reason }) => ({ advisory, expiresAt, reason })) };
