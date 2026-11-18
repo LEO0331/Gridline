@@ -38,6 +38,7 @@ test('active policy has no withdrawn exception and cannot accept a returning hig
   assert.equal(result.ok, false);
   assert.equal(result.accepted.length, 0);
   assert.equal(result.blocked.length, 2);
+  assert.deepEqual(result.blocked[0].origins, [{ package: 'braces', advisory: identity.url, range: identity.range, severity: 'high' }]);
   audit.vulnerabilities = {};
   audit.metadata.vulnerabilities = { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 };
   assert.equal(evaluateAudit(audit, current).ok, true);
