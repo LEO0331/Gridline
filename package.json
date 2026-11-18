@@ -48,7 +48,8 @@
     "qs": "6.16.1",
     "uuid": "11.1.1",
     "@tootallnate/once": "2.0.1",
-    "yaml": "2.9.1"
+    "yaml": "2.9.1",
+    "picomatch": "npm:@ryotsu/picomatch@4.0.7-a"
   },
   "eslintConfig": {
     "extends": [
