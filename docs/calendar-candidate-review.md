@@ -2,9 +2,9 @@
 
 This proposal contains evidence for human review. The bundled calendar registry is unchanged.
 
-Source check 2026-11-17T11:53:58.528Z
+Source check 2026-11-24T13:44:17.318Z
 
-16 candidates. The workflow artifact contains the complete structured report.
+17 candidates. The workflow artifact contains the complete structured report.
 
     [
       {
@@ -208,27 +208,6 @@ Source check 2026-11-17T11:53:58.528Z
         "endpoint": "https://ir.21vianet.com/news-events/press-releases"
       },
       {
-        "identity": "vnet-review-vnet-to-announce-unaudited-first-quarter-2026-financial-results-on-may-26-2026",
-        "event": {
-          "id": "vnet-review-vnet-to-announce-unaudited-first-quarter-2026-financial-results-on-may-26-2026",
-          "category": "earnings",
-          "title": "VNET to Announce Unaudited First Quarter 2026 Financial Results on May 26, 2026",
-          "sourceUrl": "https://ir.21vianet.com/news-releases/news-release-details/vnet-announce-unaudited-first-quarter-2026-financial-results-may",
-          "publisher": "VNET",
-          "tickers": [
-            "VNET"
-          ]
-        },
-        "proof": "review",
-        "reason": "Official listing headline requires direct schedule and status verification.",
-        "evidence": {
-          "title": "VNET to Announce Unaudited First Quarter 2026 Financial Results on May 26, 2026",
-          "listingUrl": "https://ir.21vianet.com/news-events/press-releases"
-        },
-        "method": "issuer-vnet",
-        "endpoint": "https://ir.21vianet.com/news-events/press-releases"
-      },
-      {
         "identity": "etn-review-eaton-to-announce-second-quarter-2026-earnings-on-july-31-2026",
         "event": {
           "id": "etn-review-eaton-to-announce-second-quarter-2026-earnings-on-july-31-2026",
@@ -290,6 +269,48 @@ Source check 2026-11-17T11:53:58.528Z
         },
         "method": "issuer-etn",
         "endpoint": "https://www.eaton.com/us/en-us/company/news-insights/news-releases/2026.html"
+      },
+      {
+        "identity": "anet-review-arista-networks-to-announce-q3-2026-financial-results-on-tuesday-november-3-2026",
+        "event": {
+          "id": "anet-review-arista-networks-to-announce-q3-2026-financial-results-on-tuesday-november-3-2026",
+          "category": "earnings",
+          "title": "Arista Networks to Announce Q3 2026 Financial Results on Tuesday, November 3, 2026",
+          "sourceUrl": "https://www.arista.com/en/company/news/press-release/24817-pr-20261006",
+          "publisher": "ANET",
+          "tickers": [
+            "ANET"
+          ]
+        },
+        "proof": "review",
+        "reason": "Official listing headline requires direct schedule and status verification.",
+        "evidence": {
+          "title": "Arista Networks to Announce Q3 2026 Financial Results on Tuesday, November 3, 2026",
+          "listingUrl": "https://www.arista.com/en/company/news/press-release/pr-2026?start=0"
+        },
+        "method": "issuer-anet",
+        "endpoint": "https://www.arista.com/en/company/news/press-release/pr-2026?start=0"
+      },
+      {
+        "identity": "anet-review-arista-networks-to-announce-q2-2026-financial-results-on-tuesday-august-4-2026",
+        "event": {
+          "id": "anet-review-arista-networks-to-announce-q2-2026-financial-results-on-tuesday-august-4-2026",
+          "category": "earnings",
+          "title": "Arista Networks to Announce Q2 2026 Financial Results on Tuesday, August 4, 2026",
+          "sourceUrl": "https://www.arista.com/en/company/news/press-release/24143-pr-20260706",
+          "publisher": "ANET",
+          "tickers": [
+            "ANET"
+          ]
+        },
+        "proof": "review",
+        "reason": "Official listing headline requires direct schedule and status verification.",
+        "evidence": {
+          "title": "Arista Networks to Announce Q2 2026 Financial Results on Tuesday, August 4, 2026",
+          "listingUrl": "https://www.arista.com/en/company/news/press-release/pr-2026?start=0"
+        },
+        "method": "issuer-anet",
+        "endpoint": "https://www.arista.com/en/company/news/press-release/pr-2026?start=0"
       },
       {
         "identity": "be-review-bloom-energy-to-announce-third-quarter-2026-financial-results-on-october-22-2026",
