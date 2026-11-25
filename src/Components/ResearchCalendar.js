@@ -111,14 +111,14 @@ function EventDetails({ event, language, timeZone, now, onCompanyResearch, showS
   </details>;
 }
 
-export function UpcomingCatalysts({ language = 'en', now = new Date(), themeId, tickers = [] }) {
+export function UpcomingCatalysts({ language = 'en', now = new Date(), themeId, tickers = [], data = records }) {
   const t = (en, zh) => localized([en, zh], language);
   const timeZone = DEFAULT_CALENDAR_TIME_ZONE;
-  const projected = projectCatalysts(records.events, timeZone);
+  const projected = projectCatalysts(data.events, timeZone);
   const upcoming = themeId
     ? selectThemeCatalysts(projected, { themeId, tickers, now, timeZone })
     : upcomingCatalysts(projected, { now, timeZone });
-  const coverage = calendarCoverage(records.events, { now, timeZone });
+  const coverage = calendarCoverage(data.events, { now, timeZone });
   const calendarHref = themeId ? `#calendar?${new URLSearchParams({ theme: themeId })}` : '#calendar';
   return <section className="upcoming-catalysts" aria-labelledby="upcoming-catalysts-title">
     <div className="calendar-heading">
@@ -134,7 +134,7 @@ export function UpcomingCatalysts({ language = 'en', now = new Date(), themeId, 
     </li>)}</ul> : <p>{themeId
       ? t('No verified upcoming events for this selection in the current calendar coverage.', '目前日曆涵蓋範圍內沒有符合所選條件的已驗證近期事件。')
       : t('No verified upcoming events in the current calendar coverage.', '目前日曆涵蓋範圍內沒有已驗證的近期事件。')}</p>}
-    <Coverage coverage={coverage} rejected={records.rejected} language={language} />
+    <Coverage coverage={coverage} rejected={data.rejected} language={language} />
   </section>;
 }
 

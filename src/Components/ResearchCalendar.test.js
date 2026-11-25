@@ -71,10 +71,37 @@ test('localizes the time selector and keeps date-only records stable across time
 });
 
 test('reports stale review and an empty seven-day Overview preview honestly', () => {
-  render(<UpcomingCatalysts now={new Date('2099-06-01T12:00:00Z')} language="zh-TW" />);
+  render(<UpcomingCatalysts data={data} now={new Date('2026-12-12T12:00:00Z')} language="zh-TW" />);
   expect(screen.getByText('目前日曆涵蓋範圍內沒有已驗證的近期事件。')).toBeVisible();
   expect(screen.getByText(/來源審閱已超過 30 天/)).toBeVisible();
   expect(screen.getByRole('link', { name: '開啟研究日曆 →' })).toHaveAttribute('href', '#calendar');
+});
+
+test.each([
+  ['en', '2026-11-25T12:00:00Z', false],
+  ['zh-TW', '2026-11-25T12:00:00Z', false],
+  ['en', '2026-12-12T12:00:00Z', true],
+  ['zh-TW', '2026-12-12T12:00:00Z', true],
+])('Overview reports automated verification freshness (%s, %s)', (language, at, stale) => {
+  const official = 'https://www.bls.gov/schedule/news_release/bls.ics';
+  const fixture = validateCatalysts([{
+    ...base, id: 'bls-cpi-2026-10', category: 'macro', title: 'Fixture release', titleZh: '測試發布',
+    precision: 'date', start: '2026-11-13', reviewedAt: '2026-10-01',
+    sourceUrl: official, verificationSourceUrl: official,
+    verificationMethod: 'bls-ics', verifiedAt: '2026-11-10T10:00:00Z',
+  }]);
+  expect(fixture.rejected).toEqual([]);
+  render(<UpcomingCatalysts data={fixture} now={new Date(at)} language={language} />);
+  expect(screen.getByText('2026-10-01')).toBeVisible();
+  expect(screen.getByText('2026-11-10T10:00:00Z')).toBeVisible();
+  const warning = screen.queryByText(language === 'en'
+    ? /Latest recorded verification is older than 30 days/
+    : /最近的驗證紀錄已超過 30 天/);
+  if (stale) expect(warning).toBeVisible();
+  else expect(warning).not.toBeInTheDocument();
+  expect(screen.queryByText(language === 'en'
+    ? /Source review is older than 30 days/
+    : /來源審閱已超過 30 天/)).not.toBeInTheDocument();
 });
 
 test('shows canceled schedules, retained rescheduling evidence, and separate automated provenance in Traditional Chinese', () => {
