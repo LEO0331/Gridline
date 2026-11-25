@@ -18,6 +18,10 @@ on:
         type: number
         default: 90
         description: Days to check for upcoming events
+      baseline_retry:
+        type: number
+        default: 0
+        description: Internal baseline recovery count (leave at 0 for a new scan)
 
 permissions:
   contents: read
@@ -48,7 +52,12 @@ jobs:
           MODE: ${{ inputs.mode || 'verified' }}
           PAST_DAYS: ${{ inputs.past_days }}
           FUTURE_DAYS: ${{ inputs.future_days }}
+          BASELINE_RETRY: ${{ inputs.baseline_retry }}
         run: |
+          case "${BASELINE_RETRY:-0}" in
+            0|1|2) ;;
+            *) echo 'Invalid baseline recovery count; expected 0, 1 or 2.' >&2; exit 1 ;;
+          esac
           printf 'base=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           node scripts/sync-research-calendar.js --mode "$MODE" --past-days "${PAST_DAYS:-30}" --future-days "${FUTURE_DAYS:-90}" --output "$RUNNER_TEMP/calendar"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -130,3 +139,29 @@ jobs:
             exit 1
           fi
           echo 'Pages deployment requested. Check the separate Pages run for its result.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Request fresh discovery after baseline conflict
+        if: failure() && steps.publish-calendar.outcome == 'failure' && steps.publish-calendar.outputs.baseline_conflict == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASELINE_RETRY: ${{ inputs.baseline_retry }}
+          PAST_DAYS: ${{ inputs.past_days }}
+          FUTURE_DAYS: ${{ inputs.future_days }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          count="${BASELINE_RETRY:-0}"
+          case "$count" in
+            0|1) ;;
+            2) echo 'Baseline recovery exhausted (two fresh scans). Start a new verified workflow on main after reviewing concurrent changes.' >> "$GITHUB_STEP_SUMMARY"; exit 0 ;;
+            *) echo 'Invalid baseline recovery count.' >&2; exit 1 ;;
+          esac
+          if [ "$RUN_ATTEMPT" != 1 ]; then
+            echo 'Automatic recovery is not dispatched from a rerun. Start a new verified workflow on main if needed.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          next=$((count + 1))
+          if ! gh workflow run research-calendar-sync.yml --ref main -f mode=verified \
+            -f past_days="${PAST_DAYS:-30}" -f future_days="${FUTURE_DAYS:-90}" -f baseline_retry="$next"; then
+            echo 'Fresh discovery dispatch failed. Start a new verified workflow on main manually.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Fresh discovery requested (recovery $next/2) against current main. This run remains failed; check the new Sync Research Calendar run for publication." >> "$GITHUB_STEP_SUMMARY"

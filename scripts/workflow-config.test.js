@@ -15,10 +15,35 @@ test('calendar discovery uses read-only credentials and dispatches Pages only af
   assert.equal(workflow.jobs.discover.permissions, undefined);
   assert.match(workflow.jobs.review.if, /inputs.mode != 'dry-run'/);
   assert.match(workflow.jobs.publish.if, /inputs.mode == 'verified'/);
-  const dispatch = workflow.jobs.publish.steps.find(step => step.run?.includes('gh workflow run'));
+  const dispatch = workflow.jobs.publish.steps.find(step => step.run?.includes('gh workflow run deploy-pages.yml'));
   assert.equal(dispatch.if, "steps.publish-calendar.outputs.changed == 'true'");
   assert.match(dispatch.run, /-f reason=application/);
   assert.match(dispatch.run, /Pages dispatch failed/);
+});
+
+test('calendar baseline recovery dispatches fresh read-only discovery only for typed conflicts', () => {
+  const workflow = load('workflows/research-calendar-sync.yml');
+  assert.equal(workflow.on.workflow_dispatch.inputs.baseline_retry.default, 0);
+  assert.equal(workflow.concurrency['cancel-in-progress'], false);
+  const scan = workflow.jobs.discover.steps.find(step => step.id === 'scan');
+  assert.match(scan.run, /0\|1\|2/);
+  assert.match(scan.env.BASELINE_RETRY, /inputs.baseline_retry/);
+  assert.equal(workflow.jobs.discover.steps[0].with['persist-credentials'], false);
+  const publish = workflow.jobs.publish;
+  assert.equal(publish.permissions.actions, 'write');
+  const retry = publish.steps.find(step => step.run?.includes('gh workflow run research-calendar-sync.yml'));
+  assert.match(retry.if, /failure\(\)/);
+  assert.match(retry.if, /steps\.publish-calendar\.outcome == 'failure'/);
+  assert.match(retry.if, /steps\.publish-calendar\.outputs\.baseline_conflict == 'true'/);
+  assert.match(retry.run, /--ref main -f mode=verified/);
+  assert.ok(retry.run.includes('-f past_days="${PAST_DAYS:-30}"'));
+  assert.ok(retry.run.includes('-f future_days="${FUTURE_DAYS:-90}"'));
+  assert.ok(retry.run.includes('-f baseline_retry="$next"'));
+  assert.match(retry.run, /0\|1\)/);
+  assert.match(retry.run, /2\).*recovery exhausted/);
+  assert.match(retry.run, /RUN_ATTEMPT.*!= 1/);
+  assert.match(retry.run, /This run remains failed/);
+  assert.match(retry.run, /Fresh discovery dispatch failed/);
 });
 
 test('pull requests and deployments use the same regression gate', () => {

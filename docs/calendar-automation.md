@@ -41,13 +41,15 @@ Retention runs with a material registry update. Events whose latest schedule dat
 
 Discovery uses a read-only token. Publication needs `contents: write`, `actions: write`, `ENABLE_CALENDAR_AUTO_PUBLISH=true`, and repository rules that permit the workflow token to push a normal fast-forward to `main`. Review PRs need `contents: write`, `pull-requests: write`, and the repository setting allowing Actions to create pull requests. Set `ENABLE_CALENDAR_REVIEW_PRS=false` to use artifacts alone.
 
-The publisher validates the proposed registry and runs `npm run verify`, `npm run demo:check`, and Git whitespace checks. It owns only `src/data/researchCatalysts.json`. It can retry against a newer snapshot-only revision, with a limit of three attempts. A concurrent registry or code change requires a fresh discovery run. Branch protections apply to every push.
+The publisher validates the proposed registry and runs `npm run verify`, `npm run demo:check`, and Git whitespace checks. It owns only `src/data/researchCatalysts.json`. It can retry against a newer snapshot-only revision, with a limit of three attempts. A concurrent non-snapshot change (including registry, code, dependencies or documentation) rejects the stale proposal and reports the discovery SHA, current main SHA and blocking paths. Branch protections apply to every push.
+
+A typed baseline conflict automatically requests a **new verified Sync Research Calendar run on main**, preserving the discovery windows. The new run re-fetches official evidence, reconciles against its own registry, and runs the same publication gates. Recovery is limited to two fresh dispatches per chain (three scans total); leave the internal `baseline_retry` input at 0 when starting a new manual run. The original conflict remains a failed run with no publication and its summary points to the recovery. Rerunning a historical job does not dispatch another recovery chain. If the limit is reached or dispatch fails, start a new verified run from main after reviewing the changes. Validation failures, permission failures and other errors do not automatically rediscover. Snapshot-only concurrency retries remain separate and the allowed snapshot paths are unchanged.
 
 After a successful push, the workflow dispatches **Deploy to GitHub Pages** with reason `application`. The Pages job rebuilds the bundled calendar and runs its existing acceptance and security gates. A human-approved registry PR merged into `main` uses the normal Pages push trigger. If dispatch fails after the registry is accepted, rerun **Deploy to GitHub Pages** on `main` with reason `application`. Check the Pages run before reporting a site update.
 
 ## 繁體中文
 
-「Sync Research Calendar」每週二台北時間 11:17 執行。預設查閱前 30 天及未來 90 天的官方時程。手動選擇 `dry-run` 可取得建議登錄檔與審閱報告。來源證據不足時可由人工檢查；只有符合來源驗證及發布條件的更新才會進入日曆。人工審閱日期與自動驗證時間分開記錄。已取消的事件仍可在完整日曆查閱，並從近期預覽排除。
+「Sync Research Calendar」每週二台北時間 11:17 執行。預設查閱前 30 天及未來 90 天的官方時程。手動選擇 `dry-run` 可取得建議登錄檔與審閱報告。來源證據不足時可由人工檢查；只有符合來源驗證及發布條件的更新才會進入日曆。若發布時主分支有非快照檔案變更，舊提案不得發布；系統最多自動啟動兩次全新 verified 掃描，沿用原查詢天數、重新取得證據及驗證。原衝突仍記錄為失敗，重跑舊工作不會建立另一條復原鏈。人工審閱日期與自動驗證時間分開記錄。已取消的事件仍可在完整日曆查閱，並從近期預覽排除。
 
 ## Verification on 2026-11-11
 

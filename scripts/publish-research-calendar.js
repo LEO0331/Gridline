@@ -36,6 +36,30 @@ const paths = value => value.split('\n').map(line => line.trim()).filter(Boolean
 const readJson = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 const sha = value => typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
 
+class CalendarBaselineConflict extends Error {
+  constructor(base, remote, reason, blockingPaths = []) {
+    const detail = reason === 'not-ancestor'
+      ? 'Discovery revision is not an ancestor of current main.'
+      : `Blocking paths (${blockingPaths.length}): ${JSON.stringify(blockingPaths.slice(0, 20))}`;
+    super(`Calendar discovery baseline changed outside snapshot artifacts. Discovery SHA: ${base}; current main SHA: ${remote}. ${detail} No registry was published; start fresh discovery against latest main.`);
+    this.name = 'CalendarBaselineConflict';
+    this.base = base;
+    this.remote = remote;
+    this.reason = reason;
+    this.blockingPaths = blockingPaths;
+  }
+}
+
+function assertCompatibleBaseline(base, remote, execute, git) {
+  if (remote === base) return;
+  const ancestor = execute('git', ['merge-base', '--is-ancestor', base, remote]);
+  if (ancestor.status === 1) throw new CalendarBaselineConflict(base, remote, 'not-ancestor');
+  if (ancestor.status !== 0) throw new Error('Calendar baseline ancestry could not be verified.');
+  const blockingPaths = paths(git('diff', '--no-renames', '--name-only', base, remote))
+    .filter(file => !SNAPSHOT_PATHS.has(file));
+  if (blockingPaths.length) throw new CalendarBaselineConflict(base, remote, 'changed-paths', blockingPaths);
+}
+
 function assertRegistry(registry) {
   const { validateCatalysts } = require('../src/researchCalendarModel');
   const { rejected } = validateCatalysts(registry);
@@ -60,9 +84,6 @@ function publishCalendar({
     throw new Error('Calendar publication requires a clean main checkout.');
   }
   const registryFile = path.join(cwd, REGISTRY);
-  const original = JSON.parse(git('show', `${base}:${REGISTRY}`));
-  validate(original);
-  validate(proposal);
   const proposalText = `${JSON.stringify(proposal, null, 2)}\n`;
   const verify = gate || (() => {
     const build = fs.mkdtempSync(path.join(os.tmpdir(), 'gridline-calendar-build-'));
@@ -83,12 +104,11 @@ function publishCalendar({
     }
     // A later snapshot-only commit can share this verified proposal. A new
     // registry or parser requires a fresh scan, so never apply stale evidence.
-    if (remote !== base) {
-      const ancestor = execute('git', ['merge-base', '--is-ancestor', base, remote]);
-      if (ancestor.status !== 0 || paths(git('diff', '--no-renames', '--name-only', base, remote)).some(file => !SNAPSHOT_PATHS.has(file))) {
-        throw new Error('Calendar discovery baseline changed outside snapshot artifacts. Rerun discovery against latest main.');
-      }
-    }
+    assertCompatibleBaseline(base, remote, execute, git);
+    // Check compatibility before validating an artifact with potentially newer code.
+    const original = JSON.parse(git('show', `${base}:${REGISTRY}`));
+    validate(original);
+    validate(proposal);
     git('merge', '--ff-only', 'origin/main');
     if (git('rev-parse', 'HEAD') !== remote) throw new Error('Refusing unpublished local commits.');
     unpublishedBase = remote;
@@ -104,8 +124,10 @@ function publishCalendar({
     }
     git('diff', '--check');
     git('fetch', 'origin', 'main');
-    if (git('rev-parse', 'origin/main') !== remote) {
+    const latest = git('rev-parse', 'origin/main');
+    if (latest !== remote) {
       git('restore', '--worktree', '--', REGISTRY);
+      assertCompatibleBaseline(base, latest, execute, git);
       continue;
     }
     git('add', '--', REGISTRY);
@@ -125,6 +147,7 @@ function publishCalendar({
     assertOwned();
     git('reset', '--soft', remote);
     git('restore', '--staged', '--worktree', '--', REGISTRY);
+    assertCompatibleBaseline(base, git('rev-parse', 'origin/main'), execute, git);
   }
   throw new Error('Calendar publication stopped after three concurrent-update attempts.');
 }
@@ -199,8 +222,17 @@ if (require.main === module) {
     }
   } catch (error) {
     console.error(error.message);
+    if (error instanceof CalendarBaselineConflict) {
+      // A typed conflict, never a failed gate, malformed input or denied push,
+      // may trigger fresh read-only discovery. The original run stays failed.
+      if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, 'baseline_conflict=true\n');
+      if (process.env.GITHUB_STEP_SUMMARY) {
+        fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+          `\n### Calendar baseline conflict\n\nDiscovery SHA: \`${error.base}\` · Current main SHA: \`${error.remote}\`\n\nNo registry was published by this job. Fresh discovery is required. See the publication log for blocking paths.\n`);
+      }
+    }
     process.exitCode = 1;
   }
 }
 
-module.exports = { REGISTRY, publishCalendar, reviewKey, openCalendarReview };
+module.exports = { REGISTRY, publishCalendar, reviewKey, openCalendarReview, CalendarBaselineConflict };
