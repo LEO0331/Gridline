@@ -24,8 +24,12 @@
     "publisher": "CoreWeave Investor Relations",
     "reviewedAt": "2026-11-10",
     "status": "scheduled",
-    "tickers": ["CRWV"],
-    "themeIds": ["neocloud"]
+    "tickers": [
+      "CRWV"
+    ],
+    "themeIds": [
+      "neocloud"
+    ]
   },
   {
     "id": "nbis-2026-q3-earnings",
@@ -39,8 +43,12 @@
     "publisher": "Nebius Group",
     "reviewedAt": "2026-11-10",
     "status": "scheduled",
-    "tickers": ["NBIS"],
-    "themeIds": ["neocloud"],
+    "tickers": [
+      "NBIS"
+    ],
+    "themeIds": [
+      "neocloud"
+    ],
     "note": "The time is for the conference call. Nebius separately announced results before the market opens.",
     "noteZh": "所列時間為電話會議時間。Nebius 另公告將於開盤前發布財報。"
   },
@@ -57,7 +65,9 @@
     "publisher": "PJM Interconnection",
     "reviewedAt": "2026-11-10",
     "status": "scheduled",
-    "themeIds": ["power"],
+    "themeIds": [
+      "power"
+    ],
     "note": "The agenda calls for discussion of draft tariff revisions on fast energization.",
     "noteZh": "議程列有加速送電相關費率規則修訂草案的討論。"
   },
@@ -130,7 +140,9 @@
     "publisher": "Broadcom",
     "reviewedAt": "2026-11-10",
     "status": "scheduled",
-    "tickers": ["AVGO"],
+    "tickers": [
+      "AVGO"
+    ],
     "note": "Broadcom announced this private-cloud technology event for the public sector.",
     "noteZh": "Broadcom 公告此場私有雲技術活動以公部門為對象。"
   },
@@ -146,8 +158,12 @@
     "publisher": "Broadcom Investor Relations",
     "reviewedAt": "2026-11-10",
     "status": "scheduled",
-    "tickers": ["AVGO"],
-    "themeIds": ["hardware"],
+    "tickers": [
+      "AVGO"
+    ],
+    "themeIds": [
+      "hardware"
+    ],
     "note": "The time is for the conference call. Broadcom separately announced results after the U.S. trading session.",
     "noteZh": "所列時間為電話會議時間。Broadcom 另公告將於美股收盤後發布財報。"
   },
@@ -166,5 +182,80 @@
     "status": "tentative",
     "note": "The Federal Reserve treats the date as tentative until confirmation at the preceding meeting.",
     "noteZh": "聯準會將此日期列為暫定，待前一次會議確認。"
+  },
+  {
+    "id": "bls-cpi-uid-a434d240-87cd-4fcc-afb4-2c923808b7c1",
+    "category": "macro",
+    "title": "U.S. Consumer Price Index",
+    "titleZh": "美國 消費者物價指數",
+    "sourceUrl": "https://www.bls.gov/schedule/news_release/bls.ics",
+    "publisher": "U.S. Bureau of Labor Statistics",
+    "precision": "timestamp",
+    "start": "2026-12-10T08:30:00-05:00",
+    "timeZone": "America/New_York",
+    "status": "scheduled",
+    "verifiedAt": "2026-11-25T01:13:34.613Z",
+    "verificationMethod": "bls-ics",
+    "verificationSourceUrl": "https://www.bls.gov/schedule/news_release/bls.ics"
+  },
+  {
+    "id": "bea-gdp-2026-q3-third-estimate",
+    "category": "macro",
+    "title": "U.S. GDP (Third Estimate), Industries, Corporate Profits, State GDP, and State Personal Income, 3rd Quarter 2026",
+    "titleZh": "美國 2026 年第 3 季 GDP 第三次估計",
+    "sourceUrl": "https://bea.gov/news/schedule",
+    "publisher": "U.S. Bureau of Economic Analysis",
+    "start": "2026-12-23T08:30:00-05:00",
+    "timeZone": "America/New_York",
+    "precision": "timestamp",
+    "status": "scheduled",
+    "verifiedAt": "2026-11-25T01:13:34.613Z",
+    "verificationMethod": "bea-schedule",
+    "verificationSourceUrl": "https://bea.gov/news/schedule"
+  },
+  {
+    "id": "bea-personal-income-outlays-2026-11",
+    "category": "macro",
+    "title": "U.S. Personal Income and Outlays, November 2026",
+    "titleZh": "美國 2026 年 11 月個人所得與支出",
+    "sourceUrl": "https://bea.gov/news/schedule",
+    "publisher": "U.S. Bureau of Economic Analysis",
+    "start": "2026-12-23T08:30:00-05:00",
+    "timeZone": "America/New_York",
+    "precision": "timestamp",
+    "status": "scheduled",
+    "verifiedAt": "2026-11-25T01:13:34.613Z",
+    "verificationMethod": "bea-schedule",
+    "verificationSourceUrl": "https://bea.gov/news/schedule"
+  },
+  {
+    "id": "bea-gdp-2026-q4-advance-estimate",
+    "category": "macro",
+    "title": "U.S. GDP (Advance Estimate), 4th Quarter and Year 2026",
+    "titleZh": "美國 2026 年第 4 季 GDP 初估",
+    "sourceUrl": "https://www.bea.gov/news/schedule/next-year",
+    "publisher": "U.S. Bureau of Economic Analysis",
+    "start": "2027-01-28T08:30:00-05:00",
+    "timeZone": "America/New_York",
+    "precision": "timestamp",
+    "status": "scheduled",
+    "verifiedAt": "2026-11-25T01:13:34.613Z",
+    "verificationMethod": "bea-next-year",
+    "verificationSourceUrl": "https://www.bea.gov/news/schedule/next-year"
+  },
+  {
+    "id": "bea-personal-income-outlays-2026-12",
+    "category": "macro",
+    "title": "U.S. Personal Income and Outlays, December 2026",
+    "titleZh": "美國 2026 年 12 月個人所得與支出",
+    "sourceUrl": "https://www.bea.gov/news/schedule/next-year",
+    "publisher": "U.S. Bureau of Economic Analysis",
+    "start": "2027-01-28T08:30:00-05:00",
+    "timeZone": "America/New_York",
+    "precision": "timestamp",
+    "status": "scheduled",
+    "verifiedAt": "2026-11-25T01:13:34.613Z",
+    "verificationMethod": "bea-next-year",
+    "verificationSourceUrl": "https://www.bea.gov/news/schedule/next-year"
   }
 ]
