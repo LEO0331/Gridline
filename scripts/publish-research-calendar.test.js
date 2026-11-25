@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { REGISTRY, publishCalendar, reviewKey } = require('./publish-research-calendar');
+const { REGISTRY, publishCalendar, reviewKey, CalendarBaselineConflict } = require('./publish-research-calendar');
 
 const proposal = require('../src/data/researchCatalysts.json').slice(0, 1);
 const snapshotFile = 'public/data/dashboard-snapshot.json';
@@ -84,14 +84,59 @@ test('calendar refuses to replace a concurrent registry or local tracked edit', 
   assert.throws(() => publishCalendar({ cwd: local, base, proposal }), /clean main checkout/);
 });
 
+test('calendar reports incompatible revisions and paths before validating a stale proposal', t => {
+  const { local, base, advance, remote, git } = fixture(t);
+  advance('package.json', '{"name":"updated"}\n');
+  advance('docs/calendar-candidate-review.md', '# New evidence\n');
+  const latest = remote();
+  assert.throws(() => publishCalendar({
+    cwd: local, base, proposal,
+    validate: () => assert.fail('Stale proposal must not reach validation'),
+    gate: () => assert.fail('Stale proposal must not reach the gate'),
+  }), error => {
+    assert.ok(error instanceof CalendarBaselineConflict);
+    assert.equal(error.base, base);
+    assert.equal(error.remote, latest);
+    assert.equal(error.reason, 'changed-paths');
+    assert.deepEqual(error.blockingPaths, ['docs/calendar-candidate-review.md', 'package.json']);
+    assert.match(error.message, /No registry was published/);
+    assert.ok(error.message.includes(base) && error.message.includes(latest));
+    return true;
+  });
+  assert.equal(remote(), latest);
+  assert.equal(git(local, 'status', '--porcelain'), '');
+  // Model a fresh discovery on the new baseline, not a stale proposal retry.
+  git(local, 'fetch', 'origin', 'main');
+  git(local, 'merge', '--ff-only', 'origin/main');
+  const regenerated = [...proposal];
+  let gates = 0;
+  const result = publishCalendar({ cwd: local, base: latest, proposal: regenerated, gate: () => { gates += 1; } });
+  assert.equal(result.changed, true);
+  assert.equal(gates, 1);
+  assert.equal(remote(), result.sha);
+  assert.equal(git(local, 'diff-tree', '--no-commit-id', '--name-only', '-r', result.sha), REGISTRY);
+});
+
+test('calendar abandons a proposal when code changes during the validation gate', t => {
+  const { local, base, advance, remote, git } = fixture(t);
+  assert.throws(() => publishCalendar({ cwd: local, base, proposal, gate: () => {
+    advance('package-lock.json', '{}\n');
+  } }), error => error instanceof CalendarBaselineConflict &&
+    error.remote === remote() && error.blockingPaths.includes('package-lock.json'));
+  assert.equal(git(local, 'status', '--porcelain'), '');
+  assert.equal(git(local, 'show', `origin/main:${REGISTRY}`), '[]');
+});
+
 test('failed gates and denied pushes do not report publication', t => {
   const { local, base, remote, git } = fixture(t);
-  assert.throws(() => publishCalendar({ cwd: local, base, proposal, gate: () => { throw new Error('gate failed'); } }), /gate failed/);
+  assert.throws(() => publishCalendar({ cwd: local, base, proposal, gate: () => { throw new Error('gate failed'); } }),
+    error => !(error instanceof CalendarBaselineConflict) && /gate failed/.test(error.message));
   assert.equal(remote(), base);
   git(local, 'restore', '--', REGISTRY);
   const execute = (command, args) => args[0] === 'push' ? { status: 1, stdout: '', stderr: 'permission denied' }
     : spawnSync(command, args, { cwd: local, encoding: 'utf8' });
-  assert.throws(() => publishCalendar({ cwd: local, base, proposal, execute, gate: () => {} }), /permission denied/);
+  assert.throws(() => publishCalendar({ cwd: local, base, proposal, execute, gate: () => {} }),
+    error => !(error instanceof CalendarBaselineConflict) && /permission denied/.test(error.message));
   assert.equal(remote(), base);
 });
 
