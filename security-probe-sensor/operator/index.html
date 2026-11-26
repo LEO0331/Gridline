@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gridline | Passive Probe Intelligence</title><link rel="stylesheet" href="/operator/style.css"><script src="/operator/app.js" defer></script></head>
+<body><main>
+<header><p class="eyebrow">GRIDLINE / INDEPENDENT SENSOR</p><h1>Security Probe Intelligence</h1><p>Observation only. Requests to this sensor, not the Gridline research website.</p></header>
+<section class="toolbar" aria-label="Report controls"><label>From (UTC)<input id="from" type="date"></label><label>To (UTC)<input id="to" type="date"></label><button id="today">Today</button><button id="week">7 days</button><button id="refresh">Refresh</button><a id="export" href="/operator/export.csv">Export CSV</a></section>
+<p id="status" role="status" aria-live="polite">Loading…</p>
+<section id="kpis" class="kpis" aria-label="Key metrics"></section>
+<section class="panel"><h2>Hourly observations (UTC)</h2><p class="hint">Recorded interval contributions. Missing hours are not zero; partial coverage may undercount. Bars scale to the selected range.</p><div id="hours"></div></section>
+<div class="grid"><section class="panel"><h2>Probe categories</h2><div id="categories"></div></section><section class="panel"><h2>Network confidence</h2><div id="identity"></div><p class="hint">Country / ASN unavailable in v2. Bot identities are unverified claims.</p></section><section class="panel"><h2>HTTP response status</h2><div id="statuses"></div></section><section class="panel"><h2>HTTP methods</h2><div id="methods"></div></section><section class="panel"><h2>Client types</h2><div id="clients"></div></section><section class="panel"><h2>Claimed bots</h2><div id="claimedBots"></div></section><section class="panel"><h2>Daily observations (UTC)</h2><div id="days"></div></section><section class="panel"><h2>Coverage and limits</h2><div id="coverage"></div></section></div>
+<footer>Repeated and multi-category counts refer to matched requests, not people or attackers. Matched 2xx responses require investigation; they are not confirmed incidents. History is volatile, per instance and limited to seven UTC days in the selector.</footer>
+</main></body></html>

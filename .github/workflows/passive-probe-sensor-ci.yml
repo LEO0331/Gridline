@@ -4,18 +4,20 @@ on:
     paths:
       - 'security-probe-sensor/**'
       - '.github/workflows/passive-probe-sensor-ci.yml'
+      - 'render.yaml'
   push:
-    branches: [feat/passive-security-probe-sensor]
+    branches: [main, feat/passive-security-probe-dashboard]
     paths:
       - 'security-probe-sensor/**'
       - '.github/workflows/passive-probe-sensor-ci.yml'
+      - 'render.yaml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   sensor:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: security-probe-sensor
@@ -29,6 +31,34 @@ jobs:
           cache: npm
           cache-dependency-path: security-probe-sensor/package-lock.json
       - run: npm ci --ignore-scripts
-      - run: node --check sensor.js && node --check server.js && node --check csv.js
+      - run: node --check sensor.js && node --check server.js && node --check csv.js && node --check history.js && node --check operator.js && node --check operator/app.js
       - run: npm test
       - run: npm audit --omit=dev --audit-level=low
+
+      - name: Build isolated container
+        run: docker build -t gridline-sensor-ci .
+      - name: Local container smoke test (disabled by default)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -d --name gridline-sensor-ci -p 127.0.0.1::8080 gridline-sensor-ci
+          trap 'docker rm -f gridline-sensor-ci >/dev/null 2>&1 || true' EXIT
+          port=$(docker port gridline-sensor-ci 8080/tcp | head -1 | cut -d: -f2)
+          curl --fail --retry 10 --retry-all-errors --retry-delay 1 --max-time 3 "http://127.0.0.1:$port/health" || { docker logs gridline-sensor-ci; exit 1; }
+          test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/operator")" = 404
+          test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/.env")" = 404
+
+      - name: Local container smoke test (authenticated dashboard)
+        shell: bash
+        run: |
+          set -euo pipefail
+          password=$(node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))")
+          echo "::add-mask::$password"
+          docker run --rm -d --name gridline-dashboard-ci -p 127.0.0.1::8080 \
+            -e ENABLE_SENSOR_DASHBOARD=true -e SENSOR_OPERATOR_PASSWORD="$password" gridline-sensor-ci
+          trap 'docker rm -f gridline-dashboard-ci >/dev/null 2>&1 || true' EXIT
+          port=$(docker port gridline-dashboard-ci 8080/tcp | head -1 | cut -d: -f2)
+          curl --fail --retry 10 --retry-all-errors --retry-delay 1 --max-time 3 "http://127.0.0.1:$port/health" || { docker logs gridline-dashboard-ci; exit 1; }
+          test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/operator")" = 401
+          curl --fail --silent --show-error -u "operator:$password" "http://127.0.0.1:$port/operator" | grep -q 'Security Probe Intelligence'
+          curl --fail --silent --show-error -u "operator:$password" "http://127.0.0.1:$port/operator/metrics" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));if(d.observationEnabled!==false||d.totals!==null)process.exit(1)"

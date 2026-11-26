@@ -2,8 +2,10 @@
 const http=require('node:http');
 const express=require('express');
 const {createSensor,LIMITS}=require('./sensor');
+const {createHistory}=require('./history');
+const {createOperator}=require('./operator');
 
-function createApp(sensor) {
+function createApp(sensor,operator=()=>false) {
   const app=express();
   app.disable('x-powered-by');
   app.disable('etag');
@@ -13,16 +15,18 @@ function createApp(sensor) {
     const complete=aborted=>{
       if(done) return;
       done=true;
+      if(res.locals.operatorAuthorized)return;
       try{sensor.observe(req,res.statusCode,aborted);}catch{/* Never change HTTP behavior. */}
     };
     res.once('finish',()=>complete(false));
     res.once('close',()=>complete(!res.writableFinished));
     next();
   });
-  // No body parser, static file serving, redirects, auth or business endpoints.
+  // Exact protected operator routes only; no general static directory or business endpoints.
   app.use((req,res)=>{
     res.set('Cache-Control','no-store');
     res.set('X-Content-Type-Options','nosniff');
+    if(operator(req,res))return;
     if((req.method==='GET'||req.method==='HEAD')&&req.url.split('?',1)[0]==='/health') return res.status(200).type('text/plain').send('ok\n');
     return res.status(404).type('text/plain').send('Not Found\n');
   });
@@ -32,8 +36,8 @@ function createApp(sensor) {
   });
   return app;
 }
-function createServer(sensor) {
-  const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersTimeout:10000,keepAliveTimeout:5000,connectionsCheckingInterval:1000},createApp(sensor));
+function createServer(sensor,operator) {
+  const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersTimeout:10000,keepAliveTimeout:5000,connectionsCheckingInterval:1000},createApp(sensor,operator));
   // The 8 KiB header byte cap bounds header count. Do not silently truncate
   // headers before checking the forwarding chain.
   server.maxHeadersCount=0;
@@ -55,10 +59,17 @@ function stdoutSink(stream=process.stdout){
   };
 }
 function main(env=process.env) {
-  const port=Number(env.SENSOR_PORT||8080),host=env.SENSOR_HOST||'127.0.0.1';
+  const port=Number(env.SENSOR_PORT||env.PORT||8080),host=env.SENSOR_HOST||'127.0.0.1';
   if(!Number.isInteger(port)||port<1||port>65535) throw Error('Invalid sensor port');
-  const sensor=createSensor({env,emit:stdoutSink()});
-  const server=createServer(sensor);
+  const history=createHistory();
+  const sink=stdoutSink();
+  const sensor=createSensor({env,emit:report=>{
+    try{history.add(report);}catch{/* Reporting must not affect observations. */}
+    sink(report);
+  }});
+  let operator=()=>false;
+  try{operator=createOperator({env,history,sensor});}catch{process.stderr.write('operator dashboard unavailable\n');}
+  const server=createServer(sensor,operator);
   let timer,expiryTimer;
   if(sensor.enabled){
     timer=setInterval(()=>sensor.flush(),LIMITS.reportMs).unref();
