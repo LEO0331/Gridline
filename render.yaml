@@ -1,0 +1,29 @@
+# Optional, manually provisioned independent sensor. No Gridline business API.
+services:
+  - type: web
+    name: gridline-passive-probe-sensor
+    runtime: docker
+    plan: free
+    rootDir: security-probe-sensor
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: main
+    autoDeployTrigger: 'off'
+    healthCheckPath: /health
+    envVars:
+      - key: SENSOR_HOST
+        value: "0.0.0.0"
+      - key: SENSOR_PORT
+        value: "8080"
+      - key: ENABLE_PASSIVE_PROBE_SENSOR
+        value: "false"
+      - key: ENABLE_SENSOR_DASHBOARD
+        value: "false"
+      - key: SENSOR_OPERATOR_PASSWORD
+        generateValue: true
+      - key: SENSOR_NETWORK_MODE
+        value: unresolved
+      - key: SENSOR_TOPOLOGY_VERIFIED
+        value: "false"
+      - key: SENSOR_HMAC_SECRET
+        generateValue: true
