@@ -15,7 +15,7 @@ function validKey(group,key){
   return false;
 }
 function validate(report){
-  if(required.some(k=>!validCount(report[k]))||report.observed>100000||
+  if(METRICS.some(k=>Object.hasOwn(report,k)&&(!validCount(report[k])||report[k]>1000000000))||required.some(k=>!validCount(report[k]))||report.observed>100000||
     report.matched>report.observed||report.suspectedScanner>report.observed||report.matched>report.suspectedScanner||
     report.unexpectedSuccess>report.matched||report.multiCategory>report.repeated||report.repeated>report.correlationTracked||
     report.correlationTracked+report.correlationSaturated+report.correlationUnavailable!==report.matched||

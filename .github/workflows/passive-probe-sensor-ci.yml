@@ -6,7 +6,7 @@ on:
       - '.github/workflows/passive-probe-sensor-ci.yml'
       - 'render.yaml'
   push:
-    branches: [main, feat/passive-security-probe-dashboard]
+    branches: [main, feat/passive-security-probe-phase-3]
     paths:
       - 'security-probe-sensor/**'
       - '.github/workflows/passive-probe-sensor-ci.yml'
@@ -31,7 +31,7 @@ jobs:
           cache: npm
           cache-dependency-path: security-probe-sensor/package-lock.json
       - run: npm ci --ignore-scripts
-      - run: node --check sensor.js && node --check server.js && node --check csv.js && node --check history.js && node --check operator.js && node --check operator/app.js
+      - run: node --check sensor.js && node --check server.js && node --check csv.js && node --check history.js && node --check operator.js && node --check operator/app.js && node --check enrichment.js && node --check restore.js
       - run: npm test
       - run: npm audit --omit=dev --audit-level=low
 

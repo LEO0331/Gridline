@@ -7,7 +7,7 @@ const yaml=fs.readFileSync(path.join(__dirname,'../../render.yaml'),'utf8');
 const active=yaml.split('\n').filter(line=>!line.trimStart().startsWith('#')).join('\n');
 test('Blueprint preserves operator-owned runtime configuration',()=>{
   assert.doesNotMatch(active,/^\s*autoDeploy(?:Trigger)?:/m);
-  for(const key of ['ENABLE_PASSIVE_PROBE_SENSOR','ENABLE_SENSOR_DASHBOARD','SENSOR_NETWORK_MODE','SENSOR_TOPOLOGY_VERIFIED','SENSOR_TRUSTED_PROXY_IPS']){
+  for(const key of ['ENABLE_PASSIVE_PROBE_SENSOR','ENABLE_SENSOR_DASHBOARD','SENSOR_NETWORK_MODE','SENSOR_TOPOLOGY_VERIFIED','SENSOR_TRUSTED_PROXY_IPS','ENABLE_SENSOR_GEO_ENRICHMENT','ENABLE_SENSOR_BOT_VERIFICATION','SENSOR_NETWORK_DATA_FILE']){
     assert.match(active,new RegExp('^\\s*- key: '+key+'\\n\\s+sync: false\\s*$','m'),key);
     assert.equal(active.split('- key: '+key+'\n').length,2,key);
   }

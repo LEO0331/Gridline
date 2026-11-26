@@ -136,7 +136,7 @@ test('ordinary HTTP lifecycle and status unchanged when disabled or observation 
         const r=await send(path,method);assert.equal(r.status,status);assert.equal(r.headers['cache-control'],'no-store');assert.equal(r.headers['x-powered-by'],undefined);
         assert.ok(!r.body.includes('synthetic-private'));
       }
-      if(mode==='enabled'){const a=s.flush();assert.equal(a.observed,6);assert.equal(a.statuses['404'],4);assert.equal(a.statuses['200'],2);assert.equal(a.matched,2);}
+      if(mode==='enabled'){const a=s.flush();assert.equal(a.observed,4);assert.equal(a.healthChecks,2);assert.equal(a.statuses['404'],4);assert.equal(a.statuses['200'],undefined);assert.equal(a.matched,2);}
       if(mode==='disabled')assert.equal(s.flush(),null);
     }finally{await new Promise(resolve=>server.close(resolve));s.close?.();}
   }

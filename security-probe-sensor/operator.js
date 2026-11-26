@@ -57,21 +57,20 @@ function createOperator({env=process.env,history,sensor,now=Date.now}={}){
         res.set('Connection','close');res.status(413).type('text/plain').send('Invalid import size\n');return true;
       }
       importInFlight=true;
-      const chunks=[];let size=0,done=false;
-      const finish=()=>{if(done)return false;done=true;importInFlight=false;clearTimeout(timer);chunks.length=0;return true;};
+      const buffer=Buffer.alloc(length);let size=0,done=false;
+      const finish=()=>{if(done)return false;done=true;importInFlight=false;clearTimeout(timer);return true;};
       const timer=setTimeout(()=>{if(finish())req.destroy();},10000).unref();
       req.on('data',chunk=>{
         if(done)return;
-        size+=chunk.length;
-        if(size>MAX_IMPORT_BYTES||size>length){if(finish())req.destroy();return;}
-        chunks.push(chunk);
+        if(size+chunk.length>length){if(finish())req.destroy();return;}
+        chunk.copy(buffer,size);size+=chunk.length;
       });
       req.once('aborted',finish);req.once('error',finish);res.once('close',finish);
       req.once('end',()=>{
         if(done)return;
         try{
           if(size!==length)throw Error('length mismatch');
-          const reports=parseImport(Buffer.concat(chunks,size).toString('utf8'));
+          const reports=parseImport(buffer.toString('utf8'));
           const result=history.restore(reports);
           if(finish())res.json(result);
         }catch{if(finish())res.status(400).type('text/plain').send('Invalid aggregate export\n');}
