@@ -35,7 +35,7 @@ function classifyPath(target) {
     ['git', s=>s==='.git'],
     ['wordpress', s=>/^(wp-admin|wp-login\.php|xmlrpc\.php|wp-config\.php)$/.test(s)],
     ['credential', s=>/^(?:\.aws|\.ssh|\.htpasswd|id_rsa|id_ed25519|credentials(?:\.json)?|secrets\.(?:json|ya?ml)|service-account\.json)$/.test(s)],
-    ['database_dump', s=>/^(?:db|database|dump|backup|mysql|postgres)(?:[-_.][a-z0-9_-]+)*\.sql(?:\.gz)?$/.test(s)],
+    ['database_dump', s=>/^(?:db|database|dump|backup|mysql|postgres)(?:[-_.][a-z0-9_.-]+)?\.sql(?:\.gz)?$/.test(s)],
     ['backup', s=>/^(?:backup|site-backup|www-backup|site|www|archive)\.(?:zip|tar(?:\.gz)?|tgz|bak)$/.test(s)||/\.(?:bak|old|orig)$/.test(s)],
     ['configuration', s=>/^(?:config\.(?:php|json|ya?ml|ini)|web\.config|\.htaccess|appsettings(?:\.[a-z0-9_-]+)?\.json|application\.(?:properties|ya?ml)|docker-compose\.ya?ml)$/.test(s)],
     ['administration', s=>/^(?:phpmyadmin|adminer(?:\.php)?|phpinfo\.php|pma|server-status|actuator)$/.test(s)]
@@ -94,7 +94,8 @@ function resolveNetwork(req,config) {
     // Only a verified, ingress-restricted proxy overwriting XFF with exactly one
     // client address is supported. Multi-hop or malformed chains fail closed.
     const xff=headers['x-forwarded-for'];
-    const candidate=typeof xff==='string'&&!xff.includes(',')?normalizeIp(xff):null;
+    const distinct=req.headersDistinct?.['x-forwarded-for'];
+    const candidate=typeof xff==='string'&&!xff.includes(',')&&(!distinct||distinct.length===1)?normalizeIp(xff):null;
     if(publicIp(candidate)&&!config.trusted.has(candidate)) {ip=candidate;confidence='trusted_proxy';}
   }
   const fingerprint=ip&&config.secret?createHmac('sha256',config.secret).update(ip).digest('hex'):null;
@@ -178,12 +179,19 @@ function createSensor({env=process.env,now=Date.now,monotonic=()=>performance.no
   }
   function flush() {
     if(!enabled) return null;
-    const end=now(), output={...report,windowEnd:new Date(end).toISOString(),coverage:'completed_http_only'};
+    const end=now(), days={};
+    for(const [hour,counts] of Object.entries(report.hours)) {
+      const day=hour.slice(0,10);
+      days[day] ||= {observed:0,matched:0};
+      days[day].observed+=counts.observed;
+      days[day].matched+=counts.matched;
+    }
+    const output={...report,days,windowEnd:new Date(end).toISOString(),coverage:'completed_http_only'};
     report=blank(end);
     try {corr.expire();emit?.(output);} catch {error();}
     return output;
   }
   function close(){corr?.clear();}
-  return {enabled,observe,flush,close,error};
+  return {enabled,observe,flush,close,error,expire:()=>corr?.expire()};
 }
 module.exports={CATEGORIES,METHODS,CLIENTS,BOTS,CONFIDENCE,PATH_RESULTS,VERIFICATION,LIMITS,classifyPath,classifyClient,normalizeIp,networkConfig,resolveNetwork,createCorrelation,createSensor};

@@ -6,6 +6,7 @@ const {createSensor,LIMITS}=require('./sensor');
 function createApp(sensor) {
   const app=express();
   app.disable('x-powered-by');
+  app.disable('etag');
   app.set('trust proxy',false);
   if(sensor.enabled) app.use((req,res,next)=>{
     let done=false;
@@ -33,7 +34,9 @@ function createApp(sensor) {
 }
 function createServer(sensor) {
   const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersTimeout:10000,keepAliveTimeout:5000,connectionsCheckingInterval:1000},createApp(sensor));
-  server.maxHeadersCount=64;
+  // The 8 KiB header byte cap bounds header count. Do not silently truncate
+  // headers before checking the forwarding chain.
+  server.maxHeadersCount=0;
   server.maxConnections=256;
   server.maxRequestsPerSocket=100;
   server.setTimeout(15000,socket=>socket.destroy());
@@ -56,14 +59,17 @@ function main(env=process.env) {
   if(!Number.isInteger(port)||port<1||port>65535) throw Error('Invalid sensor port');
   const sensor=createSensor({env,emit:stdoutSink()});
   const server=createServer(sensor);
-  let timer;
-  if(sensor.enabled) timer=setInterval(()=>sensor.flush(),LIMITS.reportMs).unref();
-  server.on('error',()=>{clearInterval(timer);sensor.close();process.stderr.write('sensor listener failed\n');process.exitCode=1;});
+  let timer,expiryTimer;
+  if(sensor.enabled){
+    timer=setInterval(()=>sensor.flush(),LIMITS.reportMs).unref();
+    expiryTimer=setInterval(()=>{try{sensor.expire();}catch{sensor.error();}},30000).unref();
+  }
+  server.on('error',()=>{clearInterval(timer);clearInterval(expiryTimer);sensor.close();process.stderr.write('sensor listener failed\n');process.exitCode=1;});
   server.listen(port,host);
   let stopping=false;
   function stop(){
     if(stopping)return;stopping=true;
-    clearInterval(timer);
+    clearInterval(timer);clearInterval(expiryTimer);
     const deadline=setTimeout(()=>server.closeAllConnections(),5000).unref();
     server.close(()=>{clearTimeout(deadline);sensor.flush();sensor.close();});
   }
