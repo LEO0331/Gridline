@@ -8,22 +8,26 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     branch: main
-    autoDeployTrigger: 'off'
+    # Omit autoDeployTrigger to preserve the existing service's Render setting.
     healthCheckPath: /health
     envVars:
       - key: SENSOR_HOST
         value: "0.0.0.0"
       - key: SENSOR_PORT
         value: "8080"
+      # Runtime switches are operator-owned; absent values fail closed in code.
       - key: ENABLE_PASSIVE_PROBE_SENSOR
-        value: "false"
+        sync: false
       - key: ENABLE_SENSOR_DASHBOARD
-        value: "false"
+        sync: false
       - key: SENSOR_OPERATOR_PASSWORD
         generateValue: true
       - key: SENSOR_NETWORK_MODE
-        value: unresolved
+        sync: false
       - key: SENSOR_TOPOLOGY_VERIFIED
-        value: "false"
+        sync: false
+      - key: SENSOR_TRUSTED_PROXY_IPS
+        sync: false
+      # Generate secrets only if absent; preserve existing Render values.
       - key: SENSOR_HMAC_SECRET
         generateValue: true
