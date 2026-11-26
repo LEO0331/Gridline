@@ -72,9 +72,9 @@ HTTP 回應與觀測分離：GET/HEAD /health 回傳 200，其餘未知路徑正
 ### 手動部署流程（需擁有者核准）
 
 1. Render 建立 Blueprint，選 Gridline 的 main 分支及根目錄 render.yaml，確認只建立一個獨立免費 Docker Web Service，不新增任何資料庫或付費資源。
-2. Blueprint 指定 security-probe-sensor 為服務根目錄、/health 健康檢查、8080 port、關閉自動部署。兩項功能旗標及網路拓樸驗證預設 false，密碼與 HMAC 密鑰由 Render 個別生成。確認實際免費方案及限制。
+2. Blueprint 指定 security-probe-sensor 為服務根目錄、/health 健康檢查及 8080 port。自動部署由 Render 服務 Settings 管理（On Commit、After CI Checks Pass 或 Off），YAML 不指定 autoDeployTrigger，以保留既有服務設定；新服務預設 On Commit。密碼及 HMAC 密鑰僅在缺少時生成。首次建立時將兩項功能旗標及拓樸驗證設 false、網路模式設 unresolved，代理 IP 留空（或平台允許時略過）。未設定時程式預設安全停用。確認實際免費方案及限制。
 3. 先檢查服務實際 HTTPS 網址，確認 /health 回傳 200，/operator 預設 404。在 Environment 設 ENABLE_SENSOR_DASHBOARD=true 並確認 SENSOR_OPERATOR_PASSWORD，再手動部署。以實際網址加上 /operator 登入。
 4. 取得觀測啟用同意後才設定 ENABLE_PASSIVE_PROBE_SENSOR=true 並重新部署。SENSOR_NETWORK_MODE=unresolved、SENSOR_TOPOLOGY_VERIFIED=false 保持不變，除非已確認真實代理拓樸，不任意信任 forwarded headers。
-5. 免費服務可能休眠、重啟，歷史資料不保證保存。需長期分析時下載受限的彙總 JSONL 或 CSV。Blueprint 同步可能恢復宣告的停用預設值，操作前確認。回復時停用兩旗標、手動部署或移除獨立服務，不影響 Gridline。
+5. 免費服務可能休眠、重啟，歷史資料不保證保存。需長期分析時下載受限的彙總 JSONL 或 CSV。功能旗標及網路設定採 sync: false，後續 Blueprint 同步不覆寫 Render 既有值；缺少的變數於 Environment 手動新增。自動部署設定亦由 Render 管理。部署不會清除這些環境變數，但記憶體中的歷史資料仍會隨重啟消失。回復時停用兩旗標、手動部署或移除獨立服務，不影響 Gridline。
 
 本 PR 不會建立 Render 服務、實際啟用觀測或產生真實攻擊資料；部署前仍需確認平台原始存取日誌、使用政策、資源及實際代理行為。詳細設定、安全邊界與操作指令請參考英文版。
