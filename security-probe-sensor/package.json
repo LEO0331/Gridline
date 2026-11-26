@@ -1,0 +1,17 @@
+{
+  "name": "gridline-passive-security-probe-sensor",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "audit": "npm audit --omit=dev --audit-level=low",
+    "csv": "node csv.js"
+  },
+  "dependencies": {
+    "express": "4.22.3"
+  }
+}
