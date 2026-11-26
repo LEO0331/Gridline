@@ -31,3 +31,9 @@ services:
       # Generate secrets only if absent; preserve existing Render values.
       - key: SENSOR_HMAC_SECRET
         generateValue: true
+      - key: ENABLE_SENSOR_GEO_ENRICHMENT
+        sync: false
+      - key: ENABLE_SENSOR_BOT_VERIFICATION
+        sync: false
+      - key: SENSOR_NETWORK_DATA_FILE
+        sync: false

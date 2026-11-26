@@ -2,6 +2,7 @@
 const { createHmac } = require('node:crypto');
 const { isIP } = require('node:net');
 const { performance } = require('node:perf_hooks');
+const {loadEnrichment,validAsn,COUNTRY}=require('./enrichment');
 
 const CATEGORIES = Object.freeze(['traversal','environment','git','wordpress','backup','configuration','database_dump','administration','credential']);
 const METHODS = Object.freeze(['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS','CONNECT','TRACE','OTHER']);
@@ -9,7 +10,7 @@ const CLIENTS = Object.freeze(['browser_like','claimed_bot','automated_client','
 const BOTS = Object.freeze(['googlebot','bingbot','duckduckbot','gptbot','oai-searchbot','claudebot','perplexitybot','none']);
 const CONFIDENCE = Object.freeze(['trusted_direct','trusted_proxy','unresolved']);
 const PATH_RESULTS = Object.freeze(['matched','unmatched','malformed','oversized']);
-const VERIFICATION = Object.freeze(['unverified','not_applicable']);
+const VERIFICATION = Object.freeze(['unverified','not_applicable','range_match']);
 const LIMITS = Object.freeze({ path:4096, agent:1024, windowMs:300000, identities:4096, reportMs:300000, observations:100000, hourBuckets:4 });
 const zeros = keys => Object.fromEntries(keys.map(k=>[k,0]));
 const increment = (object,key) => { object[key] = Math.min(Number.MAX_SAFE_INTEGER, (object[key] || 0) + 1); };
@@ -83,7 +84,7 @@ function networkConfig(env={}) {
   const secret=typeof value==='string'&&Buffer.byteLength(value)>=32&&Buffer.byteLength(value)<=4096?value:null;
   return {mode,trusted,secret};
 }
-function resolveNetwork(req,config) {
+function resolveNetwork(req,config,onTrustedIp) {
   const peer=normalizeIp(req.socket?.remoteAddress);
   const headers=req.headers||{};
   const forwarding=['x-forwarded-for','forwarded','x-real-ip','cf-connecting-ip','true-client-ip'].some(k=>headers[k]!==undefined);
@@ -98,6 +99,7 @@ function resolveNetwork(req,config) {
     const candidate=typeof xff==='string'&&!xff.includes(',')&&(!distinct||distinct.length===1)?normalizeIp(xff):null;
     if(publicIp(candidate)&&!config.trusted.has(candidate)) {ip=candidate;confidence='trusted_proxy';}
   }
+  if(ip&&onTrustedIp)onTrustedIp(ip);
   const fingerprint=ip&&config.secret?createHmac('sha256',config.secret).update(ip).digest('hex'):null;
   return {confidence,fingerprint};
 }
@@ -131,17 +133,19 @@ function createCorrelation({now=()=>performance.now(),windowMs=LIMITS.windowMs,m
 function blank(start) {
   return {
     event:'security_probe.aggregate.v1',windowStart:new Date(start).toISOString(),
-    observed:0,matched:0,suspectedScanner:0,unexpectedSuccess:0,repeated:0,multiCategory:0,
+    observed:0,healthChecks:0,matched:0,suspectedScanner:0,unexpectedSuccess:0,repeated:0,multiCategory:0,
     correlationTracked:0,correlationSaturated:0,correlationUnavailable:0,aborted:0,dropped:0,observationErrors:0,
     categories:zeros(CATEGORIES),methods:zeros(METHODS),statuses:{},
     clients:zeros(CLIENTS),claimedBots:zeros(BOTS),verification:zeros(VERIFICATION),
     identity:zeros(CONFIDENCE),pathResults:zeros(PATH_RESULTS),
-    countries:{unknown:0},asns:{unknown:0},hours:{},hourOverflow:0
+    countries:{unknown:0,other:0},asns:{unknown:0,other:0},patterns:{},hours:{},hourOverflow:0
   };
 }
-function createSensor({env=process.env,now=Date.now,monotonic=()=>performance.now(),correlation,emit}={}) {
+function createSensor({env=process.env,now=Date.now,monotonic=()=>performance.now(),correlation,emit,enrichment}={}) {
   const enabled=env.ENABLE_PASSIVE_PROBE_SENSOR==='true';
   const config=enabled?networkConfig(env):null;
+  const lookup=enabled?(enrichment||loadEnrichment(env,now)):null;
+  const startedAt=now();
   const corr=enabled?(correlation||createCorrelation({now:monotonic})):null;
   let report=enabled?blank(now()):null;
   function error(){if(report) increment(report,'observationErrors');}
@@ -149,18 +153,25 @@ function createSensor({env=process.env,now=Date.now,monotonic=()=>performance.no
     if(!enabled) return;
     try {
       if(aborted){increment(report,'aborted');return;}
+      if(status===200&&['GET','HEAD'].includes(req.method)&&req.url?.split('?',1)[0]==='/health'){increment(report,'healthChecks');return;}
       if(report.observed>=LIMITS.observations){increment(report,'dropped');return;}
       const at=now(), hour=new Date(at).toISOString().slice(0,13)+':00:00Z';
       const path=classifyPath(req.url), client=classifyClient(req.headers?.['user-agent']);
-      const net=resolveNetwork(req,config);
+      let trustedIp=null;
+      const net=resolveNetwork(req,config,ip=>{trustedIp=ip;});
+      let enriched={country:'unknown',asn:'unknown',verification:client.verification};
+      try{if(lookup)enriched=lookup.lookup(trustedIp,client.bot);}catch{/* Optional enrichment fails closed. */}
+      trustedIp=null;
       const method=METHODS.includes(req.method)?req.method:'OTHER';
       const code=Number.isInteger(status)&&status>=100&&status<=599?String(status):'unknown';
       const result=path.category?corr.observe(net.fingerprint,path.category):null;
       increment(report,'observed');
       increment(report.methods,method);increment(report.statuses,code);increment(report.clients,client.client);
-      increment(report.claimedBots,client.bot);increment(report.verification,client.verification);
+      increment(report.claimedBots,client.bot);increment(report.verification,VERIFICATION.includes(enriched.verification)?enriched.verification:client.verification);
       increment(report.identity,net.confidence);increment(report.pathResults,path.result);
-      increment(report.countries,'unknown');increment(report.asns,'unknown');
+      const country=typeof enriched.country==='string'&&COUNTRY.test(enriched.country)?enriched.country:'unknown';
+      const asn=validAsn(enriched.asn)?enriched.asn:'unknown';
+      for(const [group,key,limit] of [[report.countries,country,64],[report.asns,asn,128]])increment(group,Object.hasOwn(group,key)||Object.keys(group).length<limit+2?key:'other');
       if(!Object.hasOwn(report.hours,hour)&&Object.keys(report.hours).length<LIMITS.hourBuckets) report.hours[hour]={observed:0,matched:0};
       const bucket=report.hours[hour];
       if(bucket) increment(bucket,'observed');else increment(report,'hourOverflow');
@@ -170,7 +181,7 @@ function createSensor({env=process.env,now=Date.now,monotonic=()=>performance.no
         if(bucket) increment(bucket,'matched');
         if(status>=200&&status<300) increment(report,'unexpectedSuccess');
         if(result.repeated) increment(report,'repeated');
-        if(result.multi) increment(report,'multiCategory');
+        if(result.multi){increment(report,'multiCategory');increment(report.patterns,path.category);}
         if(result.tracked) increment(report,'correlationTracked');
         else if(result.saturated) increment(report,'correlationSaturated');
         else increment(report,'correlationUnavailable');
@@ -192,6 +203,11 @@ function createSensor({env=process.env,now=Date.now,monotonic=()=>performance.no
     return output;
   }
   function close(){corr?.clear();}
-  return {enabled,observe,flush,close,error,expire:()=>corr?.expire()};
+  return {enabled,observe,flush,close,error,expire:()=>corr?.expire(),diagnostics:()=>({
+    startedAt:new Date(startedAt).toISOString(),uptimeSeconds:Math.max(0,Math.floor((now()-startedAt)/1000)),
+    networkMode:config?.mode||'unresolved',topologyAsserted:env.SENSOR_TOPOLOGY_VERIFIED==='true',
+    proxyConfigured:Boolean(config?.trusted.size),correlationConfigured:Boolean(config?.secret&&config.mode!=='unresolved'&&(config.mode!=='single_proxy'||config.trusted.size)),
+    enrichment:lookup?.state?.()||'disabled',geoEnabled:enabled&&env.ENABLE_SENSOR_GEO_ENRICHMENT==='true',botVerificationEnabled:enabled&&env.ENABLE_SENSOR_BOT_VERIFICATION==='true'
+  })};
 }
 module.exports={CATEGORIES,METHODS,CLIENTS,BOTS,CONFIDENCE,PATH_RESULTS,VERIFICATION,LIMITS,classifyPath,classifyClient,normalizeIp,networkConfig,resolveNetwork,createCorrelation,createSensor};
