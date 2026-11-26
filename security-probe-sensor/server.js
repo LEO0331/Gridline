@@ -76,7 +76,14 @@ function main(env=process.env) {
     expiryTimer=setInterval(()=>{try{sensor.expire();}catch{sensor.error();}},30000).unref();
   }
   server.on('error',()=>{clearInterval(timer);clearInterval(expiryTimer);sensor.close();process.stderr.write('sensor listener failed\n');process.exitCode=1;});
-  server.listen(port,host);
+  server.listen(port,host,()=>{
+    const password=env.SENSOR_OPERATOR_PASSWORD;
+    const dashboardRequested=env.ENABLE_SENSOR_DASHBOARD==='true';
+    const passwordValid=typeof password==='string'&&/^[\x21-\x7e]{32,256}$/.test(password);
+    // Fixed diagnostic fields only; never emit config values or credentials.
+    process.stderr.write(JSON.stringify({event:'security_probe.startup.v1',observationEnabled:sensor.enabled,dashboardRequested,
+      dashboardPasswordValid:passwordValid,diagnostics:sensor.diagnostics()})+'\n');
+  });
   let stopping=false;
   function stop(){
     if(stopping)return;stopping=true;

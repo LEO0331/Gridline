@@ -2,9 +2,10 @@
 // Offline export only. No network listener and no arbitrary strings in cells.
 const fs=require('node:fs');
 const {CATEGORIES,METHODS,CLIENTS,BOTS,CONFIDENCE,PATH_RESULTS,VERIFICATION}=require('./sensor');
+const {validAsn,COUNTRY}=require('./enrichment');
 const MAX_BYTES=10*1024*1024;
-const METRICS=['observed','matched','suspectedScanner','unexpectedSuccess','repeated','multiCategory','correlationTracked','correlationSaturated','correlationUnavailable','aborted','dropped','observationErrors','hourOverflow','skippedReportsBefore'];
-const GROUPS={categories:CATEGORIES,methods:METHODS,statuses:[...Array.from({length:500},(_,i)=>String(i+100)),'unknown'],clients:CLIENTS,claimedBots:BOTS,verification:VERIFICATION,identity:CONFIDENCE,pathResults:PATH_RESULTS,countries:['unknown'],asns:['unknown']};
+const METRICS=['observed','healthChecks','matched','suspectedScanner','unexpectedSuccess','repeated','multiCategory','correlationTracked','correlationSaturated','correlationUnavailable','aborted','dropped','observationErrors','hourOverflow','skippedReportsBefore'];
+const GROUPS={categories:CATEGORIES,methods:METHODS,statuses:[...Array.from({length:500},(_,i)=>String(i+100)),'unknown'],clients:CLIENTS,claimedBots:BOTS,verification:VERIFICATION,identity:CONFIDENCE,pathResults:PATH_RESULTS,patterns:CATEGORIES};
 const validCount=v=>Number.isSafeInteger(v)&&v>=0;
 const validTime=v=>typeof v==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString()===v;
 const validHour=v=>typeof v==='string'&&/^\d{4}-\d\d-\d\dT\d\d:00:00Z$/.test(v)&&validTime(v.replace('Z','.000Z'));
@@ -14,6 +15,10 @@ function toCsv(report){
   const add=(group,key,count)=>{if(validCount(count))rows.push([report.windowStart,report.windowEnd,group,key,count].join(','));};
   for(const key of METRICS)add('total',key,report[key]);
   for(const [group,keys] of Object.entries(GROUPS))for(const key of keys)add(group,key,report[group]?.[key]);
+  for(const [group,valid,limit] of [['countries',key=>COUNTRY.test(key),64],['asns',validAsn,128]]){
+    for(const key of ['unknown','other'])add(group,key,report[group]?.[key]);
+    for(const key of Object.keys(report[group]||{}).filter(valid).sort().slice(0,limit))add(group,key,report[group][key]);
+  }
   const days=new Map();
   for(const key of Object.keys(report.hours||{}).slice(0,4)){
     if(!validHour(key))continue;
@@ -46,4 +51,4 @@ function main(file){
 if(require.main===module){
   try{main(process.argv[2]);}catch{process.stderr.write('CSV export failed; use a regular JSONL file <= 10 MiB\n');process.exitCode=1;}
 }
-module.exports={toCsv};
+module.exports={toCsv,METRICS,GROUPS,validCount,validTime,validHour};

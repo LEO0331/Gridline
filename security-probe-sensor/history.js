@@ -15,23 +15,27 @@ function parseRange(query,now=Date.now()){
 function createHistory({now=Date.now,maxWindows=MAX_WINDOWS,maxBytes=MAX_BYTES}={}){
   if(!Number.isInteger(maxWindows)||maxWindows<1||maxWindows>MAX_WINDOWS||!Number.isInteger(maxBytes)||maxBytes<1||maxBytes>MAX_BYTES) throw Error('Invalid history limits');
   const entries=[];let bytes=0,evicted=0,rejected=0;
+  const processStart=now();
   function remove(){bytes-=entries.shift().bytes;evicted++;}
   function prune(at=now()){
     const cutoff=at-RETENTION_DAYS*DAY;
     while(entries.length&&(entries[0].end<=cutoff||entries.length>maxWindows||bytes>maxBytes)) remove();
   }
-  function add(report){
+  function add(report,{restored=false}={}){
     const start=Date.parse(report?.windowStart),end=Date.parse(report?.windowEnd);
     // Use only the existing fixed-schema CSV sanitizer, never copy arbitrary report keys.
     const rows=toCsv(report);
     const content=rows.join('\n');
     const size=Buffer.byteLength(content);
-    const last=entries[entries.length-1];
+    const index=entries.findIndex(e=>e.start>=start);
+    const insert=index<0?entries.length:index,prev=entries[insert-1],next=entries[insert];
     if(!rows.length||!Number.isFinite(start)||!Number.isFinite(end)||end<start||end>now()+1000||
-      end-start>DAY||size>maxBytes||(last&&start<last.end)||(last&&start===last.start&&end===last.end)){
-      rejected++;return;
+      end-start>DAY||size>maxBytes||end<=now()-RETENTION_DAYS*DAY||
+      (restored&&end>processStart)||(prev&&start<prev.end)||(next&&(end>next.start||start===next.start))){
+      rejected++;return false;
     }
-    entries.push({start,end,content,bytes:size});bytes+=size;prune();
+    entries.splice(insert,0,{start,end,content,bytes:size,restored,legacy:!Object.hasOwn(report,'healthChecks')});bytes+=size;prune();
+    return entries.some(e=>e.start===start&&e.end===end);
   }
   function select(range){
     prune();
@@ -40,15 +44,22 @@ function createHistory({now=Date.now,maxWindows=MAX_WINDOWS,maxBytes=MAX_BYTES}=
   function summarize(range){
     const selected=select(range);
     const totals={},distributions={},hours=new Map(),days=new Map();
-    let coverageMs=0;
+    let coverageMs=0,legacyWindows=0,restoredWindows=0,delayedWindows=0;
+    const requestedStart=Date.parse(range.from),requestedEnd=Math.min(now(),Date.parse(range.to)+DAY);
+    let inRangeRecordedMs=0;
     const addCount=(obj,key,n)=>{obj[key]=(obj[key]||0)+n;};
     const ensure=(map,key)=>{
       if(!map.has(key))map.set(key,{observed:0,matched:0,coverageMs:0,limited:false});
       return map.get(key);
     };
     for(const e of selected){
-      const limited=/(?:^|\n)[^\n]*,total,(?:dropped|observationErrors|hourOverflow),[1-9]\d*(?:\n|$)/.test(e.content);
+      const delayed=e.end-e.start>360000;
+      if(delayed)delayedWindows++;
+      if(e.legacy)legacyWindows++;
+      if(e.restored)restoredWindows++;
+      const limited=delayed||e.legacy||/(?:^|\n)[^\n]*,total,(?:dropped|observationErrors|hourOverflow),[1-9]\d*(?:\n|$)/.test(e.content);
       coverageMs+=e.end-e.start;
+      inRangeRecordedMs+=Math.max(0,Math.min(e.end,requestedEnd)-Math.max(e.start,requestedStart));
       // Coverage is elapsed recorded interval, not proof all inbound traffic was seen.
       // Keep zeros for covered hours, leave absent hours missing.
       for(let t=Math.floor(e.start/HOUR)*HOUR;t<e.end;t+=HOUR){
@@ -68,12 +79,20 @@ function createHistory({now=Date.now,maxWindows=MAX_WINDOWS,maxBytes=MAX_BYTES}=
       }
     }
     const series=map=>[...map.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([utc,counts])=>({utc,...counts}));
-    return {range,windowCount:selected.length,coverageMs,firstWindow:selected.length?new Date(selected[0].start).toISOString():null,
+    const eligibleMs=Math.max(0,requestedEnd-requestedStart);
+    const anomaly=selected.length?{
+      unexpectedSuccess:totals.unexpectedSuccess>0,
+      limitedCoverage:legacyWindows>0||delayedWindows>0||Boolean(totals.dropped||totals.observationErrors||totals.hourOverflow),
+      highProbeShare:totals.observed>=20&&totals.matched/totals.observed>=0.5,
+      multiCategoryActivity:totals.multiCategory>0
+    }:null;
+    return {range,windowCount:selected.length,coverageMs,eligibleMs,inRangeRecordedMs,missingMs:Math.max(0,eligibleMs-inRangeRecordedMs),legacyWindows,restoredWindows,delayedWindows,anomaly,firstWindow:selected.length?new Date(selected[0].start).toISOString():null,
       lastWindow:selected.length?new Date(selected[selected.length-1].end).toISOString():null,
       retention:{days:RETENTION_DAYS,maxWindows,maxBytes,retainedWindows:entries.length,evicted,rejected},
       totals:selected.length?totals:null,distributions,hours:series(hours),days:series(days)};
   }
   function exportCsv(range){const selected=select(range);return HEADER+selected.map(e=>e.content).join('\n')+(selected.length?'\n':'');}
-  return {add,prune,summarize,exportCsv};
+  function restore(reports){let accepted=0,skipped=0;for(const r of reports){if(add(r,{restored:true}))accepted++;else skipped++;}return {accepted,skipped};}
+  return {add,restore,prune,summarize,exportCsv};
 }
 module.exports={createHistory,parseRange,RETENTION_DAYS,MAX_WINDOWS,MAX_BYTES};
