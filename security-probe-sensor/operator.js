@@ -23,6 +23,7 @@ function createOperator({env=process.env,history,sensor,now=Date.now}={}){
     if(decoded.toString('base64')!==encoded)return false;
     return timingSafeEqual(hash(decoded),expected);
   }
+  let reportsInFlight=0;
   return (req,res)=>{
     const target=req.url;
     if(typeof target!=='string')return false;
@@ -47,6 +48,13 @@ function createOperator({env=process.env,history,sensor,now=Date.now}={}){
     }
     const range=parseRange(new URLSearchParams(q<0?'':target.slice(q+1)),now());
     if(!range){res.status(400).type('text/plain').send('Invalid UTC date range\n');return true;}
+    // Bound expensive operator responses and outstanding socket buffers. Public
+    // probe requests are never limited based on classifier output.
+    if(reportsInFlight>=2){res.status(503).type('text/plain').send('Report capacity busy\n');return true;}
+    reportsInFlight++;
+    let released=false;
+    const release=()=>{if(!released){released=true;reportsInFlight--;}};
+    res.once('finish',release);res.once('close',release);
     if(pathname==='/operator/metrics'){
       res.json({observationEnabled:sensor.enabled,asOf:new Date(now()).toISOString(),...history.summarize(range)});return true;
     }

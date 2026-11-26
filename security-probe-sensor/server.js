@@ -67,7 +67,8 @@ function main(env=process.env) {
     try{history.add(report);}catch{/* Reporting must not affect observations. */}
     sink(report);
   }});
-  const operator=createOperator({env,history,sensor});
+  let operator=()=>false;
+  try{operator=createOperator({env,history,sensor});}catch{process.stderr.write('operator dashboard unavailable\n');}
   const server=createServer(sensor,operator);
   let timer,expiryTimer;
   if(sensor.enabled){

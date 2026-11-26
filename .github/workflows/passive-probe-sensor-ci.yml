@@ -4,18 +4,20 @@ on:
     paths:
       - 'security-probe-sensor/**'
       - '.github/workflows/passive-probe-sensor-ci.yml'
+      - 'render.yaml'
   push:
-    branches: [feat/passive-security-probe-sensor]
+    branches: [main, feat/passive-security-probe-dashboard]
     paths:
       - 'security-probe-sensor/**'
       - '.github/workflows/passive-probe-sensor-ci.yml'
+      - 'render.yaml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   sensor:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: security-probe-sensor
@@ -29,6 +31,19 @@ jobs:
           cache: npm
           cache-dependency-path: security-probe-sensor/package-lock.json
       - run: npm ci --ignore-scripts
-      - run: node --check sensor.js && node --check server.js && node --check csv.js
+      - run: node --check sensor.js && node --check server.js && node --check csv.js && node --check history.js && node --check operator.js && node --check operator/app.js
       - run: npm test
       - run: npm audit --omit=dev --audit-level=low
+
+      - name: Build isolated container
+        run: docker build -t gridline-sensor-ci .
+      - name: Local container smoke test (disabled by default)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -d --name gridline-sensor-ci -p 127.0.0.1::8080 gridline-sensor-ci
+          trap 'docker rm -f gridline-sensor-ci >/dev/null 2>&1 || true' EXIT
+          port=$(docker port gridline-sensor-ci 8080/tcp | head -1 | cut -d: -f2)
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 "http://127.0.0.1:$port/health"
+          test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/operator")" = 404
+          test "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/.env")" = 404
