@@ -28,7 +28,7 @@ flowchart TD
   classDef separate stroke-dasharray: 5 5;
 ```
 
-The HTTP path never depends on the observer's decision. The only successful application route is an exact GET/HEAD `/health` (query ignored). Other paths, including probes, receive ordinary text/plain 404. No static files, body parser, business credentials, proxying, research imports or remote reporting routes. A generic error handler avoids reflecting request details. Observation runs once at response finish or records an aborted count at close; it never changes the status. Parser-level rejection, CONNECT/upgrade, upstream rejection and traffic not delivered to Express are outside completed HTTP coverage. Transport timeouts and capacity safeguards apply equally whether observation is on or off.
+The HTTP path never depends on the observer's decision. The only successful public application route is an exact GET/HEAD `/health` (query ignored). Other paths, including probes, receive ordinary text/plain 404. No general static file serving, body parser, business credentials, proxying or research imports. Phase 2 adds only exact, authenticated operator routes; see the dashboard section. A generic error handler avoids reflecting request details. Observation runs once at response finish or records an aborted count at close; it never changes the status. Parser-level rejection, CONNECT/upgrade, upstream rejection and traffic not delivered to Express are outside completed HTTP coverage. Transport timeouts and capacity safeguards apply equally whether observation is on or off.
 
 BoxMatch's [Request Intelligence](https://github.com/LEO0331/boxmatch/blob/main/docs/REQUEST_INTELLIGENCE.md) inspired bounded extraction, conservative source confidence, HMAC and failure isolation. This service deliberately does not copy its per-request logs, risk scores, DNS verification, databases or dashboards.
 
@@ -57,7 +57,7 @@ Local loopback identity is intentionally unresolved. Wait for a periodic report 
 
 ## Independent deployment boundary
 
-Build only this directory as Docker context. No production hosting provider, DNS record, service or secret has been provisioned. Keep the research API local; never route sensor requests to the existing API or public site. Start disabled, with an independent service identity, no Gridline environment variables/volume mounts, no outbound access except infrastructure needs, read-only filesystem, non-root user, CPU/memory/PID quotas and operator-only logs. Example local-only container:
+Build only this directory as Docker context. A manual Render blueprint is supplied in the repository root; no production service, DNS record or secret has been provisioned. Keep the research API local; never route sensor requests to the existing API or public site. Start disabled, with an independent service identity, no Gridline environment variables/volume mounts, no outbound access except infrastructure needs, read-only filesystem, non-root user, CPU/memory/PID quotas and operator-only logs. Example local-only container:
 
 ```sh
 docker build -t gridline-probe-sensor .
@@ -117,7 +117,7 @@ Download only operator-authorized aggregate application logs as JSONL (strip pro
 npm run --silent csv -- aggregate.jsonl > aggregate.csv
 ```
 
-CSV rows contain window_start_utc, window_end_utc, dimension, key, count. Unknown strings and formula payloads are not exported. Nonmatching or malformed lines are skipped; compare report counts to source logs before using the CSV. Daily/hourly rows are per-window contributions, not cumulative totals. The exporter does not merge windows or authorize remote access; keep logs and CSV private.
+CSV rows contain window_start_utc, window_end_utc, dimension, key, count. Unknown strings and formula payloads are not exported. Nonmatching or malformed lines are skipped; compare report counts to source logs before using the CSV. Daily/hourly rows are per-window contributions, not cumulative totals. The offline exporter does not merge windows or authorize remote access; keep logs and CSV private. Phase 2 provides a separately authenticated aggregate export.
 
 ## Privacy, operations and rollback
 
@@ -126,3 +126,48 @@ Raw addresses, request targets, query values, headers, bodies, cookies and token
 Before rollout: verify CI/audit, container supply chain, host limits, network topology, no raw access logging, and operator log export. Enable collection only on the separate sensor; verify local/staging 404/health, observed zero/missing coverage and privacy. If errors or resource pressure occur set ENABLE_PASSIVE_PROBE_SENSOR=false and restart, or stop/delete the independent service and ingress. Discard/expire operator logs per policy. No Gridline data migration or rollback is required. Do not merge or activate without owner approval.
 
 Verification status: source-level implementation and synthetic test suite; see the PR checks for actual executed results. No live traffic experiment or production deployment is part of this change.
+
+## Phase 2 — operator dashboard and Render deployment
+
+The operator dashboard uses plain HTML, CSS and JavaScript, no additional dependencies, no public dashboard on GitHub Pages, no database and no storage of individual network identities. Both observation and dashboard flags default to false. The dashboard is optional and independent of observation; a dashboard with observation disabled shows missing coverage.
+
+### View locally
+
+With Node 22+ installed, use a dedicated cryptographically random password (32–256 printable non-space ASCII characters). For PowerShell, from the sensor directory:
+
+```powershell
+npm ci --ignore-scripts
+$env:ENABLE_SENSOR_DASHBOARD = 'true'
+$env:SENSOR_OPERATOR_PASSWORD = (node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))")
+$env:ENABLE_PASSIVE_PROBE_SENSOR = 'true' # optional, local synthetic observation only
+npm start
+```
+
+Open http://127.0.0.1:8080/operator and enter username `operator` and your generated password (retrieve it from your local environment in a private terminal). Never put the password in a URL, commit, screenshot or logs. Use localhost HTTP only for development; use HTTPS for remote access. The initial dashboard displays no recorded windows until the first periodic flush (approximately five minutes); Refresh reloads completed windows, not the current partial interval.
+
+### Dashboard routes and authorization
+
+| Exact GET/HEAD route | Purpose |
+| --- | --- |
+| `/operator` | Operator HTML, browser Basic authentication |
+| `/operator/app.js`, `/operator/style.css` | Protected local assets |
+| `/operator/metrics?from=YYYY-MM-DD&to=YYYY-MM-DD` | Aggregated selected windows |
+| `/operator/export.csv?from=YYYY-MM-DD&to=YYYY-MM-DD` | Sanitized per-window CSV download |
+
+Missing/invalid dashboard password or disabled flag yields normal 404s. Enabled routes require a high-entropy separate password; invalid credentials receive 401. Hash comparison uses a constant-length digest and timing-safe comparison. Cross-site browser requests declaring Sec-Fetch-Site: cross-site receive 403; same-origin policy, no CORS, no-store, frame denial and strict CSP apply. No JS storage, query-string credentials, session database, external script or write actions. Only successfully authenticated exact operator requests are excluded from observation (including authorized input errors); denied requests retain actual response statuses. Concurrent reporting responses are capped at two, with operator-only 503 on saturation. Basic authentication can remain cached by the browser; use a private browser session and close it after use. Rotate the password and restart to revoke access. No custom logout/session mechanism, no MFA or per-user accounts; this is a single-operator tool, not a multi-user admin platform.
+
+### History and coverage
+
+History retains sanitized aggregate windows in memory only: maximum 7 days, 2,016 windows and 4 MiB of serialized CSV rows (whichever limit is hit first). Actual memory overhead is higher; no file/database storage. History can be populated whenever observation is enabled, even if dashboard is disabled; a restart clears it. Eviction and rejected-window counts are shown. The current window is excluded until flush; selected dates are UTC and limited to today and six previous UTC days. Whole windows are assigned by their start date; a window crossing midnight may show contributions on the following UTC day. Hour/day tables use actual contributions and recorded interval duration, not a claim of complete upstream coverage. Missing intervals are shown as missing, not zero; dropped/error/overflow counts qualify recorded values. No reconstruction across restarts or replicas. CSV download contains selected per-window rows; preserve existing offline log export for longer history.
+
+### Manual Render deployment (after PR review and owner approval)
+
+1. In Render, create a new Blueprint and connect this repository, select main and the root render.yaml. Review the proposed **single free Docker web service**; no database or paid resource is requested. Verify the free plan is available and acceptable before confirming.
+2. The blueprint sets rootDir to security-probe-sensor, Docker context and Dockerfile within that directory, health check /health, port 8080 and automatic deploy trigger off. It generates independent operator and HMAC secrets. Both feature flags and topology verification remain false. No existing Gridline service should be linked or modified.
+3. Once the service exists, retrieve its actual HTTPS URL and confirm /health returns 200 and /operator returns 404 while disabled. Do not guess the onrender.com hostname. Verify upstream logs do not retain unwanted raw request data and review the provider's acceptable-use policy.
+4. In the service's Environment settings, set ENABLE_SENSOR_DASHBOARD=true and ensure SENSOR_OPERATOR_PASSWORD is a strong generated value. Apply/redeploy manually. Open the actual HTTPS service URL followed by /operator, authenticate as operator. Keep observation disabled until approved; then set ENABLE_PASSIVE_PROBE_SENSOR=true and manually redeploy.
+5. Keep SENSOR_NETWORK_MODE=unresolved and SENSOR_TOPOLOGY_VERIFIED=false until the real proxy chain is verified. Render can have a topology incompatible with the sensor's single-proxy assumption; do not invent trusted proxy addresses or enable unrestricted proxy trust. Country/ASN and bot verification remain unavailable.
+
+Render's free service can sleep, restart, and have ephemeral storage; its health and retention are not guaranteed. No persistent disk is requested. Logs are provider-managed; download authorized aggregate JSONL when needed. A sleep/redeploy may erase all dashboard history. Blueprint sync can reconcile declared values: review before syncing, as it may restore disabled defaults. For reference see [Render Blueprint specification](https://render.com/docs/blueprint-spec) and [free service limitations](https://render.com/docs/free).
+
+Rollback: set both feature flags false and redeploy, rotate the operator password if exposed, or suspend/remove only the independent sensor and its ingress. Do not expose or modify Gridline's research API. No production deployment or live observation is performed by the PR.

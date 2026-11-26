@@ -19,7 +19,7 @@ The navigation, Research Calendar, Research Reports, and workflow descriptions w
 | Dependency patches and unresolved advisories | [Dependency maintenance](dependency-maintenance.md) |
 | Exact temporary advisory acceptance and expiry | [Security policy](security-exception-policy.md) |
 | Runtime/bundle/dependency-path exposure evidence | [Exposure verification](dependency-exposure.md) |
-| Independent experimental passive security probe sensor (disabled by default) | [English](../security-probe-sensor/README.md) · [繁體中文](../security-probe-sensor/README.zh-TW.md) |
+| Independent passive probe sensor and protected operator dashboard (disabled by default) | [English](../security-probe-sensor/README.md) · [繁體中文](../security-probe-sensor/README.zh-TW.md) |
 
 ## Research coverage and evidence
 

@@ -57,8 +57,24 @@ HTTP 回應與觀測分離：GET/HEAD /health 回傳 200，其餘未知路徑正
 
 有報告且 observed=0 才表示該區間記錄的已完成觀測數為零；未報告、停機、丟失報告、上游未轉送的流量均屬觀測缺口。日與小時資料為每區間貢獻，需依不重疊的報告區間加總，不能把未觀測時段當作零。不同副本的短期關聯互不共享。
 
-從受限的營運日誌下載彙總 JSONL，再於本機執行 npm run --silent csv -- aggregate.jsonl > aggregate.csv。單檔上限 10 MiB，單行 64 KiB，輸出固定欄位與驗證後的值，避免 CSV 公式注入。未提供遠端報告 API 或管理後台。
+從受限的營運日誌下載彙總 JSONL，再於本機執行 npm run --silent csv -- aggregate.jsonl > aggregate.csv。單檔上限 10 MiB，單行 64 KiB，輸出固定欄位與驗證後的值，避免 CSV 公式注入。Phase 2 提供獨立且需驗證的營運者儀表板與彙總 CSV，原離線匯出仍保留。
 
 ## 隱私、部署驗證與回復
 
 感測器不持久化原始 IP、網址、UA、query、body、cookie、auth header 或 HMAC。僅輸出彙總資料；宿主／反向代理的存取日誌另行檢查、限制權限與保存期限。重啟、崩潰或縮容可能丟失未輸出資料；臨時磁碟不代表持久儲存。啟用前需通過 CI、套件稽核、實際網路拓樸確認、容器資源與隱私檢查，並取得專案擁有者同意。回復時停用功能旗標並重啟，或停止獨立服務及入口，不需變更 Gridline。尚未部署正式環境或驗證真實攻擊流量。
+
+## Phase 2：營運儀表板及 Render 部署
+
+新增獨立的 HTML/CSS/JavaScript 儀表板，不需要 React、資料庫或新增依賴，不修改 Gridline GitHub Pages。顯示已完成報告區間的請求、探測、HTTP 狀態、來源信心、重複及多類型探測、UTC 日／小時分布及資料缺口。預設 ENABLE_SENSOR_DASHBOARD=false，與觀測功能旗標獨立。啟用後於本機 http://127.0.0.1:8080/operator 使用帳號 operator 及專屬高強度密碼登入；遠端必須使用 HTTPS。第一次彙總需等約五分鐘，未有資料顯示缺少觀測而非零。Refresh 不會強制切割目前區間。
+
+保留最近最多七日、2,016 個區間及 4 MiB 序列化彙總資料（先達上限者為準）；僅記憶體，重啟即失去歷史。日期選擇 UTC 今日及之前六天，跨午夜視窗依開始日期納入，實際小時／日貢獻可能跨至次日。僅完成的視窗列入報表，顯示記錄分鐘數、缺失、丟棄及關聯不足。CSV 由受保護的 /operator/export.csv 下載，固定欄位，無原始 IP、URL、UA、密碼或指紋。所有 /operator 精確路徑（含資產及 metrics API）均需 Basic 驗證；已驗證操作不計入觀測，未授權的請求仍依實際狀態碼記錄。密碼不置於 URL 或瀏覽器儲存；建議使用私密瀏覽視窗，關閉後結束操作。此為單一營運者工具，無 MFA 或帳號管理。
+
+### 手動部署流程（需擁有者核准）
+
+1. Render 建立 Blueprint，選 Gridline 的 main 分支及根目錄 render.yaml，確認只建立一個獨立免費 Docker Web Service，不新增任何資料庫或付費資源。
+2. Blueprint 指定 security-probe-sensor 為服務根目錄、/health 健康檢查、8080 port、關閉自動部署。兩項功能旗標及網路拓樸驗證預設 false，密碼與 HMAC 密鑰由 Render 個別生成。確認實際免費方案及限制。
+3. 先檢查服務實際 HTTPS 網址，確認 /health 回傳 200，/operator 預設 404。在 Environment 設 ENABLE_SENSOR_DASHBOARD=true 並確認 SENSOR_OPERATOR_PASSWORD，再手動部署。以實際網址加上 /operator 登入。
+4. 取得觀測啟用同意後才設定 ENABLE_PASSIVE_PROBE_SENSOR=true 並重新部署。SENSOR_NETWORK_MODE=unresolved、SENSOR_TOPOLOGY_VERIFIED=false 保持不變，除非已確認真實代理拓樸，不任意信任 forwarded headers。
+5. 免費服務可能休眠、重啟，歷史資料不保證保存。需長期分析時下載受限的彙總 JSONL 或 CSV。Blueprint 同步可能恢復宣告的停用預設值，操作前確認。回復時停用兩旗標、手動部署或移除獨立服務，不影響 Gridline。
+
+本 PR 不會建立 Render 服務、實際啟用觀測或產生真實攻擊資料；部署前仍需確認平台原始存取日誌、使用政策、資源及實際代理行為。詳細設定、安全邊界與操作指令請參考英文版。
